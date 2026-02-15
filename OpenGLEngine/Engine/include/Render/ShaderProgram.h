@@ -1,19 +1,18 @@
 #pragma once
-#include "Extension/OExtension.h"
+#include "Extension/Extension.h"
 
-class OShaderProgram
+class ShaderProgram
 {
 	public:
-		OShaderProgram(const OShaderProgramDesc& program);
-		~OShaderProgram();
+		ShaderProgram(const ShaderProgramDesc& program);
+		~ShaderProgram();
 
 		int GetId() const { return programId;}
 		void SetUniformBufferSlot(const char* name, unsigned int slot);
 	private:
-		void Attach(const wchar_t* shaderFilePath, const OShaderType& type);
+		void Attach(const wchar_t* shaderFilePath, const ShaderType& type);
 		void Link() const;
 
 		int programId = 0;
 		int attachedShaders[2] = {};
 };
-

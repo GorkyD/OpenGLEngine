@@ -1,4 +1,4 @@
-#include "Window/OWindow.h"
+#include "Window/Window.h"
 #include <Windows.h>
 #include <glad_wgl.c>
 #include <glad/glad.h>
@@ -10,7 +10,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_DESTROY:
 		{
-			OWindow* o_window = reinterpret_cast<OWindow*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+			Window* window = reinterpret_cast<Window*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 			break;
 		}
 		case WM_CLOSE:
@@ -24,7 +24,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	return NULL;
 }
 
-OWindow::OWindow()
+Window::Window()
 {
 	WNDCLASSEX windowClassEx = {};
 	windowClassEx.cbSize = sizeof(WNDCLASSEX);
@@ -89,27 +89,26 @@ OWindow::OWindow()
 	assert(windowContext);
 }
 
-OWindow::~OWindow()
+Window::~Window()
 {
 	wglDeleteContext(static_cast<HGLRC>(windowContext));
 	DestroyWindow(static_cast<HWND>(windowInstance));
 }
 
-ORect OWindow::GetInnerSize() const
+Rect Window::GetInnerSize() const
 {
 	RECT rc = {};
 	GetClientRect(static_cast<HWND>(windowInstance), &rc);
 	return {rc.right - rc.left, rc.bottom - rc.top};
 }
 
-void OWindow::MakeCurrentContext() const
+void Window::MakeCurrentContext() const
 {
 	wglMakeCurrent(GetDC(static_cast<HWND>(windowInstance)), static_cast<HGLRC>(windowContext));
 }
 
-void OWindow::Present(bool vSync) const
+void Window::Present(bool vSync) const
 {
 	wglSwapIntervalEXT(vSync);
 	wglSwapLayerBuffers(GetDC(static_cast<HWND>(windowInstance)),WGL_SWAP_MAIN_PLANE);
 }
-

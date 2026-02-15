@@ -1,16 +1,16 @@
-#include "Entity/OEntitySystem.h"
+#include "Entity/EntitySystem.h"
 
-OEntitySystem::OEntitySystem()
+EntitySystem::EntitySystem()
 {
 }
 
-OEntitySystem::~OEntitySystem()
+EntitySystem::~EntitySystem()
 {
 }
 
-bool OEntitySystem::CreateEntityInternal(OEntity* entity, size_t id)
+bool EntitySystem::CreateEntityInternal(Entity* entity, size_t id)
 {
-	auto ptr = std::unique_ptr<OEntity>(entity);
+	auto ptr = std::unique_ptr<Entity>(entity);
 	entities[id].emplace(entity, std::move(ptr));
 
 	entity->entitySystem = this;
@@ -21,13 +21,13 @@ bool OEntitySystem::CreateEntityInternal(OEntity* entity, size_t id)
 	return true;
 }
 
-void OEntitySystem::RemoveEntity(OEntity* entity)
+void EntitySystem::RemoveEntity(Entity* entity)
 {
 	OGL_INFO("Remove entity with id: " << entity->id);
 	entitiesToDestroy.emplace(entity);
 }
 
-void OEntitySystem::Update(float deltaTime)
+void EntitySystem::Update(float deltaTime)
 {
 	for (auto entity: entitiesToDestroy)
 	{

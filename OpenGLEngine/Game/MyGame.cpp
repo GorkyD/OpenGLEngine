@@ -1,6 +1,6 @@
 #include "MyGame.h"
 
-#include "Entity/OEntitySystem.h"
+#include "Entity/EntitySystem.h"
 
 MyGame::MyGame()
 {
@@ -12,7 +12,7 @@ MyGame::~MyGame()
 
 void MyGame::OnCreate()
 {
-	OEngine::OnCreate();
+	Engine::OnCreate();
 	auto player = GetEntitySystem()->CreateEntity<Player>();
 }
 

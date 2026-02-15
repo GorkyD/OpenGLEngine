@@ -6,7 +6,7 @@ Camera::Camera()
 	UpdateVectors();
 }
 
-void Camera::SetPosition(const OVector3& pos)
+void Camera::SetPosition(const Vector3& pos)
 {
 	position = pos;
 }
@@ -28,16 +28,16 @@ void Camera::UpdateVectors()
 	forward.x = std::cos(pitch) * std::sin(yaw);
 	forward.y = std::sin(pitch);
 	forward.z = std::cos(pitch) * std::cos(yaw);
-	forward = OVector3::Normalize(forward);
+	forward = Vector3::Normalize(forward);
 
-	OVector3 worldUp(0, 1, 0);
-	right = OVector3::Normalize(OVector3::Cross(worldUp, forward));
-	up = OVector3::Cross(forward, right);
+	Vector3 worldUp(0, 1, 0);
+	right = Vector3::Normalize(Vector3::Cross(worldUp, forward));
+	up = Vector3::Cross(forward, right);
 }
 
-OMath4 Camera::GetViewMatrix() const
+Matrix4 Camera::GetViewMatrix() const
 {
-	OMath4 view;
-	view.SetLookAtLeftHanded(position, position + forward, OVector3(0, 1, 0));
+	Matrix4 view;
+	view.SetLookAtLeftHanded(position, position + forward, Vector3(0, 1, 0));
 	return view;
 }

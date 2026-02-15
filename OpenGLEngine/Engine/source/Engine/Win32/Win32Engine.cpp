@@ -1,7 +1,7 @@
 #include <Windows.h>
-#include "Engine/OEngine.h"
+#include "Engine/Engine.h"
 
-void OEngine::Run()
+void Engine::Run()
 {
 	OnCreate();
 	while (is_Running)

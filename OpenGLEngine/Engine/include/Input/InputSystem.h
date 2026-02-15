@@ -2,7 +2,7 @@
 #include <array>
 #include <Windows.h>
 
-#include "Extension/OExtension.h"
+#include "Extension/Extension.h"
 
 class InputSystem
 {
@@ -33,4 +33,3 @@ class InputSystem
 		bool leftMouseDown = false;
 		bool rightMouseDown = false;
 };
-

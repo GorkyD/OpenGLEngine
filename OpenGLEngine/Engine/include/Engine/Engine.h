@@ -2,22 +2,22 @@
 #include <memory>
 #include <chrono>
 
-#include "Extension/OExtension.h"
+#include "Extension/Extension.h"
 #include "Input/InputSystem.h"
 #include "Camera/Camera.h"
 #include "Camera/CameraMovement.h"
 
-class ORenderEngine;
-class OEntitySystem;
-class OWindow;
+class RenderEngine;
+class EntitySystem;
+class Window;
 
-class OEngine
+class Engine
 {
 	public:
-		OEngine();
-		virtual ~OEngine();
+		Engine();
+		virtual ~Engine();
 
-		OEntitySystem* GetEntitySystem() const {return entitySystem.get();}
+		EntitySystem* GetEntitySystem() const {return entitySystem.get();}
 
 		void Run();
 		void Quit();
@@ -29,18 +29,18 @@ class OEngine
 		virtual void OnUpdate(float deltaTime) {}
 		virtual void OnQuit();
 
-		std::unique_ptr<ORenderEngine> renderEngine;
-		std::unique_ptr<OEntitySystem> entitySystem;
-		std::unique_ptr<OWindow> window;
+		std::unique_ptr<RenderEngine> renderEngine;
+		std::unique_ptr<EntitySystem> entitySystem;
+		std::unique_ptr<Window> window;
 
 		std::shared_ptr<InputSystem> inputSystem;
 
 		Camera camera;
 		CameraMovement cameraMovement;
 
-		OVertexArrayObjectPtr polygonVaoPtr;
-		OUniformBufferPtr uniformBufferPtr;
-		OShaderProgramPtr shaderProgramPtr;
+		VertexArrayObjectPtr polygonVaoPtr;
+		UniformBufferPtr uniformBufferPtr;
+		ShaderProgramPtr shaderProgramPtr;
 
 		std::chrono::system_clock::time_point previousTime;
 
@@ -49,5 +49,3 @@ class OEngine
 
 		bool is_Running = true;
 };
-
-															

@@ -1,11 +1,11 @@
-#include "Render/OShaderProgram.h"
+#include "Render/ShaderProgram.h"
 #include <fstream>
 #include <sstream>
 #include <vector>
 #include <Windows.h>
 #include <glad/glad.h>
 
-OShaderProgram::OShaderProgram(const OShaderProgramDesc& desc)
+ShaderProgram::ShaderProgram(const ShaderProgramDesc& desc)
 {
 	programId = glCreateProgram();
 	Attach(desc.vertexShaderFilePath, VertexType);
@@ -13,7 +13,7 @@ OShaderProgram::OShaderProgram(const OShaderProgramDesc& desc)
 	Link();
 }
 
-OShaderProgram::~OShaderProgram()
+ShaderProgram::~ShaderProgram()
 {
 	for (const int attachedShader : attachedShaders)
 	{
@@ -24,14 +24,14 @@ OShaderProgram::~OShaderProgram()
 	glDeleteProgram(programId);
 }
 
-void OShaderProgram::SetUniformBufferSlot(const char* name, unsigned int slot)
+void ShaderProgram::SetUniformBufferSlot(const char* name, unsigned int slot)
 {
 	unsigned int index = glGetUniformBlockIndex(programId, name);
 	glUniformBlockBinding(programId, index, slot);
 }
 
 
-void OShaderProgram::Attach(const wchar_t* shaderFilePath,const OShaderType& type)
+void ShaderProgram::Attach(const wchar_t* shaderFilePath,const ShaderType& type)
 {
 	std::ifstream shaderStream(shaderFilePath);
 	std::string shaderCode;
@@ -44,7 +44,7 @@ void OShaderProgram::Attach(const wchar_t* shaderFilePath,const OShaderType& typ
 	}
 	else
 	{
-		OGL_WARNING("OShaderProgram | " << shaderFilePath << " not found");
+		OGL_WARNING("ShaderProgram | " << shaderFilePath << " not found");
 		return;
 	}
 
@@ -64,17 +64,17 @@ void OShaderProgram::Attach(const wchar_t* shaderFilePath,const OShaderType& typ
 	{
 		std::vector<char> errorMessage(logLength + 1);
 		glGetShaderInfoLog(shaderId, logLength, nullptr, errorMessage.data());
-		OGL_WARNING("OShaderProgram | " << shaderFilePath << " compiled with errors: " <<std::endl << errorMessage.data())
+		OGL_WARNING("ShaderProgram | " << shaderFilePath << " compiled with errors: " <<std::endl << errorMessage.data())
 		return;
 	}
 
 	glAttachShader(programId, shaderId);
 	attachedShaders[(unsigned int)type] = shaderId;
 
-	OGL_INFO("OShaderProgram | " << shaderFilePath << " compiled successfully");
+	OGL_INFO("ShaderProgram | " << shaderFilePath << " compiled successfully");
 }
 
-void OShaderProgram::Link() const
+void ShaderProgram::Link() const
 {
 	glLinkProgram(programId);
 
@@ -84,7 +84,7 @@ void OShaderProgram::Link() const
 	{
 		std::vector<char> errorMessage(logLength + 1);
 		glGetProgramInfoLog(programId, logLength, nullptr, errorMessage.data());
-		OGL_WARNING("OShaderProgram | " << errorMessage.data())
+		OGL_WARNING("ShaderProgram | " << errorMessage.data())
 		return;
 	}
 }

@@ -1,11 +1,11 @@
 #pragma once
 #include <cstring>
-#include "OVector3.h"
+#include "Vector3.h"
 
-class OMath4
+class Matrix4
 {
 	public:
-		OMath4()
+		Matrix4()
 		{
 			SetIdentity();
 		}
@@ -19,14 +19,14 @@ class OMath4
 			matrix[3][3] = 1;
 		}
 
-		void SetScale(const OVector3& scale)
+		void SetScale(const Vector3& scale)
 		{
 			matrix[0][0] = scale.x;
 			matrix[1][1] = scale.y;
 			matrix[2][2] = scale.z;
 		}
 
-		void SetTranslation(const OVector3& translation)
+		void SetTranslation(const Vector3& translation)
 		{
 			matrix[3][0] = translation.x;
 			matrix[3][1] = translation.y;
@@ -58,9 +58,9 @@ class OMath4
 			matrix[1][1] = cos(z);
 		}
 
-		void operator *=(const OMath4& otherMatrix)
+		void operator *=(const Matrix4& otherMatrix)
 		{
-			OMath4 out;
+			Matrix4 out;
 			for (auto i = 0; i < 4; i++)
 			{
 				for (auto j = 0; j < 4; j++)
@@ -94,19 +94,19 @@ class OMath4
 			matrix[3][2] = -(nearPlane * farPlane) / (farPlane - nearPlane);
 		}
 
-		void SetLookAtLeftHanded(const OVector3& eye, const OVector3& target, const OVector3& up)
+		void SetLookAtLeftHanded(const Vector3& eye, const Vector3& target, const Vector3& up)
 		{
-			OVector3 forward = OVector3::Normalize(target - eye);
-			OVector3 right = OVector3::Normalize(OVector3::Cross(up, forward));
-			OVector3 newUp = OVector3::Cross(forward, right);
+			Vector3 forward = Vector3::Normalize(target - eye);
+			Vector3 right = Vector3::Normalize(Vector3::Cross(up, forward));
+			Vector3 newUp = Vector3::Cross(forward, right);
 
 			::memset(matrix, 0, sizeof(matrix));
 			matrix[0][0] = right.x;    matrix[0][1] = newUp.x;    matrix[0][2] = forward.x;
 			matrix[1][0] = right.y;    matrix[1][1] = newUp.y;    matrix[1][2] = forward.y;
 			matrix[2][0] = right.z;    matrix[2][1] = newUp.z;    matrix[2][2] = forward.z;
-			matrix[3][0] = -OVector3::Dot(right, eye);
-			matrix[3][1] = -OVector3::Dot(newUp, eye);
-			matrix[3][2] = -OVector3::Dot(forward, eye);
+			matrix[3][0] = -Vector3::Dot(right, eye);
+			matrix[3][1] = -Vector3::Dot(newUp, eye);
+			matrix[3][2] = -Vector3::Dot(forward, eye);
 			matrix[3][3] = 1.0f;
 		}
 

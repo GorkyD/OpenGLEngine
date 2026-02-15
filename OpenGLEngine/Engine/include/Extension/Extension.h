@@ -4,66 +4,66 @@
 #include <iostream>
 #include <stdexcept>
 
-class OVertexArrayObject;
-class OUniformBuffer;
-class OShaderProgram;
+class VertexArrayObject;
+class UniformBuffer;
+class ShaderProgram;
 
-typedef std::shared_ptr<OVertexArrayObject> OVertexArrayObjectPtr;
-typedef std::shared_ptr<OUniformBuffer> OUniformBufferPtr;
-typedef std::shared_ptr<OShaderProgram> OShaderProgramPtr;
+typedef std::shared_ptr<VertexArrayObject> VertexArrayObjectPtr;
+typedef std::shared_ptr<UniformBuffer> UniformBufferPtr;
+typedef std::shared_ptr<ShaderProgram> ShaderProgramPtr;
 
-struct OVertexAttributes
+struct VertexAttributes
 {
 	int numElements = 0;
 };
 
-struct OVertexBufferDesc
+struct VertexBufferDesc
 {
 	void* verticesList = nullptr;
 	int vertexSize = 0;
 	int listSize = 0;
 
-	OVertexAttributes* attributesList = nullptr;
+	VertexAttributes* attributesList = nullptr;
 	int attributesListSize = 0;
 };
 
-struct OIndexBufferDesc
+struct IndexBufferDesc
 {
 	void* indicesList = nullptr;
 	int listSize = 0;
 };
 
-struct OShaderProgramDesc
+struct ShaderProgramDesc
 {
 	const wchar_t* vertexShaderFilePath;
 	const wchar_t* fragmentShaderFilePath;
 };
 
-struct OUniformBufferDesc
+struct UniformBufferDesc
 {
 	unsigned int size = 0;
 };
 
-enum OShaderType
+enum ShaderType
 {
 	VertexType,
 	FragmentType
 };
 
-enum OTriangleType
+enum TriangleType
 {
 	List,
 	Strip
 };
 
-enum OCullingType
+enum CullingType
 {
 	BackFace,
 	FrontFace,
 	Both
 };
 
-enum OWindingOrder
+enum WindingOrder
 {
 	ClockWise,
 	CounterClockWise

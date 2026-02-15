@@ -1,11 +1,11 @@
 #pragma once
-#include "Extension/OExtension.h"
+#include "Extension/Extension.h"
 
-class OUniformBuffer
+class UniformBuffer
 {
 	public:
-		OUniformBuffer(const OUniformBufferDesc& desc);
-		~OUniformBuffer();
+		UniformBuffer(const UniformBufferDesc& desc);
+		~UniformBuffer();
 
 		void SetData(void* data);
 
@@ -15,4 +15,3 @@ class OUniformBuffer
 		unsigned int id = 0;
 		unsigned int size = 0;
 };
-

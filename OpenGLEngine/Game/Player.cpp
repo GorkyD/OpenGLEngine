@@ -1,5 +1,5 @@
 #include "Player.h"
-#include "Entity/OEntitySystem.h"
+#include "Entity/EntitySystem.h"
 
 Player::Player()
 {
@@ -11,7 +11,7 @@ Player::~Player()
 
 void Player::OnCreate()
 {
-	entity = GetEntitySystem()->CreateEntity<OEntity>();
+	entity = GetEntitySystem()->CreateEntity<Entity>();
 }
 
 void Player::OnUpdate(float deltaTime)

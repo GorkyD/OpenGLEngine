@@ -1,8 +1,8 @@
-#include "Render/OUniformBuffer.h"
+#include "Render/UniformBuffer.h"
 
 #include <glad/glad.h>
 
-OUniformBuffer::OUniformBuffer(const OUniformBufferDesc& desc)
+UniformBuffer::UniformBuffer(const UniformBufferDesc& desc)
 {
 	glGenBuffers(1, &id);
 	glBindBuffer(GL_UNIFORM_BUFFER, id);
@@ -12,12 +12,12 @@ OUniformBuffer::OUniformBuffer(const OUniformBufferDesc& desc)
 
 }
 
-OUniformBuffer::~OUniformBuffer()
+UniformBuffer::~UniformBuffer()
 {
 	glDeleteBuffers(1, &id);
 }
 
-void OUniformBuffer::SetData(void* data)
+void UniformBuffer::SetData(void* data)
 {
 	glBindBuffer(GL_UNIFORM_BUFFER, id);
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, size, data);

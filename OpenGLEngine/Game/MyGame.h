@@ -1,8 +1,8 @@
 #pragma once
 #include "Player.h"
-#include "Engine/OEngine.h"
+#include "Engine/Engine.h"
 
-class MyGame : public OEngine
+class MyGame : public Engine
 {
 	public:
 		MyGame();
@@ -16,4 +16,3 @@ class MyGame : public OEngine
 
 		float elapsedSeconds = 0.0f;
 };
-

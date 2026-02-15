@@ -1,8 +1,19 @@
 ﻿  CameraMovement.cpp
-  OEngine.cpp
-  OWin32Engine.cpp
-  InputSystem.cpp
-  MyGame.cpp
+  Camera.cpp
+  Rect.h
   main.cpp
+  Win32Engine.cpp
+  Win32RenderEngine.cpp
+  Win32Window.cpp
+  Engine.cpp
+  RenderEngine.cpp
+  VertexArrayObject.cpp
+  ShaderProgram.cpp
+  UniformBuffer.cpp
+  EntitySystem.cpp
+  Entity.cpp
+  MyGame.cpp
+  Player.cpp
+  InputSystem.cpp
   Generating Code...
   OpenGLEngine.vcxproj -> D:\Git\OpenGLEngine\x64\Debug\OpenGLEngine.exe

@@ -3,7 +3,7 @@
 #include <cassert>
 #include <vector>
 
-#include "Extension/OExtension.h"
+#include "Extension/Extension.h"
 
 InputSystem::InputSystem(HWND windowInstance)
 {

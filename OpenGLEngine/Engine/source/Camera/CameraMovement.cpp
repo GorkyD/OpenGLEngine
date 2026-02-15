@@ -22,17 +22,17 @@ void CameraMovement::Update(Camera& camera, const InputSystem& input, float delt
 		camera.SetPitch(pitch);
 	}
 
-	OVector3 forward = camera.GetForward();
-	OVector3 right = camera.GetRight();
-	OVector3 moveDir(0, 0, 0);
+	Vector3 forward = camera.GetForward();
+	Vector3 right = camera.GetRight();
+	Vector3 moveDir(0, 0, 0);
 
 	if (input.IsKeyDown(Key::W)) moveDir += forward;
 	if (input.IsKeyDown(Key::S)) moveDir -= forward;
 	if (input.IsKeyDown(Key::D)) moveDir += right;
 	if (input.IsKeyDown(Key::A)) moveDir -= right;
-	if (input.IsKeyDown(Key::Space))  moveDir += OVector3(0, 1, 0);
-	if (input.IsKeyDown(Key::LShift)) moveDir -= OVector3(0, 1, 0);
+	if (input.IsKeyDown(Key::Space))  moveDir += Vector3(0, 1, 0);
+	if (input.IsKeyDown(Key::LShift)) moveDir -= Vector3(0, 1, 0);
 
-	moveDir = OVector3::Normalize(moveDir);
+	moveDir = Vector3::Normalize(moveDir);
 	camera.SetPosition(camera.GetPosition() + moveDir * (moveSpeed * deltaTime));
 }

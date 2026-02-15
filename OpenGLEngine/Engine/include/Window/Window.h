@@ -1,13 +1,13 @@
 #pragma once
-#include "Math/ORect.h"
+#include "Math/Rect.h"
 
-class OWindow
+class Window
 {
 	public:
-		OWindow();
-		~OWindow();
+		Window();
+		~Window();
 
-		ORect GetInnerSize() const;
+		Rect GetInnerSize() const;
 
 		void MakeCurrentContext() const;
 		void Present(bool vSync) const;

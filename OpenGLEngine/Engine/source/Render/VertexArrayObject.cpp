@@ -1,11 +1,11 @@
-#include "Render/OVertexArrayObject.h"
+#include "Render/VertexArrayObject.h"
 #include <glad/glad.h>
 
-OVertexArrayObject::OVertexArrayObject(const OVertexBufferDesc& vertexBufferDesc)
+VertexArrayObject::VertexArrayObject(const VertexBufferDesc& vertexBufferDesc)
 {
-	if(!vertexBufferDesc.listSize) OGL_ERROR("OVertexArrayObject | vertexSize is NULL")
-	if (!vertexBufferDesc.vertexSize) OGL_ERROR("OVertexArrayObject | vertexSize is NULL")
-	if (!vertexBufferDesc.verticesList) OGL_ERROR("OVertexArrayObject | verticesList is NULL")
+	if(!vertexBufferDesc.listSize) OGL_ERROR("VertexArrayObject | vertexSize is NULL")
+	if (!vertexBufferDesc.vertexSize) OGL_ERROR("VertexArrayObject | vertexSize is NULL")
+	if (!vertexBufferDesc.verticesList) OGL_ERROR("VertexArrayObject | verticesList is NULL")
 
 	glGenVertexArrays(1, &vertexArrayObjectId);
 	glBindVertexArray(vertexArrayObjectId);
@@ -33,10 +33,10 @@ OVertexArrayObject::OVertexArrayObject(const OVertexBufferDesc& vertexBufferDesc
 	vertexBufferDescData = vertexBufferDesc;
 }
 
-OVertexArrayObject::OVertexArrayObject(const OVertexBufferDesc& vertexBufferDesc, const OIndexBufferDesc& indexBufferDesc) : OVertexArrayObject(vertexBufferDesc)
+VertexArrayObject::VertexArrayObject(const VertexBufferDesc& vertexBufferDesc, const IndexBufferDesc& indexBufferDesc) : VertexArrayObject(vertexBufferDesc)
 {
-	if (!indexBufferDesc.listSize) OGL_ERROR("OVertexArrayObject | listSize is NULL")
-	if (!indexBufferDesc.indicesList) OGL_ERROR("OVertexArrayObject | indicesList is NULL")
+	if (!indexBufferDesc.listSize) OGL_ERROR("VertexArrayObject | listSize is NULL")
+	if (!indexBufferDesc.indicesList) OGL_ERROR("VertexArrayObject | indicesList is NULL")
 
 	glBindVertexArray(vertexArrayObjectId);
 
@@ -47,24 +47,24 @@ OVertexArrayObject::OVertexArrayObject(const OVertexBufferDesc& vertexBufferDesc
 	glBindVertexArray(0);
 }
 
-OVertexArrayObject::~OVertexArrayObject()
+VertexArrayObject::~VertexArrayObject()
 {
 	glDeleteBuffers(1, &elementBufferId);
 	glDeleteBuffers(1, &vertexBufferId);
 	glDeleteVertexArrays(1, &vertexArrayObjectId);
 }
 
-unsigned int OVertexArrayObject::GetId() const
+unsigned int VertexArrayObject::GetId() const
 {
 	return vertexArrayObjectId;
 }
 
-unsigned int OVertexArrayObject::GetVertexBufferSize() const
+unsigned int VertexArrayObject::GetVertexBufferSize() const
 {
 	return vertexBufferDescData.listSize;
 }
 
-unsigned int OVertexArrayObject::GetVertexSize() const
+unsigned int VertexArrayObject::GetVertexSize() const
 {
 	return vertexBufferDescData.vertexSize;
 }

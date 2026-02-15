@@ -1,67 +1,67 @@
 #include <chrono>
-#include "Window/OWindow.h"
-#include "Engine/OEngine.h"
+#include "Window/Window.h"
+#include "Engine/Engine.h"
 
-#include "Entity/OEntitySystem.h"
+#include "Entity/EntitySystem.h"
 #include "Input/InputSystem.h"
-#include "Math/OMath4.h"
-#include "Math/OVector3.h"
-#include "Math/OVector2.h"
-#include "Math/OVector4.h"
-#include "Render/ORenderEngine.h"
-#include "Render/OUniformBuffer.h"
-#include "Render/OShaderProgram.h"
+#include "Math/Matrix4.h"
+#include "Math/Vector3.h"
+#include "Math/Vector2.h"
+#include "Math/Vector4.h"
+#include "Render/RenderEngine.h"
+#include "Render/UniformBuffer.h"
+#include "Render/ShaderProgram.h"
 
 struct UniformData
 {
-	OMath4 world;
-	OMath4 view;
-	OMath4 projection;
+	Matrix4 world;
+	Matrix4 view;
+	Matrix4 projection;
 };
 
 struct Vertex
 {
-	OVector3 position;
-	OVector2 textureCoordinates;
+	Vector3 position;
+	Vector2 textureCoordinates;
 };
 
 
-OEngine::OEngine()
+Engine::Engine()
 {
-	renderEngine = std::make_unique<ORenderEngine>();
-	window = std::make_unique<OWindow>();
+	renderEngine = std::make_unique<RenderEngine>();
+	window = std::make_unique<Window>();
 	inputSystem = std::make_shared<InputSystem>(static_cast<HWND>(window->GetWindowInstance()));
-	entitySystem = std::make_unique<OEntitySystem>();
+	entitySystem = std::make_unique<EntitySystem>();
 
 	window->MakeCurrentContext();
 	renderEngine->SetViewPort(window->GetInnerSize());
 }
 
-OEngine::~OEngine(){}
+Engine::~Engine(){}
 
-void OEngine::OnCreate()
+void Engine::OnCreate()
 {
-	OVector3 positionsList[] =
+	Vector3 positionsList[] =
 	{
 		//front face
-		OVector3(-0.5f,-0.5f,-0.5f),
-		OVector3(-0.5f,0.5f,-0.5f),
-		OVector3(0.5f,0.5f,-0.5f),
-		OVector3(0.5f,-0.5f,-0.5f),
+		Vector3(-0.5f,-0.5f,-0.5f),
+		Vector3(-0.5f,0.5f,-0.5f),
+		Vector3(0.5f,0.5f,-0.5f),
+		Vector3(0.5f,-0.5f,-0.5f),
 
 		//back face
-		OVector3(0.5f,-0.5f,0.5f),
-		OVector3(0.5f,0.5f,0.5f),
-		OVector3(-0.5f,0.5f,0.5f),
-		OVector3(-0.5f,-0.5f,0.5f)
+		Vector3(0.5f,-0.5f,0.5f),
+		Vector3(0.5f,0.5f,0.5f),
+		Vector3(-0.5f,0.5f,0.5f),
+		Vector3(-0.5f,-0.5f,0.5f)
 	};
 
-	OVector2 textureCoordinatesList[] =
+	Vector2 textureCoordinatesList[] =
 	{
-		OVector2(0,0),
-		OVector2(0,1),
-		OVector2(1,0),
-		OVector2(1,1)
+		Vector2(0,0),
+		Vector2(0,1),
+		Vector2(1,0),
+		Vector2(1,1)
 	};
 
 	Vertex verticesList[] =
@@ -131,10 +131,10 @@ void OEngine::OnCreate()
 	};
 
 
-	OVertexAttributes attributesList[] = 
+	VertexAttributes attributesList[] = 
 	{
-		sizeof(OVector3)/sizeof(float), //position
-		sizeof(OVector2) / sizeof(float)  //texcoord
+		sizeof(Vector3)/sizeof(float),
+		sizeof(Vector2) / sizeof(float)
 	};
 
 	polygonVaoPtr = renderEngine->CreateVertexArrayObject(
@@ -144,7 +144,7 @@ void OEngine::OnCreate()
 			sizeof(verticesList)/sizeof(Vertex),
 
 			attributesList,
-			sizeof(attributesList)/sizeof(OVertexAttributes)
+			sizeof(attributesList)/sizeof(VertexAttributes)
 		},{
 			(void*) indicesList,
 			sizeof(indicesList)
@@ -162,10 +162,10 @@ void OEngine::OnCreate()
 
 	shaderProgramPtr->SetUniformBufferSlot("UniformData", 0);
 
-	camera.SetPosition(OVector3(0, 0.5f, -2.5f));
+	camera.SetPosition(Vector3(0, 0.5f, -2.5f));
 }
 
-void OEngine::OnUpdateInternal()
+void Engine::OnUpdateInternal()
 {
 	auto currentTime = std::chrono::system_clock::now();
 	auto elapsedSeconds = std::chrono::duration<double>();
@@ -184,9 +184,9 @@ void OEngine::OnUpdateInternal()
 
 	scale += speed * deltaTime;
 
-	OMath4 world, projection, temp;
+	Matrix4 world, projection, temp;
 
-	temp.SetScale(OVector3(1, 1, 1));
+	temp.SetScale(Vector3(1, 1, 1));
 	world *= temp;
 
 	temp.SetIdentity();
@@ -202,7 +202,7 @@ void OEngine::OnUpdateInternal()
 	world *= temp;
 
 	temp.SetIdentity();
-	temp.SetTranslation(OVector3(0, 0, 0));
+	temp.SetTranslation(Vector3(0, 0, 0));
 	world *= temp;
 
 	const auto displaySize = window->GetInnerSize();
@@ -218,9 +218,9 @@ void OEngine::OnUpdateInternal()
 
 
 
-	renderEngine->Clear(OVector4(0, 0, 0, 1));
+	renderEngine->Clear(Vector4(0, 0, 0, 1));
 
-	renderEngine->SetFaceCulling(OCullingType::BackFace);
+	renderEngine->SetFaceCulling(CullingType::BackFace);
 	renderEngine->SetWindingOrder(ClockWise);
 	renderEngine->SetVertexArrayObject(polygonVaoPtr);
 	renderEngine->SetUniformBuffer(uniformBufferPtr, 0);
@@ -232,12 +232,12 @@ void OEngine::OnUpdateInternal()
 	window->Present(false);
 }
 
-void OEngine::OnQuit()
+void Engine::OnQuit()
 {
 }
 
 
-void OEngine::Quit()
+void Engine::Quit()
 {
 	is_Running = false;
 }

@@ -1,7 +1,7 @@
 #pragma once
-#include "Entity/OEntity.h"
+#include "Entity/Entity.h"
 
-class Player : public OEntity
+class Player : public Entity
 {
 public:
 	Player();
@@ -11,7 +11,7 @@ public:
 	virtual void OnUpdate(float deltaTime);
 
 private:
-	OEntity* entity = nullptr;
+	Entity* entity = nullptr;
 
 	float elapsedSeconds = 0.0f;
 };

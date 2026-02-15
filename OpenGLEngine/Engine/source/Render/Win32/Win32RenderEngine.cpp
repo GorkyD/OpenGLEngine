@@ -2,9 +2,9 @@
 #include <glad/glad_wgl.h>
 #include <stdexcept>
 #include <Windows.h>
-#include "Render/ORenderEngine.h"
+#include "Render/RenderEngine.h"
 
-ORenderEngine::ORenderEngine()
+RenderEngine::RenderEngine()
 {
 	WNDCLASSEX windowClassEx = {};
 	windowClassEx.style = CS_OWNDC;
@@ -54,10 +54,10 @@ ORenderEngine::ORenderEngine()
 	assert(res);
 
 	if (!gladLoadWGL(dummyDC))
-		OGL_ERROR("OGraphicsEngine - gladLoadWGL failed");
+		OGL_ERROR("RenderEngine - gladLoadWGL failed");
 
 	if (!gladLoadGL())
-		OGL_ERROR("OGraphicsEngine - gladLoadGL failed");
+		OGL_ERROR("RenderEngine - gladLoadGL failed");
 
 	wglMakeCurrent(dummyDC, dummyContext);
 
@@ -68,7 +68,7 @@ ORenderEngine::ORenderEngine()
 	DestroyWindow(dummyWindow);
 }
 
-ORenderEngine::~ORenderEngine()
+RenderEngine::~RenderEngine()
 {
 
 }
