@@ -15,6 +15,7 @@
 struct UniformData
 {
 	OMath4 world;
+	OMath4 view;
 	OMath4 projection;
 };
 
@@ -160,6 +161,8 @@ void OEngine::OnCreate()
 		});
 
 	shaderProgramPtr->SetUniformBufferSlot("UniformData", 0);
+
+	camera.SetPosition(OVector3(0, 0.5f, -2.5f));
 }
 
 void OEngine::OnUpdateInternal()
@@ -172,14 +175,16 @@ void OEngine::OnUpdateInternal()
 
 	const auto deltaTime = static_cast<float>(elapsedSeconds.count());
 
+	cameraMovement.Update(camera, *inputSystem, deltaTime);
+	inputSystem->Update();
+
 	OnUpdate(deltaTime);
 	entitySystem->Update(deltaTime);
 
 
 	scale += speed * deltaTime;
-	auto currentScale = abs(sin(scale));
 
-	OMath4 world,projection,temp;
+	OMath4 world, projection, temp;
 
 	temp.SetScale(OVector3(1, 1, 1));
 	world *= temp;
@@ -201,13 +206,14 @@ void OEngine::OnUpdateInternal()
 	world *= temp;
 
 	const auto displaySize = window->GetInnerSize();
-	const float zoomFactor = 0.004f;
 	const float nearPlane = 0.01f;
 	const float farPlane = 100.0f;
+	const float fovY = 0.7854f;
+	const float aspect = static_cast<float>(displaySize.width) / static_cast<float>(displaySize.height);
 
-	projection.SetOrthogonalLeftHanded(displaySize.width * zoomFactor, displaySize.height * zoomFactor, nearPlane, farPlane);
+	projection.SetPerspectiveLeftHanded(fovY, aspect, nearPlane, farPlane);
 
-	UniformData data = { world, projection };
+	UniformData data = { world, camera.GetViewMatrix(), projection };
 	uniformBufferPtr->SetData(&data);
 
 

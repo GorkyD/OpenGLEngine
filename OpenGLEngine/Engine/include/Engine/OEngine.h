@@ -4,6 +4,8 @@
 
 #include "Extension/OExtension.h"
 #include "Input/InputSystem.h"
+#include "Camera/Camera.h"
+#include "Camera/CameraMovement.h"
 
 class ORenderEngine;
 class OEntitySystem;
@@ -32,6 +34,9 @@ class OEngine
 		std::unique_ptr<OWindow> window;
 
 		std::shared_ptr<InputSystem> inputSystem;
+
+		Camera camera;
+		CameraMovement cameraMovement;
 
 		OVertexArrayObjectPtr polygonVaoPtr;
 		OUniformBufferPtr uniformBufferPtr;

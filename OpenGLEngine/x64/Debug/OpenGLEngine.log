@@ -1,2 +1,8 @@
-﻿  OWin32Window.cpp
+﻿  CameraMovement.cpp
+  OEngine.cpp
+  OWin32Engine.cpp
+  InputSystem.cpp
+  MyGame.cpp
+  main.cpp
+  Generating Code...
   OpenGLEngine.vcxproj -> D:\Git\OpenGLEngine\x64\Debug\OpenGLEngine.exe

@@ -83,5 +83,32 @@ class OMath4
 			matrix[3][2] = -(nearPlane / (farPlane - nearPlane));
 		}
 
+		void SetPerspectiveLeftHanded(float fovY, float aspect, float nearPlane, float farPlane)
+		{
+			::memset(matrix, 0, sizeof(matrix));
+			float f = 1.0f / std::tan(fovY * 0.5f);
+			matrix[0][0] = f / aspect;
+			matrix[1][1] = f;
+			matrix[2][2] = farPlane / (farPlane - nearPlane);
+			matrix[2][3] = 1.0f;
+			matrix[3][2] = -(nearPlane * farPlane) / (farPlane - nearPlane);
+		}
+
+		void SetLookAtLeftHanded(const OVector3& eye, const OVector3& target, const OVector3& up)
+		{
+			OVector3 forward = OVector3::Normalize(target - eye);
+			OVector3 right = OVector3::Normalize(OVector3::Cross(up, forward));
+			OVector3 newUp = OVector3::Cross(forward, right);
+
+			::memset(matrix, 0, sizeof(matrix));
+			matrix[0][0] = right.x;    matrix[0][1] = newUp.x;    matrix[0][2] = forward.x;
+			matrix[1][0] = right.y;    matrix[1][1] = newUp.y;    matrix[1][2] = forward.y;
+			matrix[2][0] = right.z;    matrix[2][1] = newUp.z;    matrix[2][2] = forward.z;
+			matrix[3][0] = -OVector3::Dot(right, eye);
+			matrix[3][1] = -OVector3::Dot(newUp, eye);
+			matrix[3][2] = -OVector3::Dot(forward, eye);
+			matrix[3][3] = 1.0f;
+		}
+
 		float matrix[4][4] = {};
 };

@@ -68,6 +68,12 @@ void InputSystem::ProcessRawInput(LPARAM lParam)
    {
       mouseDeltaX += static_cast<float>(raw->data.mouse.lLastX);
       mouseDeltaY += static_cast<float>(raw->data.mouse.lLastY);
+
+      USHORT flags = raw->data.mouse.usButtonFlags;
+      if (flags & RI_MOUSE_LEFT_BUTTON_DOWN)  leftMouseDown = true;
+      if (flags & RI_MOUSE_LEFT_BUTTON_UP)    leftMouseDown = false;
+      if (flags & RI_MOUSE_RIGHT_BUTTON_DOWN) rightMouseDown = true;
+      if (flags & RI_MOUSE_RIGHT_BUTTON_UP)   rightMouseDown = false;
    }
    else if (raw->header.dwType == RIM_TYPEKEYBOARD)
    {

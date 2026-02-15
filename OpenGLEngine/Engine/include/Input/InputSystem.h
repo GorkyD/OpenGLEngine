@@ -20,6 +20,7 @@ class InputSystem
 		float GetMouseDeltaY() const;
 
 		bool IsKeyDown(Key key) const;
+		bool IsLeftMouseDown() const { return leftMouseDown; }
 
 	private:
 		Key TranslateKey(const RAWKEYBOARD& keyboard);
