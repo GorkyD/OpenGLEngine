@@ -11,12 +11,12 @@ InputSystem::InputSystem(HWND windowInstance)
 
    rid[0].usUsagePage = 0x01;
    rid[0].usUsage = 0x06;
-   rid[0].dwFlags = RIDEV_INPUTSINK;
+   rid[0].dwFlags = 0;
    rid[0].hwndTarget = static_cast<HWND>(windowInstance);
 
    rid[1].usUsagePage = 0x01;
    rid[1].usUsage = 0x02;
-   rid[1].dwFlags = RIDEV_INPUTSINK;
+   rid[1].dwFlags = 0;
    rid[1].hwndTarget = static_cast<HWND>(windowInstance);
 
    if (!RegisterRawInputDevices(rid, 2, sizeof(rid[0])))
@@ -84,7 +84,7 @@ void InputSystem::ProcessRawInput(LPARAM lParam)
       if (key != Key::Unknown)
       {
          keys[static_cast<size_t>(key)] = isDown;
-         OGL_INFO(L"WM_INPUT vkey=" + std::to_wstring(keyboard.VKey) +L" key=" + std::to_wstring(static_cast<int>(key)) +L" " + (isDown ? L"DOWN" : L"UP"));
+         OGL_INFO(L"WM_INPUT vkey=" + std::to_wstring(keyboard.VKey) + L" key=" + std::to_wstring(static_cast<int>(key)) + L" " + (isDown ? L"DOWN" : L"UP"));
       }
    }
 }

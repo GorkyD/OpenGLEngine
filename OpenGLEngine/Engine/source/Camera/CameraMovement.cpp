@@ -2,9 +2,9 @@
 #include "Camera/Camera.h"
 #include "Input/InputSystem.h"
 
-static constexpr float MAX_PITCH = 1.5533f;
+constexpr float MAX_PITCH = 1.5533f;
 
-static float Clamp(float v, float lo, float hi)
+float Clamp(float v, float lo, float hi)
 {
 	if (v < lo) return lo;
 	if (v > hi) return hi;

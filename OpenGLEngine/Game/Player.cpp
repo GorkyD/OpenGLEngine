@@ -9,9 +9,9 @@ Player::~Player()
 {
 }
 
-void Player::OnCreate()
+void Player::OnCreate(Entity* entity)
 {
-	entity = GetEntitySystem()->CreateEntity<Entity>();
+	this->entity = entity;
 }
 
 void Player::OnUpdate(float deltaTime)

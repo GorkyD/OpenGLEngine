@@ -13,16 +13,16 @@ MyGame::~MyGame()
 void MyGame::OnCreate()
 {
 	Engine::OnCreate();
-	auto player = GetEntitySystem()->CreateEntity<Player>();
+	player = GetEntitySystem()->CreateEntity<Player>();
 }
 
 void MyGame::OnUpdate(float deltaTime)
 {
-	elapsedSeconds += deltaTime;
+	/*elapsedSeconds += deltaTime;
 
 	if (player && elapsedSeconds >= 3.0f)
 	{
 		player->Release();
 		player = nullptr;
-	}
+	}*/
 }
