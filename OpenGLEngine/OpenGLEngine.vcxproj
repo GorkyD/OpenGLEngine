@@ -127,6 +127,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\source\Camera\CameraMovement.cpp" />
+    <ClCompile Include="Engine\source\Camera\Camera.cpp" />
     <ClCompile Include="Engine\glad\src\glad.c" />
     <ClCompile Include="Engine\include\Math\ORect.h" />
     <ClCompile Include="Game\main.cpp" />
@@ -142,8 +144,11 @@
     <ClCompile Include="Engine\source\Entity\OEntity.cpp" />
     <ClCompile Include="Game\MyGame.cpp" />
     <ClCompile Include="Game\Player.cpp" />
+    <ClCompile Include="Engine\source\Input\InputSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\include\Camera\CameraMovement.h" />
+    <ClInclude Include="Engine\include\Camera\Camera.h" />
     <ClInclude Include="Engine\include\Extension\OExtension.h" />
     <ClInclude Include="Engine\include\Math\OMath4.h" />
     <ClInclude Include="Engine\include\Math\OVector2.h" />
@@ -159,6 +164,7 @@
     <ClInclude Include="Engine\include\Entity\OEntity.h" />
     <ClInclude Include="Game\MyGame.h" />
     <ClInclude Include="Game\Player.h" />
+    <ClInclude Include="Engine\include\Input\InputSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\SimpleShader.frag" />

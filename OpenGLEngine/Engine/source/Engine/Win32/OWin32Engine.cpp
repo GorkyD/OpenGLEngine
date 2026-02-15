@@ -16,6 +16,7 @@ void OEngine::Run()
 			}
 			else
 			{
+				inputSystem->ProcessPlatformMessage(msg);
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
 			}

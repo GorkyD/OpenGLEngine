@@ -69,6 +69,34 @@ enum OWindingOrder
 	CounterClockWise
 };
 
+enum class Key
+{
+	Unknown = 0,
+
+	A, B, C, D, E, F, G,
+	H, I, J, K, L, M, N,
+	O, P, Q, R, S, T, U,
+	V, W, X, Y, Z,
+
+	Escape,
+	Space,
+	Enter,
+
+	Left,
+	Right,
+	Up,
+	Down,
+
+	LShift,
+	RShift,
+	LControl,
+	RControl,
+	LAlt,
+	RAlt,
+
+	Count
+};
+
 #define OGL_ERROR(message)\
 {\
 std::stringstream m;\

@@ -3,6 +3,7 @@
 #include "Engine/OEngine.h"
 
 #include "Entity/OEntitySystem.h"
+#include "Input/InputSystem.h"
 #include "Math/OMath4.h"
 #include "Math/OVector3.h"
 #include "Math/OVector2.h"
@@ -28,6 +29,7 @@ OEngine::OEngine()
 {
 	renderEngine = std::make_unique<ORenderEngine>();
 	window = std::make_unique<OWindow>();
+	inputSystem = std::make_shared<InputSystem>(static_cast<HWND>(window->GetWindowInstance()));
 	entitySystem = std::make_unique<OEntitySystem>();
 
 	window->MakeCurrentContext();

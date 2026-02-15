@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include "Extension/OExtension.h"
+#include "Input/InputSystem.h"
 
 class ORenderEngine;
 class OEntitySystem;
@@ -29,6 +30,8 @@ class OEngine
 		std::unique_ptr<ORenderEngine> renderEngine;
 		std::unique_ptr<OEntitySystem> entitySystem;
 		std::unique_ptr<OWindow> window;
+
+		std::shared_ptr<InputSystem> inputSystem;
 
 		OVertexArrayObjectPtr polygonVaoPtr;
 		OUniformBufferPtr uniformBufferPtr;
