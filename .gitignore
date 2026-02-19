@@ -6,6 +6,8 @@
 *.lo
 *.o
 *.obj
+!*.obj.*
+!OpenGLEngine/Assets/**/*.obj
 
 # Precompiled Headers
 *.gch
@@ -40,3 +42,9 @@
 # debug information files
 *.dwo
 /.vs
+
+# Build output
+x64/
+Debug/
+Release/
+/OpenGLEngine/x64
