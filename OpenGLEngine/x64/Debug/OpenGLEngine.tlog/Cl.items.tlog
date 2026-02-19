@@ -11,5 +11,7 @@ D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Render\RenderEngine.cpp;D:\Git\Op
 D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Render\VertexArrayObject.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\VertexArrayObject.obj
 D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Render\ShaderProgram.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\ShaderProgram.obj
 D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Render\UniformBuffer.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\UniformBuffer.obj
+D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Render\Texture.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\Texture.obj
+D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Resource\ModelLoader.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\ModelLoader.obj
 D:\Git\OpenGLEngine\OpenGLEngine\Game\ExampleGame.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\ExampleGame.obj
 D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Input\InputSystem.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\InputSystem.obj

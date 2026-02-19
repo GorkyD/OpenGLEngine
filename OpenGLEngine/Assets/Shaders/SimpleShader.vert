@@ -7,16 +7,20 @@ uniform UniformData
 	mat4 projection;
 };
 
-
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec2 texcoord;
+layout(location = 2) in vec3 normal;
 
-layout(location = 0) out vec3 vertOutColor;
+out vec2 fragTexCoord;
+out vec3 fragNormal;
+out vec3 fragWorldPos;
 
 void main()
 {
-	vec4 pos = projection * view * world * vec4(position,1);
+	vec4 worldPos = world * vec4(position, 1.0);
+	gl_Position = projection * view * worldPos;
 
-	gl_Position = pos;
-	vertOutColor = vec3(texcoord.x, texcoord.y,0);
+	fragTexCoord = texcoord;
+	fragNormal = mat3(transpose(inverse(world))) * normal;
+	fragWorldPos = worldPos.xyz;
 }

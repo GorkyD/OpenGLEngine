@@ -71,7 +71,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>Engine\include;Engine\source;Engine\glad\include;Engine\glad\src;Game;$(IncludePath)</IncludePath>
+    <IncludePath>Engine\include;Engine\source;Engine\glad\include;Engine\glad\src;Engine;Game;$(SolutionDir)vcpkg\installed\x64-windows\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)vcpkg\installed\x64-windows\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -109,8 +110,11 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /Y /D "$(SolutionDir)vcpkg\installed\x64-windows\bin\*.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -140,6 +144,8 @@
     <ClCompile Include="Engine\source\Render\VertexArrayObject.cpp" />
     <ClCompile Include="Engine\source\Render\ShaderProgram.cpp" />
     <ClCompile Include="Engine\source\Render\UniformBuffer.cpp" />
+    <ClCompile Include="Engine\source\Render\Texture.cpp" />
+    <ClCompile Include="Engine\source\Resource\ModelLoader.cpp" />
     <ClCompile Include="Game\ExampleGame.cpp" />
     <ClCompile Include="Engine\source\Input\InputSystem.cpp" />
   </ItemGroup>
@@ -166,6 +172,13 @@
     <ClInclude Include="Engine\include\Render\UniformBuffer.h" />
     <ClInclude Include="Engine\include\Ecs\Core\Entity.h" />
     <ClInclude Include="Game\ExampleGame.h" />
+    <ClInclude Include="Engine\include\Render\Texture.h" />
+    <ClInclude Include="Engine\include\Render\UniformData.h" />
+    <ClInclude Include="Engine\include\Resource\ModelLoader.h" />
+    <ClInclude Include="Engine\include\Ecs\Components\MeshComponent.h" />
+    <ClInclude Include="Engine\include\Ecs\Components\ShaderComponent.h" />
+    <ClInclude Include="Engine\include\Ecs\Components\MaterialComponent.h" />
+    <ClInclude Include="Engine\include\Ecs\Systems\RenderSystem.h" />
     <ClInclude Include="Engine\include\Input\InputSystem.h" />
   </ItemGroup>
   <ItemGroup>

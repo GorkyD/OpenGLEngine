@@ -15,6 +15,7 @@ VertexArrayObject::VertexArrayObject(const VertexBufferDesc& vertexBufferDesc)
 	glBufferData(GL_ARRAY_BUFFER, vertexBufferDesc.vertexSize * vertexBufferDesc.listSize, vertexBufferDesc.verticesList, GL_STATIC_DRAW);
 
 
+	unsigned int offset = 0;
 	for (int i = 0; i < vertexBufferDesc.attributesListSize; i++) 
 	{
 		glVertexAttribPointer(
@@ -23,9 +24,10 @@ VertexArrayObject::VertexArrayObject(const VertexBufferDesc& vertexBufferDesc)
 			GL_FLOAT, 
 			GL_FALSE,
 			vertexBufferDesc.vertexSize, 
-			(void*)((i == 0) ? 0 : vertexBufferDesc.attributesList[i - 1].numElements * sizeof(float)));
+			(void*)(uintptr_t)offset);
 
 		glEnableVertexAttribArray(i);
+		offset += vertexBufferDesc.attributesList[i].numElements * sizeof(float);
 	}
 
 	glBindVertexArray(0);
