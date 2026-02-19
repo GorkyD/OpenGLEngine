@@ -31,13 +31,13 @@ void InputSystem::ProcessPlatformMessage(const MSG& msg)
 {
    switch (msg.message)
    {
-   case WM_INPUT:
-      ProcessRawInput(msg.lParam);
-      break;
+	   case WM_INPUT:
+	      ProcessRawInput(msg.lParam);
+	      break;
 
-   case WM_KILLFOCUS:
-      ClearState();
-      break;
+	   case WM_KILLFOCUS:
+	      ClearState();
+	      break;
    }
 }
 

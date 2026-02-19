@@ -1,7 +1,7 @@
-D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Camera\CameraMovement.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\CameraMovement.obj
-D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Camera\Camera.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\Camera.obj
+D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Ecs\Core\EcsSystems.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\EcsSystems.obj
 D:\Git\OpenGLEngine\OpenGLEngine\Engine\glad\src\glad.c;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\glad.obj
 D:\Git\OpenGLEngine\OpenGLEngine\Engine\include\Math\Rect.h;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\Rect.obj
+D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Ecs\Core\EcsWorld.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\EcsWorld.obj
 D:\Git\OpenGLEngine\OpenGLEngine\Game\main.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\main.obj
 D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Engine\Win32\Win32Engine.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\Win32Engine.obj
 D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Render\Win32\Win32RenderEngine.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\Win32RenderEngine.obj
@@ -11,8 +11,5 @@ D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Render\RenderEngine.cpp;D:\Git\Op
 D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Render\VertexArrayObject.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\VertexArrayObject.obj
 D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Render\ShaderProgram.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\ShaderProgram.obj
 D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Render\UniformBuffer.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\UniformBuffer.obj
-D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Entity\EntitySystem.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\EntitySystem.obj
-D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Entity\Entity.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\Entity.obj
-D:\Git\OpenGLEngine\OpenGLEngine\Game\MyGame.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\MyGame.obj
-D:\Git\OpenGLEngine\OpenGLEngine\Game\Player.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\Player.obj
+D:\Git\OpenGLEngine\OpenGLEngine\Game\ExampleGame.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\ExampleGame.obj
 D:\Git\OpenGLEngine\OpenGLEngine\Engine\source\Input\InputSystem.cpp;D:\Git\OpenGLEngine\OpenGLEngine\x64\Debug\InputSystem.obj

@@ -1,13 +1,12 @@
 #include <iostream>
-
-#include "MyGame.h"
-#include  "Engine/Engine.h"
+#include "ExampleGame.h"
+#include "Engine/Engine.h"
 
 int main()
 {
 	try
 	{
-		MyGame engine;
+		ExampleGame engine;
 		engine.Run();
 	}
 	catch (const std::exception& ex)

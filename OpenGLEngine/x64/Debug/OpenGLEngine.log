@@ -1,2 +1,6 @@
-﻿  MyGame.cpp
+﻿  main.cpp
+  Win32Engine.cpp
+  Engine.cpp
+  ExampleGame.cpp
+  Generating Code...
   OpenGLEngine.vcxproj -> D:\Git\OpenGLEngine\x64\Debug\OpenGLEngine.exe

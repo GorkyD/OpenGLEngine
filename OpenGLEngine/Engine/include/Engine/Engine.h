@@ -4,11 +4,9 @@
 
 #include "Extension/Extension.h"
 #include "Input/InputSystem.h"
-#include "Camera/Camera.h"
-#include "Camera/CameraMovement.h"
+#include "Ecs/Core/EcsSystems.h"
 
 class RenderEngine;
-class EntitySystem;
 class Window;
 
 class Engine
@@ -16,8 +14,6 @@ class Engine
 	public:
 		Engine();
 		virtual ~Engine();
-
-		EntitySystem* GetEntitySystem() const {return entitySystem.get();}
 
 		void Run();
 		void Quit();
@@ -29,23 +25,16 @@ class Engine
 		virtual void OnUpdate(float deltaTime) {}
 		virtual void OnQuit();
 
+
+		EcsWorld world;
+		std::unique_ptr<EcsSystems> systems;
+
 		std::unique_ptr<RenderEngine> renderEngine;
-		std::unique_ptr<EntitySystem> entitySystem;
 		std::unique_ptr<Window> window;
 
 		std::shared_ptr<InputSystem> inputSystem;
 
-		Camera camera;
-		CameraMovement cameraMovement;
-
-		VertexArrayObjectPtr polygonVaoPtr;
-		UniformBufferPtr uniformBufferPtr;
-		ShaderProgramPtr shaderProgramPtr;
-
 		std::chrono::system_clock::time_point previousTime;
-
-		float speed = 1.5f;
-		float scale = -3;
 
 		bool is_Running = true;
 };
