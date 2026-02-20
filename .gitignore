@@ -48,3 +48,7 @@ x64/
 Debug/
 Release/
 /OpenGLEngine/x64
+/OpenGLEngine/.vscode
+OpenGLEngine/OpenGLEngine.vcxproj
+OpenGLEngine/OpenGLEngine.vcxproj
+OpenGLEngine/OpenGLEngine.vcxproj.filters

@@ -12,5 +12,5 @@ public:
 	void OnUpdate(float deltaTime) override;
 
 private:
-	void LoadModel(const std::string& path, ShaderProgramPtr shader);
+	Entity LoadModel(const std::string& path, ShaderProgramPtr shader);
 };

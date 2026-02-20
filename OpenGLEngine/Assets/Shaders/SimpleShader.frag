@@ -5,6 +5,8 @@ in vec3 fragNormal;
 in vec3 fragWorldPos;
 
 uniform sampler2D diffuseTexture;
+uniform vec4 diffuseColor;
+uniform int hasTexture;
 
 out vec4 outColor;
 
@@ -17,9 +19,9 @@ void main()
 	float ambient = 0.2;
 	float lighting = ambient + diff * 0.8;
 
-	vec4 texColor = texture(diffuseTexture, fragTexCoord);
-	if (texColor.a < 0.01)
-		texColor = vec4(1.0);
+	vec4 texColor = vec4(1.0);
+	if (hasTexture != 0)
+		texColor = texture(diffuseTexture, fragTexCoord);
 
-	outColor = vec4(texColor.rgb * lighting, 1.0);
+	outColor = vec4(texColor.rgb * diffuseColor.rgb * lighting, 1.0);
 }

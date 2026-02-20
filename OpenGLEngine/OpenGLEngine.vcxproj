@@ -70,7 +70,7 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  <PropertyGroup>
     <IncludePath>Engine\include;Engine\source;Engine\glad\include;Engine\glad\src;Engine;Game;$(SolutionDir)vcpkg\installed\x64-windows\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)vcpkg\installed\x64-windows\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -128,7 +128,11 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /Y /D "$(SolutionDir)vcpkg\installed\x64-windows\bin\*.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Engine\source\Ecs\Core\EcsSystems.cpp" />
@@ -150,6 +154,8 @@
     <ClCompile Include="Engine\source\Input\InputSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\include\Ecs\Components\AABB.h" />
+    <ClInclude Include="Engine\include\Ecs\Components\RigidbodyComponent.h" />
     <ClInclude Include="Engine\include\Ecs\Systems\CameraInputSystem.h" />
     <ClInclude Include="Engine\include\Ecs\Components\CameraComponent.h" />
     <ClInclude Include="Engine\include\Ecs\Components\FpsControlComponent.h" />
@@ -159,6 +165,7 @@
     <ClInclude Include="Engine\include\Ecs\Core\IEcsSystem.h" />
     <ClInclude Include="Engine\include\Ecs\Core\EcsWorld.h" />
     <ClInclude Include="Engine\include\Ecs\Systems\CameraMatrixSystem.h" />
+    <ClInclude Include="Engine\include\Ecs\Systems\PhysicSystem.h" />
     <ClInclude Include="Engine\include\Extension\Extension.h" />
     <ClInclude Include="Engine\include\Math\Matrix4.h" />
     <ClInclude Include="Engine\include\Math\Vector2.h" />

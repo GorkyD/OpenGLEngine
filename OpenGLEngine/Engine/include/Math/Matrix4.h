@@ -58,22 +58,27 @@ class Matrix4
 			matrix[1][1] = cos(z);
 		}
 
-		void operator *=(const Matrix4& otherMatrix)
+	Matrix4 operator *(const Matrix4& otherMatrix) const
+	{
+		Matrix4 out;
+		for (auto i = 0; i < 4; i++)
 		{
-			Matrix4 out;
-			for (auto i = 0; i < 4; i++)
+			for (auto j = 0; j < 4; j++)
 			{
-				for (auto j = 0; j < 4; j++)
-				{
-					out.matrix[i][j] =
-						matrix[i][0] * otherMatrix.matrix[0][j] +
-						matrix[i][1] * otherMatrix.matrix[1][j] +
-						matrix[i][2] * otherMatrix.matrix[2][j] +
-						matrix[i][3] * otherMatrix.matrix[3][j];
-				}
+				out.matrix[i][j] =
+					matrix[i][0] * otherMatrix.matrix[0][j] +
+					matrix[i][1] * otherMatrix.matrix[1][j] +
+					matrix[i][2] * otherMatrix.matrix[2][j] +
+					matrix[i][3] * otherMatrix.matrix[3][j];
 			}
-			*this = out;
 		}
+		return out;
+	}
+
+	void operator *=(const Matrix4& otherMatrix)
+	{
+		*this = *this * otherMatrix;
+	}
 
 		void SetOrthogonalLeftHanded(float width, float height, float nearPlane, float farPlane)
 		{

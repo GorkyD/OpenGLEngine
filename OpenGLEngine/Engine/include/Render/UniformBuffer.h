@@ -7,9 +7,10 @@ class UniformBuffer
 		UniformBuffer(const UniformBufferDesc& desc);
 		~UniformBuffer();
 
-		void SetData(void* data);
+	void SetData(void* data);
+	void SetSubData(void* data, unsigned int offset, unsigned int subSize);
 
-		int GetId() const { return id; }
+	int GetId() const { return id; }
 
 	private:
 		unsigned int id = 0;

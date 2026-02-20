@@ -23,3 +23,10 @@ void UniformBuffer::SetData(void* data)
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, size, data);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
+
+void UniformBuffer::SetSubData(void* data, unsigned int offset, unsigned int subSize)
+{
+	glBindBuffer(GL_UNIFORM_BUFFER, id);
+	glBufferSubData(GL_UNIFORM_BUFFER, offset, subSize, data);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}

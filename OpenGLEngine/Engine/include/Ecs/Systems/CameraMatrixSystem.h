@@ -12,8 +12,7 @@
 class CameraMatrixSystem : public IEcsSystem
 {
 	public:
-	   CameraMatrixSystem(RenderEngine* re, UniformBufferPtr ub, Window* w)
-	      : renderEngine(re), uniformBuffer(ub), window(w) {}
+	   CameraMatrixSystem(RenderEngine* re, UniformBufferPtr ub, Window* w) : renderEngine(re), uniformBuffer(ub), window(w) {}
 
 	   void Run(EcsWorld& world, float deltaTime) override
 	   {
@@ -39,8 +38,7 @@ class CameraMatrixSystem : public IEcsSystem
 	         projection.SetPerspectiveLeftHanded(
 	            cam.fovY, aspect, cam.nearPlane, cam.farPlane);
 
-				const Matrix4 worldMatrix;
-	         UniformData data = { worldMatrix, view, projection };
+				UniformData data = { Matrix4(), view, projection };
 	         uniformBuffer->SetData(&data);
 	         renderEngine->SetUniformBuffer(uniformBuffer, 0);
 

@@ -15,6 +15,8 @@
 #include "Ecs/Components/MeshComponent.h"
 #include "Ecs/Components/ShaderComponent.h"
 #include "Ecs/Components/MaterialComponent.h"
+#include "Ecs/Systems/PhysicSystem.h"
+#include "Ecs/Components/AABB.h"
 
 ExampleGame::ExampleGame()
 {
@@ -39,19 +41,29 @@ void ExampleGame::OnCreate()
 	systems = std::make_unique<EcsSystems>(world);
 	systems->Add(std::make_unique<CameraInputSystem>(inputSystem.get()));
 	systems->Add(std::make_unique<CameraMatrixSystem>(renderEngine.get(), uniformBuffer, window.get()));
-	systems->Add(std::make_unique<RenderSystem>(renderEngine.get()));
+	systems->Add(std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer));
+	systems->Add(std::make_unique<PhysicSystem>());
 	systems->Init();
 
-	auto cameraEntity = world.CreateEntity();
+	const auto cameraEntity = world.CreateEntity();
 	auto& camTransform = world.AddComponent<TransformComponent>(cameraEntity);
 	camTransform.position = {0, 1.0f, -3.0f};
 	world.AddComponent<CameraComponent>(cameraEntity);
 	world.AddComponent<FpsControllerComponent>(cameraEntity);
 
-	LoadModel("Assets/Models/cube.obj", shader);
+	auto cubeEntity = LoadModel("Assets/Models/cube.obj", shader);
+	world.AddComponent<RigidbodyComponent>(cubeEntity);
+
+	auto floorEntity = LoadModel("Assets/Models/cube.obj", shader);
+	auto& floorTransform = world.GetComponent<TransformComponent>(floorEntity);
+	floorTransform.position = { 0, -2.0f, 0 };
+	floorTransform.scale = { 20.0f, 0.5f, 20.0f };
+	auto& floorMat = world.GetComponent<MaterialComponent>(floorEntity);
+	floorMat.diffuseTexture = nullptr;
+	floorMat.diffuseColor = { 0.35f, 0.55f, 0.35f, 1.0f };
 }
 
-void ExampleGame::LoadModel(const std::string& path, ShaderProgramPtr shader)
+Entity ExampleGame::LoadModel(const std::string& path, ShaderProgramPtr shader)
 {
 	ModelData modelData = ModelLoader::Load(path);
 
@@ -70,39 +82,47 @@ void ExampleGame::LoadModel(const std::string& path, ShaderProgramPtr shader)
 		{sizeof(Vector3) / sizeof(float)}
 	};
 
+	Entity result = 0;
+
 	for (auto& meshData : modelData.meshes)
 	{
-		auto vao = renderEngine->CreateVertexArrayObject(
+		const auto vao = renderEngine->CreateVertexArrayObject(
 			{
-				(void*)meshData.vertices.data(),
+				static_cast<void*>(meshData.vertices.data()),
 				sizeof(MeshVertex),
-				(int)meshData.vertices.size(),
+				static_cast<int>(meshData.vertices.size()),
 				attrs,
 				3
 			},
 			{
-				(void*)meshData.indices.data(),
-				(int)(meshData.indices.size() * sizeof(unsigned int))
+				static_cast<void*>(meshData.indices.data()),
+				static_cast<int>(meshData.indices.size() * sizeof(unsigned int))
 			});
 
-		auto entity = world.CreateEntity();
+		const auto entity = world.CreateEntity();
 		world.AddComponent<TransformComponent>(entity);
+		world.AddComponent<AABB>(entity);
 
 		auto& mesh = world.AddComponent<MeshComponent>(entity);
 		mesh.vao = vao;
-		mesh.indexCount = (unsigned int)meshData.indices.size();
+		mesh.indexCount = static_cast<unsigned int>(meshData.indices.size());
 
 		auto& shaderComp = world.AddComponent<ShaderComponent>(entity);
 		shaderComp.shader = shader;
 
-		if (meshData.materialIndex >= 0 && meshData.materialIndex < (int)modelData.materials.size())
+		if (meshData.materialIndex >= 0 && meshData.materialIndex < static_cast<int>(modelData.materials.size()))
 		{
 			auto& matComp = world.AddComponent<MaterialComponent>(entity);
 			matComp.diffuseTexture = textures[meshData.materialIndex];
 			matComp.diffuseColor = modelData.materials[meshData.materialIndex].diffuseColor;
 		}
+
+		if (result == 0) result = entity;
 	}
+
+	return result;
 }
+
 
 void ExampleGame::OnUpdate(float deltaTime)
 {
