@@ -55,3 +55,4 @@ OpenGLEngine/OpenGLEngine.vcxproj.filters
 *.vcxproj
 OpenGLEngine/OpenGLEngine.vcxproj.filters
 OpenGLEngine/OpenGLEngine.vcxproj.user
+*.sln
