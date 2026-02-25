@@ -44,6 +44,7 @@
 /.vs
 
 # Build output
+/build
 x64/
 Debug/
 Release/
