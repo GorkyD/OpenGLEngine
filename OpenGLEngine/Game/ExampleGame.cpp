@@ -40,9 +40,9 @@ void ExampleGame::OnCreate()
 
 	systems = std::make_unique<EcsSystems>(world);
 	systems->Add(std::make_unique<CameraInputSystem>(inputSystem.get()));
+	systems->Add(std::make_unique<PhysicSystem>());
 	systems->Add(std::make_unique<CameraMatrixSystem>(renderEngine.get(), uniformBuffer, window.get()));
 	systems->Add(std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer));
-	systems->Add(std::make_unique<PhysicSystem>());
 	systems->Init();
 
 	const auto cameraEntity = world.CreateEntity();

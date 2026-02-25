@@ -12,7 +12,7 @@ TexturePtr Texture::LoadFromFile(const std::string& path)
 	unsigned char* pixels = stbi_load(path.c_str(), &w, &h, &ch, 0);
 	if (!pixels)
 	{
-		OGL_WARNING("Texture | Failed to load: ", path);
+		OGL_WARNING("Texture | Failed to load: " << path)
 		return nullptr;
 	}
 
@@ -42,7 +42,7 @@ TexturePtr Texture::LoadFromFile(const std::string& path)
 	texture->height = h;
 	texture->channels = ch;
 
-	OGL_INFO("Texture | Loaded: ", path, " (" << w << "x" << h << ", " << ch << "ch)");
+	OGL_INFO("Texture | Loaded: " << path << " (" << w << "x" << h << ", " << ch << "ch)")
 	return texture;
 }
 

@@ -102,7 +102,7 @@ enum class Key
 #define OGL_ERROR(message)\
 {\
 std::stringstream m;\
-m << "OGL_ERROR: " << (message) << std::endl;\
+m << "OGL_ERROR: " << message << std::endl;\
 throw std::runtime_error(m.str());\
 }
 

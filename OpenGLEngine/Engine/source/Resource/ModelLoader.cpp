@@ -59,7 +59,7 @@ ModelData ModelLoader::Load(const std::string& filePath)
 
 	if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !scene->mRootNode)
 	{
-		OGL_ERROR("ModelLoader | " , importer.GetErrorString());
+		OGL_ERROR("ModelLoader | " << importer.GetErrorString())
 	}
 
 	ModelData model;
@@ -87,9 +87,7 @@ ModelData ModelLoader::Load(const std::string& filePath)
 
 	ProcessNode(scene->mRootNode, scene, model.meshes);
 
-	OGL_INFO("ModelLoader | Loaded: " , filePath
-		, " (" , model.meshes.size() , " meshes, "
-		, model.materials.size() , " materials)");
+	OGL_INFO("ModelLoader | Loaded: " << filePath <<  model.meshes.size() << " meshes, " << model.materials.size() << " materials)")
 
 	return model;
 }

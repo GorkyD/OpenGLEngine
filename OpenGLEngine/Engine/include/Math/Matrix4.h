@@ -58,6 +58,28 @@ class Matrix4
 			matrix[1][1] = cos(z);
 		}
 
+	static Matrix4 FromAxisAngle(const Vector3& axis, float angle)
+	{
+		float c = std::cos(angle);
+		float s = std::sin(angle);
+		float t = 1.0f - c;
+
+		Matrix4 m;
+		m.matrix[0][0] = t * axis.x * axis.x + c;
+		m.matrix[0][1] = t * axis.x * axis.y + s * axis.z;
+		m.matrix[0][2] = t * axis.x * axis.z - s * axis.y;
+
+		m.matrix[1][0] = t * axis.x * axis.y - s * axis.z;
+		m.matrix[1][1] = t * axis.y * axis.y + c;
+		m.matrix[1][2] = t * axis.y * axis.z + s * axis.x;
+
+		m.matrix[2][0] = t * axis.x * axis.z + s * axis.y;
+		m.matrix[2][1] = t * axis.y * axis.z - s * axis.x;
+		m.matrix[2][2] = t * axis.z * axis.z + c;
+
+		return m;
+	}
+
 	Matrix4 operator *(const Matrix4& otherMatrix) const
 	{
 		Matrix4 out;
