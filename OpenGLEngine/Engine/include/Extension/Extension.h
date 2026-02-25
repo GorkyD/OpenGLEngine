@@ -37,8 +37,8 @@ struct IndexBufferDesc
 
 struct ShaderProgramDesc
 {
-	const wchar_t* vertexShaderFilePath;
-	const wchar_t* fragmentShaderFilePath;
+	const char* vertexShaderFilePath;
+	const char* fragmentShaderFilePath;
 };
 
 struct UniformBufferDesc
@@ -107,8 +107,8 @@ throw std::runtime_error(m.str());\
 }
 
 #define OGL_WARNING(message)\
-std::wclog << "OGL_WARNING: " << message << std::endl;
+std::clog << "OGL_WARNING: " << message << std::endl;
 
 
 #define OGL_INFO(message)\
-std::wclog << "OGL_INFO: " << message << std::endl;
+std::clog << "OGL_INFO: " << message << std::endl;

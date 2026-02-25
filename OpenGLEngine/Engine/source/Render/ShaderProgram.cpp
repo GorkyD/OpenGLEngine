@@ -2,7 +2,6 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
-#include <Windows.h>
 #include <glad/glad.h>
 
 ShaderProgram::ShaderProgram(const ShaderProgramDesc& desc)
@@ -31,7 +30,7 @@ void ShaderProgram::SetUniformBufferSlot(const char* name, unsigned int slot)
 }
 
 
-void ShaderProgram::Attach(const wchar_t* shaderFilePath,const ShaderType& type)
+void ShaderProgram::Attach(const char* shaderFilePath,const ShaderType& type)
 {
 	std::ifstream shaderStream(shaderFilePath);
 	std::string shaderCode;

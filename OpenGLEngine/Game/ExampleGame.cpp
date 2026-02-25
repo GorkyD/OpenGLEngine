@@ -33,8 +33,8 @@ void ExampleGame::OnCreate()
 	auto uniformBuffer = renderEngine->CreateUniformBuffer({sizeof(UniformData)});
 
 	auto shader = renderEngine->CreateShaderProgram({
-		L"Assets/Shaders/SimpleShader.vert",
-		L"Assets/Shaders/SimpleShader.frag"
+		"Assets/Shaders/SimpleShader.vert",
+		"Assets/Shaders/SimpleShader.frag"
 	});
 	shader->SetUniformBufferSlot("UniformData", 0);
 
@@ -51,8 +51,14 @@ void ExampleGame::OnCreate()
 	world.AddComponent<CameraComponent>(cameraEntity);
 	world.AddComponent<FpsControllerComponent>(cameraEntity);
 
-	auto cubeEntity = LoadModel("Assets/Models/cube.obj", shader);
-	world.AddComponent<RigidbodyComponent>(cubeEntity);
+	for (int i = 0; i < 10; i++)
+	{
+		auto cubeEntity = LoadModel("Assets/Models/cube.obj", shader);
+		world.AddComponent<RigidbodyComponent>(cubeEntity);
+		auto& cubeTransform = world.GetComponent<TransformComponent>(cubeEntity);
+		cubeTransform.position = { 0.5f * (float)i, 50.0f + (float)i, 0};
+		cubeTransform.rotation.SetRotationX(30.0f + 10.0f * (float)i);
+	}
 
 	auto floorEntity = LoadModel("Assets/Models/cube.obj", shader);
 	auto& floorTransform = world.GetComponent<TransformComponent>(floorEntity);

@@ -17,6 +17,8 @@ class CameraInputSystem : public IEcsSystem
 	      auto& cameras = world.GetPool<CameraComponent>();
 	      auto& transforms = world.GetPool<TransformComponent>();
 
+			
+
 	      for (auto& pair : controllers)
 	      {
 				Entity entity = pair.first;
@@ -42,18 +44,20 @@ class CameraInputSystem : public IEcsSystem
 
 	         Vector3 worldUp(0, 1, 0);
 	         cam.right = Vector3::Normalize(Vector3::Cross(worldUp, cam.forward));
-	         cam.up = Vector3::Cross(cam.forward, cam.right);
+				cam.up = Vector3::Cross(cam.forward, cam.right);
 
+	         float speed = ctrl.moveSpeed;
 	         Vector3 moveDir(0, 0, 0);
 	         if (input->IsKeyDown(Key::W)) moveDir += cam.forward;
 	         if (input->IsKeyDown(Key::S)) moveDir -= cam.forward;
 	         if (input->IsKeyDown(Key::D)) moveDir += cam.right;
 	         if (input->IsKeyDown(Key::A)) moveDir -= cam.right;
 	         if (input->IsKeyDown(Key::Space))  moveDir += worldUp;
-	         if (input->IsKeyDown(Key::LShift)) moveDir -= worldUp;
+	         if (input->IsKeyDown(Key::LControl)) moveDir -= worldUp;
+				if (input->IsKeyDown(Key::LShift)) speed *= 2.0f;
 
 	         moveDir = Vector3::Normalize(moveDir);
-	         transform.position += moveDir * (ctrl.moveSpeed * deltaTime);
+	         transform.position += moveDir * (speed * deltaTime);
 	      }
 	   }
 

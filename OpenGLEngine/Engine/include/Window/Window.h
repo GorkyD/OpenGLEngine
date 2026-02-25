@@ -1,6 +1,8 @@
 #pragma once
 #include "Math/Rect.h"
 
+struct GLFWwindow;
+
 class Window
 {
 	public:
@@ -11,9 +13,11 @@ class Window
 
 		void MakeCurrentContext() const;
 		void Present(bool vSync) const;
-		
-		void* GetWindowInstance() const { return windowInstance; }
+		bool ShouldClose() const;
+
+		void PollEvents();
+
+		GLFWwindow* GetGLFWWindow() const { return window; }
 	private:
-		void* windowInstance = nullptr;
-		void* windowContext = nullptr;
+		GLFWwindow* window = nullptr;
 };

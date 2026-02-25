@@ -1,10 +1,13 @@
 #include "Render/RenderEngine.h"
 #include <cassert>
-#include <Windows.h>
 #include <glad/glad.h>
 #include "Render/ShaderProgram.h"
 #include "Render/UniformBuffer.h"
 #include "Render/VertexArrayObject.h"
+
+RenderEngine::RenderEngine() {}
+
+RenderEngine::~RenderEngine() {}
 
 void RenderEngine::Clear(const Vector4& color)
 {

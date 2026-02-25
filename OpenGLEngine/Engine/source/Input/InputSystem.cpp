@@ -1,172 +1,141 @@
 #include "Input/InputSystem.h"
+#include <GLFW/glfw3.h>
 
-#include <cassert>
-#include <vector>
-
-#include "Extension/Extension.h"
-
-InputSystem::InputSystem(HWND windowInstance)
+InputSystem::InputSystem(GLFWwindow* window)
 {
-   RAWINPUTDEVICE rid[2];
-
-   rid[0].usUsagePage = 0x01;
-   rid[0].usUsage = 0x06;
-   rid[0].dwFlags = 0;
-   rid[0].hwndTarget = static_cast<HWND>(windowInstance);
-
-   rid[1].usUsagePage = 0x01;
-   rid[1].usUsage = 0x02;
-   rid[1].dwFlags = 0;
-   rid[1].hwndTarget = static_cast<HWND>(windowInstance);
-
-   if (!RegisterRawInputDevices(rid, 2, sizeof(rid[0])))
-   {
-      OGL_ERROR("Failed to register input device")
-   }
+	glfwSetWindowUserPointer(window, this);
+	glfwSetKeyCallback(window, KeyCallback);
+	glfwSetMouseButtonCallback(window, MouseButtonCallback);
+	glfwSetCursorPosCallback(window, CursorPosCallback);
+	glfwSetWindowFocusCallback(window, FocusCallback);
 }
 
-InputSystem::~InputSystem(){}
+InputSystem::~InputSystem() {}
 
-void InputSystem::ProcessPlatformMessage(const MSG& msg)
+void InputSystem::KeyCallback(GLFWwindow* w, int key, int scancode, int action, int mods)
 {
-   switch (msg.message)
-   {
-	   case WM_INPUT:
-	      ProcessRawInput(msg.lParam);
-	      break;
+	if (action == GLFW_REPEAT) return;
 
-	   case WM_KILLFOCUS:
-	      ClearState();
-	      break;
-   }
+	auto* self = static_cast<InputSystem*>(glfwGetWindowUserPointer(w));
+	Key k = TranslateKey(key);
+	if (k != Key::Unknown)
+	{
+		const bool isDown = (action == GLFW_PRESS);
+		self->keys[static_cast<size_t>(k)] = isDown;
+		OGL_INFO("INPUT key=" << static_cast<int>(k) << " glfw=" << key << " " << (isDown ? "DOWN" : "UP"));
+	}
+}
+
+void InputSystem::MouseButtonCallback(GLFWwindow* w, int button, int action, int mods)
+{
+	auto* self = static_cast<InputSystem*>(glfwGetWindowUserPointer(w));
+	const bool pressed = (action == GLFW_PRESS);
+
+	if (button == GLFW_MOUSE_BUTTON_LEFT)  self->leftMouseDown = pressed;
+	if (button == GLFW_MOUSE_BUTTON_RIGHT) self->rightMouseDown = pressed;
+}
+
+void InputSystem::CursorPosCallback(GLFWwindow* w, double xPos, double yPos)
+{
+	auto* self = static_cast<InputSystem*>(glfwGetWindowUserPointer(w));
+
+	if (self->firstMouse)
+	{
+		self->lastMouseX = xPos;
+		self->lastMouseY = yPos;
+		self->firstMouse = false;
+		return;
+	}
+
+	self->mouseDeltaX += static_cast<float>(xPos - self->lastMouseX);
+	self->mouseDeltaY += static_cast<float>(yPos - self->lastMouseY);
+	self->lastMouseX = xPos;
+	self->lastMouseY = yPos;
+}
+
+void InputSystem::FocusCallback(GLFWwindow* w, int focused)
+{
+	if (!focused)
+	{
+		auto* self = static_cast<InputSystem*>(glfwGetWindowUserPointer(w));
+		self->ClearState();
+	}
 }
 
 void InputSystem::ClearState()
 {
-   keys.fill(false);
-
-   mouseDeltaX = 0.0f;
-   mouseDeltaY = 0.0f;
-
-   leftMouseDown = false;
-   rightMouseDown = false;
-}
-
-void InputSystem::ProcessRawInput(LPARAM lParam)
-{
-   UINT dataSize = 0;
-   GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, nullptr, &dataSize, sizeof(RAWINPUTHEADER));
-   if (dataSize == 0) return;
-
-   std::vector<BYTE> buffer(dataSize);
-   if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, buffer.data(), &dataSize, sizeof(RAWINPUTHEADER)) != dataSize)
-      return;
-
-   auto* raw = reinterpret_cast<RAWINPUT*>(buffer.data());
-
-   if (raw->header.dwType == RIM_TYPEMOUSE)
-   {
-      mouseDeltaX += static_cast<float>(raw->data.mouse.lLastX);
-      mouseDeltaY += static_cast<float>(raw->data.mouse.lLastY);
-
-      USHORT flags = raw->data.mouse.usButtonFlags;
-      if (flags & RI_MOUSE_LEFT_BUTTON_DOWN)  leftMouseDown = true;
-      if (flags & RI_MOUSE_LEFT_BUTTON_UP)    leftMouseDown = false;
-      if (flags & RI_MOUSE_RIGHT_BUTTON_DOWN) rightMouseDown = true;
-      if (flags & RI_MOUSE_RIGHT_BUTTON_UP)   rightMouseDown = false;
-   }
-   else if (raw->header.dwType == RIM_TYPEKEYBOARD)
-   {
-      const bool isDown = !(raw->data.keyboard.Flags & RI_KEY_BREAK);
-      const RAWKEYBOARD& keyboard = raw->data.keyboard;
-
-      Key key = TranslateKey(keyboard);
-      if (key != Key::Unknown)
-      {
-         keys[static_cast<size_t>(key)] = isDown;
-         OGL_INFO(L"WM_INPUT vkey=" + std::to_wstring(keyboard.VKey) + L" key=" + std::to_wstring(static_cast<int>(key)) + L" " + (isDown ? L"DOWN" : L"UP"));
-      }
-   }
+	keys.fill(false);
+	mouseDeltaX = 0;
+	mouseDeltaY = 0;
+	leftMouseDown = false;
+	rightMouseDown = false;
+	firstMouse = true;
 }
 
 void InputSystem::Update()
 {
-   mouseDeltaX = 0;
-   mouseDeltaY = 0;
+	mouseDeltaX = 0;
+	mouseDeltaY = 0;
 }
 
 bool InputSystem::IsKeyDown(Key key) const
 {
-   size_t index = static_cast<size_t>(key);
-   if (index >= static_cast<size_t>(Key::Count))
-      return false;
+	const size_t index = static_cast<size_t>(key);
+	if (index >= static_cast<size_t>(Key::Count))
+		return false;
 
-   return keys[index];
+	return keys[index];
 }
 
-Key InputSystem::TranslateKey(const RAWKEYBOARD& keyboard)
+Key InputSystem::TranslateKey(int glfwKey)
 {
-   USHORT vkey = keyboard.VKey;
-   USHORT makeCode = keyboard.MakeCode;
-   USHORT flags = keyboard.Flags;
+	switch (glfwKey)
+	{
+		case GLFW_KEY_A: return Key::A;
+		case GLFW_KEY_B: return Key::B;
+		case GLFW_KEY_C: return Key::C;
+		case GLFW_KEY_D: return Key::D;
+		case GLFW_KEY_E: return Key::E;
+		case GLFW_KEY_F: return Key::F;
+		case GLFW_KEY_G: return Key::G;
+		case GLFW_KEY_H: return Key::H;
+		case GLFW_KEY_I: return Key::I;
+		case GLFW_KEY_J: return Key::J;
+		case GLFW_KEY_K: return Key::K;
+		case GLFW_KEY_L: return Key::L;
+		case GLFW_KEY_M: return Key::M;
+		case GLFW_KEY_N: return Key::N;
+		case GLFW_KEY_O: return Key::O;
+		case GLFW_KEY_P: return Key::P;
+		case GLFW_KEY_Q: return Key::Q;
+		case GLFW_KEY_R: return Key::R;
+		case GLFW_KEY_S: return Key::S;
+		case GLFW_KEY_T: return Key::T;
+		case GLFW_KEY_U: return Key::U;
+		case GLFW_KEY_V: return Key::V;
+		case GLFW_KEY_W: return Key::W;
+		case GLFW_KEY_X: return Key::X;
+		case GLFW_KEY_Y: return Key::Y;
+		case GLFW_KEY_Z: return Key::Z;
 
-   if (vkey == VK_SHIFT)
-      vkey = static_cast<USHORT>(MapVirtualKey(keyboard.MakeCode, MAPVK_VSC_TO_VK_EX));
+		case GLFW_KEY_ESCAPE: return Key::Escape;
+		case GLFW_KEY_SPACE:  return Key::Space;
+		case GLFW_KEY_ENTER:  return Key::Enter;
 
-   switch (vkey)
-   {
-	   case 'A': return Key::A;
-	   case 'B': return Key::B;
-	   case 'C': return Key::C;
-	   case 'D': return Key::D;
-	   case 'E': return Key::E;
-	   case 'F': return Key::F;
-	   case 'G': return Key::G;
-	   case 'H': return Key::H;
-	   case 'I': return Key::I;
-	   case 'J': return Key::J;
-	   case 'K': return Key::K;
-	   case 'L': return Key::L;
-	   case 'M': return Key::M;
-	   case 'N': return Key::N;
-	   case 'O': return Key::O;
-	   case 'P': return Key::P;
-	   case 'Q': return Key::Q;
-	   case 'R': return Key::R;
-	   case 'S': return Key::S;
-	   case 'T': return Key::T;
-	   case 'U': return Key::U;
-	   case 'V': return Key::V;
-	   case 'W': return Key::W;
-	   case 'X': return Key::X;
-	   case 'Y': return Key::Y;
-	   case 'Z': return Key::Z;
+		case GLFW_KEY_LEFT:  return Key::Left;
+		case GLFW_KEY_RIGHT: return Key::Right;
+		case GLFW_KEY_UP:    return Key::Up;
+		case GLFW_KEY_DOWN:  return Key::Down;
 
-	   case VK_ESCAPE: return Key::Escape;
-	   case VK_SPACE: return Key::Space;
-	   case VK_RETURN: return Key::Enter;
+		case GLFW_KEY_LEFT_SHIFT:    return Key::LShift;
+		case GLFW_KEY_RIGHT_SHIFT:   return Key::RShift;
+		case GLFW_KEY_LEFT_CONTROL:  return Key::LControl;
+		case GLFW_KEY_RIGHT_CONTROL: return Key::RControl;
+		case GLFW_KEY_LEFT_ALT:      return Key::LAlt;
+		case GLFW_KEY_RIGHT_ALT:     return Key::RAlt;
 
-	   case VK_LEFT: return Key::Left;
-	   case VK_RIGHT: return Key::Right;
-	   case VK_UP: return Key::Up;
-	   case VK_DOWN: return Key::Down;
-
-      case VK_SHIFT:
-         if (makeCode == 0x2A) return Key::LShift;
-         if (makeCode == 0x36) return Key::RShift;
-         return Key::Unknown;
-
-      case VK_CONTROL:
-         return (flags & RI_KEY_E0) ? Key::RControl : Key::LControl;
-
-      case VK_MENU:
-         return (flags & RI_KEY_E0) ? Key::RAlt : Key::LAlt;
-
-      //TODO: SHIFT/CONTROL/ALT FIX
-
-	   default:
-	      return Key::Unknown;
-   }
+		default: return Key::Unknown;
+	}
 }
 
 float InputSystem::GetMouseDeltaX() const { return mouseDeltaX; }

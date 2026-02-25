@@ -6,11 +6,9 @@
 
 Engine::Engine()
 {
-	renderEngine = std::make_unique<RenderEngine>();
 	window = std::make_unique<Window>();
-	inputSystem = std::make_shared<InputSystem>(static_cast<HWND>(window->GetWindowInstance()));
-
-	window->MakeCurrentContext();
+	renderEngine = std::make_unique<RenderEngine>();
+	inputSystem = std::make_shared<InputSystem>(window->GetGLFWWindow());
 	renderEngine->SetViewPort(window->GetInnerSize());
 }
 
@@ -18,9 +16,20 @@ Engine::~Engine(){}
 
 void Engine::OnCreate(){}
 
+void Engine::Run()
+{
+	OnCreate();
+	while (is_Running && !window->ShouldClose())
+	{
+		window->PollEvents();
+		OnUpdateInternal();
+	}
+	OnQuit();
+}
+
 void Engine::OnUpdateInternal()
 {
-	auto currentTime = std::chrono::system_clock::now();
+	const auto currentTime = std::chrono::system_clock::now();
 	auto elapsedSeconds = std::chrono::duration<double>();
 	if (previousTime.time_since_epoch().count())
 		elapsedSeconds = currentTime - previousTime;
