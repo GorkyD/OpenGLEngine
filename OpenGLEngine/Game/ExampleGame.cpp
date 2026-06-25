@@ -15,7 +15,7 @@
 #include "Ecs/Components/MeshComponent.h"
 #include "Ecs/Components/ShaderComponent.h"
 #include "Ecs/Components/MaterialComponent.h"
-#include "Ecs/Systems/PhysicSystem.h"
+#include "..\Engine\include\Ecs\Systems\SimplePhysicSystem.h"
 #include "Ecs/Components/AABB.h"
 
 ExampleGame::ExampleGame()
@@ -40,7 +40,7 @@ void ExampleGame::OnCreate()
 
 	systems = std::make_unique<EcsSystems>(world);
 	systems->Add(std::make_unique<CameraInputSystem>(inputSystem.get()));
-	systems->Add(std::make_unique<PhysicSystem>());
+	systems->Add(std::make_unique<SimplePhysicSystem>());
 	systems->Add(std::make_unique<CameraMatrixSystem>(renderEngine.get(), uniformBuffer, window.get()));
 	systems->Add(std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer));
 	systems->Init();
