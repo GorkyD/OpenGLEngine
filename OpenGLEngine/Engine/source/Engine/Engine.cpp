@@ -9,19 +9,22 @@ Engine::Engine()
 	window = std::make_unique<Window>();
 	renderEngine = std::make_unique<RenderEngine>();
 	inputSystem = std::make_shared<InputSystem>(window->GetGLFWWindow());
-	renderEngine->SetViewPort(window->GetInnerSize());
+	audioSystem = std::make_shared<AudioSystem>();
 }
 
 Engine::~Engine(){}
 
-void Engine::OnCreate(){}
+void Engine::OnCreate()
+{
+	audioSystem->Init();
+	renderEngine->SetViewPort(window->GetInnerSize());
+}
 
 void Engine::Run()
 {
 	OnCreate();
 	while (is_Running && !window->ShouldClose())
 	{
-		window->PollEvents();
 		OnUpdateInternal();
 	}
 	OnQuit();
@@ -29,6 +32,8 @@ void Engine::Run()
 
 void Engine::OnUpdateInternal()
 {
+	window->PollEvents();
+
 	const auto currentTime = std::chrono::system_clock::now();
 	auto elapsedSeconds = std::chrono::duration<double>();
 	if (previousTime.time_since_epoch().count())
@@ -36,6 +41,8 @@ void Engine::OnUpdateInternal()
 	previousTime = currentTime;
 
 	const auto deltaTime = static_cast<float>(elapsedSeconds.count());
+
+	audioSystem->Update();
 
 	renderEngine->Clear(Vector4(0, 0, 0, 1));
 	renderEngine->SetFaceCulling(CullingType::BackFace);
@@ -48,6 +55,9 @@ void Engine::OnUpdateInternal()
 	window->Present(false);
 }
 
-void Engine::OnQuit() {}
+void Engine::OnQuit()
+{
+	audioSystem->Shutdown();
+}
 
 void Engine::Quit() { is_Running = false;}

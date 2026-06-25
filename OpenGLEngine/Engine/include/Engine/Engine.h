@@ -2,6 +2,7 @@
 #include <memory>
 #include <chrono>
 
+#include "Audio/AudioSystem.h"
 #include "Extension/Extension.h"
 #include "Input/InputSystem.h"
 #include "Ecs/Core/EcsSystems.h"
@@ -33,6 +34,8 @@ class Engine
 		std::unique_ptr<Window> window;
 
 		std::shared_ptr<InputSystem> inputSystem;
+
+		std::shared_ptr<AudioSystem> audioSystem;
 
 		std::chrono::system_clock::time_point previousTime;
 
