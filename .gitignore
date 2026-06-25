@@ -45,6 +45,7 @@
 
 # Build output
 /build
+/Build
 x64/
 Debug/
 Release/
@@ -57,3 +58,6 @@ OpenGLEngine/OpenGLEngine.vcxproj.filters
 OpenGLEngine/OpenGLEngine.vcxproj.filters
 OpenGLEngine/OpenGLEngine.vcxproj.user
 *.sln
+/.idea/
+/CMakeUserPresets.json
+/vcpkg/

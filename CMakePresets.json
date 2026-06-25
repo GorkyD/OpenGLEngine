@@ -1,0 +1,126 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 23,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base-debug",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      }
+    },
+    {
+      "name": "base-debug-windows",
+      "hidden": true,
+      "inherits": "base-debug",
+      "environment": {
+        "VCPKG_ROOT": "C:/vcpkg"
+      },
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "CMAKE_EXE_LINKER_FLAGS_INIT": "/MANIFEST:NO",
+        "CMAKE_SHARED_LINKER_FLAGS_INIT": "/MANIFEST:NO",
+        "CMAKE_MODULE_LINKER_FLAGS_INIT": "/MANIFEST:NO"
+      }
+    },
+    {
+      "name": "base-debug-linux",
+      "hidden": true,
+      "inherits": "base-debug",
+      "environment": {
+        "VCPKG_ROOT": "$env{HOME}/vcpkg"
+      },
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux"
+      }
+    },
+    {
+      "name": "base-debug-macos",
+      "hidden": true,
+      "inherits": "base-debug",
+      "environment": {
+        "VCPKG_ROOT": "$env{HOME}/vcpkg"
+      },
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-osx"
+      }
+    },
+    {
+      "name": "clang-cl-debug",
+      "displayName": "Clang-CL Debug (Ninja + vcpkg)",
+      "inherits": "base-debug-windows",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang-cl",
+        "CMAKE_CXX_COMPILER": "clang-cl",
+        "CMAKE_RC_COMPILER": "llvm-rc"
+      },
+      "environment": {
+        "CC": "clang-cl",
+        "CXX": "clang-cl",
+        "RC": "llvm-rc"
+      }
+    },
+    {
+      "name": "clang-debug-linux",
+      "displayName": "Clang Debug Linux (Ninja + vcpkg)",
+      "inherits": "base-debug-linux",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      },
+      "environment": {
+        "CC": "clang",
+        "CXX": "clang++"
+      }
+    },
+    {
+      "name": "clang-debug-macos",
+      "displayName": "Clang Debug macOS (Ninja + vcpkg)",
+      "inherits": "base-debug-macos",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      },
+      "environment": {
+        "CC": "clang",
+        "CXX": "clang++"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "clang-cl-debug",
+      "configurePreset": "clang-cl-debug"
+    },
+    {
+      "name": "clang-debug-linux",
+      "configurePreset": "clang-debug-linux"
+    },
+    {
+      "name": "clang-debug-macos",
+      "configurePreset": "clang-debug-macos"
+    }
+  ]
+}

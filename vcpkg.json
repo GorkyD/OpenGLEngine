@@ -1,0 +1,8 @@
+{
+  "name": "openglengine",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "assimp",
+    "glfw3"
+  ]
+}
