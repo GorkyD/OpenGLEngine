@@ -4,6 +4,6 @@
 
 struct MaterialComponent
 {
-	TexturePtr diffuseTexture;
-	Vector4 diffuseColor = {1, 1, 1, 1};
+    TexturePtr diffuseTexture;
+    Vector4 diffuseColor = {1, 1, 1, 1};
 };

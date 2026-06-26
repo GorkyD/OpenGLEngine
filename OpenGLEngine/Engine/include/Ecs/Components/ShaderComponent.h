@@ -3,5 +3,5 @@
 
 struct ShaderComponent
 {
-	ShaderProgramPtr shader;
+    ShaderProgramPtr shader;
 };

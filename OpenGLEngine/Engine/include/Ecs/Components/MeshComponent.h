@@ -3,6 +3,6 @@
 
 struct MeshComponent
 {
-	VertexArrayObjectPtr vao;
-	unsigned int indexCount = 0;
+    VertexArrayObjectPtr vao;
+    unsigned int indexCount = 0;
 };

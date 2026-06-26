@@ -1,16 +1,16 @@
 #pragma once
-#include <string>
 #include "Engine/Engine.h"
+#include <string>
 
 class ExampleGame : public Engine
 {
 public:
-	ExampleGame();
-	~ExampleGame();
+    ExampleGame();
+    ~ExampleGame();
 
-	void OnCreate() override;
-	void OnUpdate(float deltaTime) override;
+    void OnCreate() override;
+    void OnUpdate(float deltaTime) override;
 
 private:
-	Entity LoadModel(const std::string& path, ShaderProgramPtr shader);
+    Entity LoadModel(const std::string& path, ShaderProgramPtr shader);
 };

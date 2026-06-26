@@ -7,32 +7,32 @@
 
 struct MeshVertex
 {
-	Vector3 position;
-	Vector2 uv;
-	Vector3 normal;
+    Vector3 position;
+    Vector2 uv;
+    Vector3 normal;
 };
 
 struct MeshData
 {
-	std::vector<MeshVertex> vertices;
-	std::vector<unsigned int> indices;
-	int materialIndex = -1;
+    std::vector<MeshVertex> vertices;
+    std::vector<unsigned int> indices;
+    int materialIndex = -1;
 };
 
 struct MaterialData
 {
-	std::string diffuseTexturePath;
-	Vector4 diffuseColor = {1, 1, 1, 1};
+    std::string diffuseTexturePath;
+    Vector4 diffuseColor = {1, 1, 1, 1};
 };
 
 struct ModelData
 {
-	std::vector<MeshData> meshes;
-	std::vector<MaterialData> materials;
+    std::vector<MeshData> meshes;
+    std::vector<MaterialData> materials;
 };
 
 class ModelLoader
 {
-	public:
-		static ModelData Load(const std::string& filePath);
+public:
+    static ModelData Load(const std::string& filePath);
 };

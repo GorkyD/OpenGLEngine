@@ -12,32 +12,32 @@ class Window;
 
 class Engine
 {
-	public:
-		Engine();
-		virtual ~Engine();
+public:
+    Engine();
+    virtual ~Engine();
 
-		void Run();
-		void Quit();
-	private:
-		void OnUpdateInternal();
+    void Run();
+    void Quit();
 
-	protected:
-		virtual void OnCreate();
-		virtual void OnUpdate(float deltaTime) {}
-		virtual void OnQuit();
+private:
+    void OnUpdateInternal();
 
+protected:
+    virtual void OnCreate();
+    virtual void OnUpdate(float deltaTime) {}
+    virtual void OnQuit();
 
-		EcsWorld world;
-		std::unique_ptr<EcsSystems> systems;
+    EcsWorld world;
+    std::unique_ptr<EcsSystems> systems;
 
-		std::unique_ptr<RenderEngine> renderEngine;
-		std::unique_ptr<Window> window;
+    std::unique_ptr<RenderEngine> renderEngine;
+    std::unique_ptr<Window> window;
 
-		std::shared_ptr<InputSystem> inputSystem;
+    std::shared_ptr<InputSystem> inputSystem;
 
-		std::shared_ptr<AudioSystem> audioSystem;
+    std::shared_ptr<AudioSystem> audioSystem;
 
-		std::chrono::system_clock::time_point previousTime;
+    std::chrono::system_clock::time_point previousTime;
 
-		bool is_Running = true;
+    bool is_Running = true;
 };

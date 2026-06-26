@@ -2,9 +2,9 @@
 
 uniform UniformData
 {
-	mat4 world;
-	mat4 view;
-	mat4 projection;
+    mat4 world;
+    mat4 view;
+    mat4 projection;
 };
 
 layout(location = 0) in vec3 position;
@@ -17,10 +17,10 @@ out vec3 fragWorldPos;
 
 void main()
 {
-	vec4 worldPos = world * vec4(position, 1.0);
-	gl_Position = projection * view * worldPos;
+    vec4 worldPos = world * vec4(position, 1.0);
+    gl_Position = projection * view * worldPos;
 
-	fragTexCoord = texcoord;
-	fragNormal = mat3(transpose(inverse(world))) * normal;
-	fragWorldPos = worldPos.xyz;
+    fragTexCoord = texcoord;
+    fragNormal = mat3(transpose(inverse(world))) * normal;
+    fragWorldPos = worldPos.xyz;
 }

@@ -6,58 +6,61 @@
 
 Engine::Engine()
 {
-	window = std::make_unique<Window>();
-	renderEngine = std::make_unique<RenderEngine>();
-	inputSystem = std::make_shared<InputSystem>(window->GetGLFWWindow());
-	audioSystem = std::make_shared<AudioSystem>();
+    window = std::make_unique<Window>();
+    renderEngine = std::make_unique<RenderEngine>();
+    inputSystem = std::make_shared<InputSystem>(window->GetGLFWWindow());
+    audioSystem = std::make_shared<AudioSystem>();
 }
 
-Engine::~Engine(){}
+Engine::~Engine() {}
 
 void Engine::OnCreate()
 {
-	audioSystem->Init();
-	renderEngine->SetViewPort(window->GetInnerSize());
+    audioSystem->Init();
+    renderEngine->SetViewPort(window->GetInnerSize());
 }
 
 void Engine::Run()
 {
-	OnCreate();
-	while (is_Running && !window->ShouldClose())
-	{
-		OnUpdateInternal();
-	}
-	OnQuit();
+    OnCreate();
+    while (is_Running && !window->ShouldClose())
+    {
+        OnUpdateInternal();
+    }
+    OnQuit();
 }
 
 void Engine::OnUpdateInternal()
 {
-	window->PollEvents();
+    window->PollEvents();
 
-	const auto currentTime = std::chrono::system_clock::now();
-	auto elapsedSeconds = std::chrono::duration<double>();
-	if (previousTime.time_since_epoch().count())
-		elapsedSeconds = currentTime - previousTime;
-	previousTime = currentTime;
+    const auto currentTime = std::chrono::system_clock::now();
+    auto elapsedSeconds = std::chrono::duration<double>();
+    if (previousTime.time_since_epoch().count())
+        elapsedSeconds = currentTime - previousTime;
+    previousTime = currentTime;
 
-	const auto deltaTime = static_cast<float>(elapsedSeconds.count());
+    const auto deltaTime = static_cast<float>(elapsedSeconds.count());
 
-	audioSystem->Update();
+    audioSystem->Update();
 
-	renderEngine->Clear(Vector4(0, 0, 0, 1));
-	renderEngine->SetFaceCulling(CullingType::BackFace);
-	renderEngine->SetWindingOrder(ClockWise);
+    renderEngine->Clear(Vector4(0, 0, 0, 1));
+    renderEngine->SetFaceCulling(CullingType::BackFace);
+    renderEngine->SetWindingOrder(ClockWise);
 
-	systems->Update(deltaTime);
-	OnUpdate(deltaTime);
-	inputSystem->Update();
+    systems->Update(deltaTime);
+    OnUpdate(deltaTime);
+    inputSystem->Update();
 
-	window->Present(false);
+    window->Present(false);
 }
 
 void Engine::OnQuit()
 {
-	audioSystem->Shutdown();
+    audioSystem->Shutdown();
 }
 
-void Engine::Quit() { is_Running = false;}
+void Engine::Quit()
+{
+    is_Running = false;
+}

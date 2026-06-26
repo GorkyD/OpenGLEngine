@@ -3,7 +3,7 @@
 
 struct UniformData
 {
-	Matrix4 world;
-	Matrix4 view;
-	Matrix4 projection;
+    Matrix4 world;
+    Matrix4 view;
+    Matrix4 projection;
 };

@@ -3,70 +3,71 @@
 
 VertexArrayObject::VertexArrayObject(const VertexBufferDesc& vertexBufferDesc)
 {
-	if(!vertexBufferDesc.listSize) OGL_ERROR("VertexArrayObject | vertexSize is NULL")
-	if (!vertexBufferDesc.vertexSize) OGL_ERROR("VertexArrayObject | vertexSize is NULL")
-	if (!vertexBufferDesc.verticesList) OGL_ERROR("VertexArrayObject | verticesList is NULL")
+    if (!vertexBufferDesc.listSize)
+        OGL_ERROR("VertexArrayObject | vertexSize is NULL")
+    if (!vertexBufferDesc.vertexSize)
+        OGL_ERROR("VertexArrayObject | vertexSize is NULL")
+    if (!vertexBufferDesc.verticesList)
+        OGL_ERROR("VertexArrayObject | verticesList is NULL")
 
-	glGenVertexArrays(1, &vertexArrayObjectId);
-	glBindVertexArray(vertexArrayObjectId);
+    glGenVertexArrays(1, &vertexArrayObjectId);
+    glBindVertexArray(vertexArrayObjectId);
 
-	glGenBuffers(1,&vertexBufferId);
-	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferId);
-	glBufferData(GL_ARRAY_BUFFER, vertexBufferDesc.vertexSize * vertexBufferDesc.listSize, vertexBufferDesc.verticesList, GL_STATIC_DRAW);
+    glGenBuffers(1, &vertexBufferId);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBufferId);
+    glBufferData(GL_ARRAY_BUFFER, vertexBufferDesc.vertexSize * vertexBufferDesc.listSize,
+                 vertexBufferDesc.verticesList, GL_STATIC_DRAW);
 
+    unsigned int offset = 0;
+    for (int i = 0; i < vertexBufferDesc.attributesListSize; i++)
+    {
+        glVertexAttribPointer(i, vertexBufferDesc.attributesList[i].numElements, GL_FLOAT, GL_FALSE,
+                              vertexBufferDesc.vertexSize, (void*)(uintptr_t)offset);
 
-	unsigned int offset = 0;
-	for (int i = 0; i < vertexBufferDesc.attributesListSize; i++) 
-	{
-		glVertexAttribPointer(
-			i, 
-			vertexBufferDesc.attributesList[i].numElements,
-			GL_FLOAT, 
-			GL_FALSE,
-			vertexBufferDesc.vertexSize, 
-			(void*)(uintptr_t)offset);
+        glEnableVertexAttribArray(i);
+        offset += vertexBufferDesc.attributesList[i].numElements * sizeof(float);
+    }
 
-		glEnableVertexAttribArray(i);
-		offset += vertexBufferDesc.attributesList[i].numElements * sizeof(float);
-	}
+    glBindVertexArray(0);
 
-	glBindVertexArray(0);
-
-	vertexBufferDescData = vertexBufferDesc;
+    vertexBufferDescData = vertexBufferDesc;
 }
 
-VertexArrayObject::VertexArrayObject(const VertexBufferDesc& vertexBufferDesc, const IndexBufferDesc& indexBufferDesc) : VertexArrayObject(vertexBufferDesc)
+VertexArrayObject::VertexArrayObject(const VertexBufferDesc& vertexBufferDesc, const IndexBufferDesc& indexBufferDesc)
+    : VertexArrayObject(vertexBufferDesc)
 {
-	if (!indexBufferDesc.listSize) OGL_ERROR("VertexArrayObject | listSize is NULL")
-	if (!indexBufferDesc.indicesList) OGL_ERROR("VertexArrayObject | indicesList is NULL")
+    if (!indexBufferDesc.listSize)
+        OGL_ERROR("VertexArrayObject | listSize is NULL")
+    if (!indexBufferDesc.indicesList)
+        OGL_ERROR("VertexArrayObject | indicesList is NULL")
 
-	glBindVertexArray(vertexArrayObjectId);
+    glBindVertexArray(vertexArrayObjectId);
 
-	glGenBuffers(1, &elementBufferId);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBufferId);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBufferDesc.listSize, indexBufferDesc.indicesList, GL_STATIC_DRAW);
+    glGenBuffers(1, &elementBufferId);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBufferId);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBufferDesc.listSize, indexBufferDesc.indicesList, GL_STATIC_DRAW);
 
-	glBindVertexArray(0);
+    glBindVertexArray(0);
 }
 
 VertexArrayObject::~VertexArrayObject()
 {
-	glDeleteBuffers(1, &elementBufferId);
-	glDeleteBuffers(1, &vertexBufferId);
-	glDeleteVertexArrays(1, &vertexArrayObjectId);
+    glDeleteBuffers(1, &elementBufferId);
+    glDeleteBuffers(1, &vertexBufferId);
+    glDeleteVertexArrays(1, &vertexArrayObjectId);
 }
 
 unsigned int VertexArrayObject::GetId() const
 {
-	return vertexArrayObjectId;
+    return vertexArrayObjectId;
 }
 
 unsigned int VertexArrayObject::GetVertexBufferSize() const
 {
-	return vertexBufferDescData.listSize;
+    return vertexBufferDescData.listSize;
 }
 
 unsigned int VertexArrayObject::GetVertexSize() const
 {
-	return vertexBufferDescData.vertexSize;
+    return vertexBufferDescData.vertexSize;
 }

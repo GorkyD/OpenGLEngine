@@ -11,19 +11,18 @@
 
 class AudioSystem
 {
-	public:
-		AudioSystem();
-		~AudioSystem();
+public:
+    AudioSystem();
+    ~AudioSystem();
 
-		bool Init();
-		void Update();
-		void Shutdown();
+    bool Init();
+    void Update();
+    void Shutdown();
 
-		void PlayEvent(const char* eventName, uint64_t gameObject);
+    void PlayEvent(const char* eventName, uint64_t gameObject);
 
-	private:
+private:
 #if OPENGLENGINE_USE_WWISE
-		CAkDefaultIOHookDeferred g_lowLevelIO;
+    CAkDefaultIOHookDeferred g_lowLevelIO;
 #endif
 };
-

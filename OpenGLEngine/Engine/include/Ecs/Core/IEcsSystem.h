@@ -3,8 +3,8 @@
 
 class IEcsSystem
 {
-	public:
-	   virtual ~IEcsSystem() = default;
-	   virtual void Init(EcsWorld& world) {}
-	   virtual void Run(EcsWorld& world, float deltaTime) = 0;
+public:
+    virtual ~IEcsSystem() = default;
+    virtual void Init(EcsWorld& world) {}
+    virtual void Run(EcsWorld& world, float deltaTime) = 0;
 };
