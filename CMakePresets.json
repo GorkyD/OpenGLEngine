@@ -35,7 +35,7 @@
       "hidden": true,
       "inherits": "base-debug",
       "environment": {
-        "VCPKG_ROOT": "$env{HOME}/vcpkg"
+        "VCPKG_ROOT": "${sourceDir}/vcpkg"
       },
       "cacheVariables": {
         "VCPKG_TARGET_TRIPLET": "x64-linux"
@@ -46,10 +46,11 @@
       "hidden": true,
       "inherits": "base-debug",
       "environment": {
-        "VCPKG_ROOT": "$env{HOME}/vcpkg"
+        "VCPKG_ROOT": "${sourceDir}/vcpkg"
       },
       "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-osx"
+        "VCPKG_TARGET_TRIPLET": "arm64-osx",
+        "CMAKE_OSX_ARCHITECTURES": "arm64"
       }
     },
     {
