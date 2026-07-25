@@ -4,6 +4,7 @@
 #include "Ecs/Components/MaterialComponent.h"
 #include "Ecs/Components/LightComponent.h"
 #include "Ecs/Components/AmbientLightComponent.h"
+#include "Ecs/Components/CameraComponent.h"
 #include "Ecs/Components/TransformComponent.h"
 #include "Ecs/Core/IEcsSystem.h"
 #include "Render/RenderEngine.h"
@@ -11,13 +12,14 @@
 #include "Render/UniformBuffer.h"
 #include "Render/Texture.h"
 #include "Math/Matrix4.h"
+#include "Math/Vector3.h"
 #include "Math/Vector4.h"
 #include <glad/glad.h>
 
 class RenderSystem : public IEcsSystem
 {
 public:
-    static constexpr int MaxLights = 8;
+    static constexpr int MaxLights = 32;
 
     RenderSystem(RenderEngine* re, UniformBufferPtr ub) : renderEngine(re), uniformBuffer(ub) {}
 
@@ -34,6 +36,15 @@ public:
         for (auto& pair : world.GetPool<AmbientLightComponent>())
         {
             ambient = pair.second;
+            break;
+        }
+
+        Vector3 viewPos;
+        for (auto& pair : world.GetPool<CameraComponent>())
+        {
+            if (!pair.second.isActive || !transforms.Has(pair.first))
+                continue;
+            viewPos = transforms.Get(pair.first).position;
             break;
         }
 
@@ -66,13 +77,10 @@ public:
             numLights++;
         }
 
-        for (auto& pair : meshes)
+        auto drawEntity = [&](Entity entity, MeshComponent& mesh)
         {
-            Entity entity = pair.first;
-            auto& mesh = pair.second;
-
             if (!shaders.Has(entity))
-                continue;
+                return;
 
             Matrix4 worldMatrix;
             if (transforms.Has(entity))
@@ -84,17 +92,25 @@ public:
             renderEngine->SetShaderProgram(shaderComp.shader);
 
             Vector4 color = {1, 1, 1, 1};
+            Vector3 emissiveColor = {0, 0, 0};
+            float emissiveIntensity = 0.0f;
             int hasTexture = 0;
             int hasNormalMap = 0;
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, 0);
-            glActiveTexture(GL_TEXTURE1);
-            glBindTexture(GL_TEXTURE_2D, 0);
+            int hasRoughnessMap = 0;
+            int hasMetallicMap = 0;
+            int hasAoMap = 0;
+            for (int unit = 0; unit < 5; unit++)
+            {
+                glActiveTexture(GL_TEXTURE0 + unit);
+                glBindTexture(GL_TEXTURE_2D, 0);
+            }
 
             if (materials.Has(entity))
             {
                 auto& mat = materials.Get(entity);
                 color = mat.diffuseColor;
+                emissiveColor = mat.emissiveColor;
+                emissiveIntensity = mat.emissiveIntensity;
                 if (mat.diffuseTexture)
                 {
                     glActiveTexture(GL_TEXTURE0);
@@ -107,6 +123,24 @@ public:
                     glBindTexture(GL_TEXTURE_2D, mat.normalTexture->GetId());
                     hasNormalMap = 1;
                 }
+                if (mat.roughnessTexture)
+                {
+                    glActiveTexture(GL_TEXTURE2);
+                    glBindTexture(GL_TEXTURE_2D, mat.roughnessTexture->GetId());
+                    hasRoughnessMap = 1;
+                }
+                if (mat.metallicTexture)
+                {
+                    glActiveTexture(GL_TEXTURE3);
+                    glBindTexture(GL_TEXTURE_2D, mat.metallicTexture->GetId());
+                    hasMetallicMap = 1;
+                }
+                if (mat.aoTexture)
+                {
+                    glActiveTexture(GL_TEXTURE4);
+                    glBindTexture(GL_TEXTURE_2D, mat.aoTexture->GetId());
+                    hasAoMap = 1;
+                }
             }
 
             auto* shader = shaderComp.shader.get();
@@ -118,6 +152,13 @@ public:
             {
                 glUniform1i(shader->GetUniformLocation("normalTexture"), 1);
                 glUniform1i(shader->GetUniformLocation("hasNormalMap"), hasNormalMap);
+                glUniform1i(shader->GetUniformLocation("roughnessTexture"), 2);
+                glUniform1i(shader->GetUniformLocation("hasRoughnessMap"), hasRoughnessMap);
+                glUniform1i(shader->GetUniformLocation("metallicTexture"), 3);
+                glUniform1i(shader->GetUniformLocation("hasMetallicMap"), hasMetallicMap);
+                glUniform1i(shader->GetUniformLocation("aoTexture"), 4);
+                glUniform1i(shader->GetUniformLocation("hasAoMap"), hasAoMap);
+                glUniform3f(shader->GetUniformLocation("viewPos"), viewPos.x, viewPos.y, viewPos.z);
                 glUniform3f(shader->GetUniformLocation("ambientColor"), ambient.color.x, ambient.color.y, ambient.color.z);
                 glUniform1f(shader->GetUniformLocation("ambientIntensity"), ambient.intensity);
 
@@ -135,6 +176,9 @@ public:
                 float normalMatrix[9];
                 worldMatrix.GetNormalMatrix(normalMatrix);
                 glUniformMatrix3fv(shader->GetUniformLocation("normalMatrix"), 1, GL_TRUE, normalMatrix);
+
+                glUniform3f(shader->GetUniformLocation("emissiveColor"), emissiveColor.x, emissiveColor.y, emissiveColor.z);
+                glUniform1f(shader->GetUniformLocation("emissiveIntensity"), emissiveIntensity);
             }
 
             const bool isFire = shaderComp.shaderType == ShaderRenderType::Fire;
@@ -142,7 +186,7 @@ public:
             {
                 glUniform1f(shader->GetUniformLocation("time"), elapsedTime);
                 glEnable(GL_BLEND);
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE);
                 glDepthMask(GL_FALSE);
                 glDisable(GL_CULL_FACE);
             }
@@ -156,6 +200,21 @@ public:
                 glDepthMask(GL_TRUE);
                 glDisable(GL_BLEND);
             }
+        };
+
+        for (auto& pair : meshes)
+        {
+            const Entity entity = pair.first;
+            if (shaders.Has(entity) && shaders.Get(entity).shaderType == ShaderRenderType::Fire)
+                continue;
+            drawEntity(entity, pair.second);
+        }
+
+        for (auto& pair : meshes)
+        {
+            const Entity entity = pair.first;
+            if (shaders.Has(entity) && shaders.Get(entity).shaderType == ShaderRenderType::Fire)
+                drawEntity(entity, pair.second);
         }
     }
 

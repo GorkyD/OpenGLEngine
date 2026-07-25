@@ -17,7 +17,10 @@ void main()
     float flicker = 0.85 + 0.15 * sin(time * 18.0 + heightFactor * 12.0);
     color *= flicker;
 
+    const float emissiveIntensity = 1.3;
+    vec3 emissive = color * emissiveIntensity;
+
     float alpha = mix(0.95, 0.15, t);
 
-    outColor = vec4(color, alpha);
+    outColor = vec4(emissive, alpha);
 }

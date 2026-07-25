@@ -21,6 +21,7 @@
 #include "Ecs/Components/LightComponent.h"
 #include "Ecs/Components/MaterialComponent.h"
 #include "Ecs/Components/MeshComponent.h"
+#include "Ecs/Components/PendulumComponent.h"
 #include "Ecs/Components/RotatorComponent.h"
 #include "Ecs/Components/ShaderComponent.h"
 #include "Ecs/Components/SkyboxComponent.h"
@@ -64,7 +65,7 @@ void DemoScene::OnLoad(Engine& engine)
     auto floorEntity = EntityFactory::CreateModelEntity(world, renderEngine, "Assets/Models/cube.obj", shaders.lit);
     auto& floorTransform = world.GetComponent<TransformComponent>(floorEntity);
     floorTransform.position = {0, -2.0f, 0};
-    floorTransform.scale = {20.0f, 0.5f, 20.0f};
+    floorTransform.scale = {200.0f, 0.5f, 200.0f};
     auto& floorMat = world.GetComponent<MaterialComponent>(floorEntity);
     floorMat.diffuseTexture = Texture::LoadFromFile("Assets/Textures/Marble.jpg");
     floorMat.diffuseColor = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -72,17 +73,10 @@ void DemoScene::OnLoad(Engine& engine)
     floorShaderComp.shaderType = ShaderRenderType::Lit;
 
     const float platformTopY = floorTransform.position.y + floorTransform.scale.y * 0.5f;
-    const float torchInset = floorTransform.scale.x * 0.5f - 1.0f;
-    const Vector3 corners[4] = {
-        {torchInset, platformTopY, torchInset},
-        {-torchInset, platformTopY, torchInset},
-        {torchInset, platformTopY, -torchInset},
-        {-torchInset, platformTopY, -torchInset},
-    };
-    for (const auto& corner : corners)
-        CreateTorch(engine, corner, shaders.lit, shaders.fire);
 
     CreateMaterialGallery(engine, shaders.lit, platformTopY, floorTransform.scale.x * 0.5f);
+
+    CreateHangingLamp(engine, {0.0f, platformTopY + 6.5f, 0.0f}, shaders.lit);
 }
 
 void DemoScene::CreateSkybox(Engine& engine, ShaderProgramPtr shader)
@@ -169,13 +163,76 @@ void DemoScene::CreateTorch(Engine& engine, const Vector3& basePosition, ShaderP
     auto& flameLight = world.AddComponent<LightComponent>(flameLightEntity);
     flameLight.type = LightType::Point;
     flameLight.color = {1.0f, 0.55f, 0.15f};
-    flameLight.intensity = 4.0f;
+    flameLight.intensity = 5.0f;
     flameLight.position = flameTransform.position + Vector3(0.0f, flameTransform.scale.y * 0.3f, 0.0f);
-    flameLight.range = 12.0f;
+    flameLight.range = 14.0f;
 
     audioSystem->RegisterGameObject(flameEntity, "Torch");
     audioSystem->SetPosition(flameEntity, flameTransform.position.x, flameTransform.position.y, flameTransform.position.z);
     audioSystem->PlayEvent("Play_Fire", flameEntity);
+}
+
+void DemoScene::CreateHangingLamp(Engine& engine, const Vector3& pivot, ShaderProgramPtr shader)
+{
+    auto& world = engine.GetWorld();
+    auto* renderEngine = engine.GetRenderEngine();
+
+    constexpr float chainLength = 2.5f;
+    constexpr float amplitude = 0.3f;
+    constexpr float speed = 1.4f;
+
+    auto chainEntity = EntityFactory::CreateModelEntity(world, renderEngine, "Assets/Models/cube.obj", shader);
+    auto& chainTransform = world.GetComponent<TransformComponent>(chainEntity);
+    chainTransform.scale = {0.1f, chainLength, 0.1f};
+    auto& chainMat = world.GetComponent<MaterialComponent>(chainEntity);
+    chainMat.diffuseTexture = nullptr;
+    chainMat.diffuseColor = {0.15f, 0.15f, 0.17f, 1.0f};
+    auto& chainShaderComp = world.GetComponent<ShaderComponent>(chainEntity);
+    chainShaderComp.shaderType = ShaderRenderType::Lit;
+
+    auto& chainPendulum = world.AddComponent<PendulumComponent>(chainEntity);
+    chainPendulum.pivot = pivot;
+    chainPendulum.armLength = chainLength * 0.5f;
+    chainPendulum.amplitudeRadians = amplitude;
+    chainPendulum.speed = speed;
+
+    unsigned int shadeIndexCount = 0;
+    const auto shadeVao = MeshFactory::CreateSphere(renderEngine, shadeIndexCount, 12, 18, 0.35f);
+
+    const auto lampEntity = world.CreateEntity();
+    auto& lampTransform = world.AddComponent<TransformComponent>(lampEntity);
+    lampTransform.position = pivot + Vector3(0.0f, -chainLength, 0.0f);
+
+    auto& lampMesh = world.AddComponent<MeshComponent>(lampEntity);
+    lampMesh.vao = shadeVao;
+    lampMesh.indexCount = shadeIndexCount;
+
+    auto& lampMat = world.AddComponent<MaterialComponent>(lampEntity);
+    lampMat.diffuseTexture = nullptr;
+    lampMat.diffuseColor = {1.0f, 0.85f, 0.55f, 1.0f};
+    lampMat.emissiveColor = {1.0f, 0.75f, 0.4f};
+    lampMat.emissiveIntensity = 3.0f;
+
+    auto& lampShaderComp = world.AddComponent<ShaderComponent>(lampEntity);
+    lampShaderComp.shader = shader;
+    lampShaderComp.shaderType = ShaderRenderType::Lit;
+
+    auto& lampLight = world.AddComponent<LightComponent>(lampEntity);
+    lampLight.type = LightType::Point;
+    lampLight.color = {1.0f, 0.8f, 0.5f};
+    lampLight.intensity = 6.0f;
+    lampLight.range = 14.0f;
+    lampLight.position = lampTransform.position;
+
+    auto& lampPendulum = world.AddComponent<PendulumComponent>(lampEntity);
+    lampPendulum.pivot = pivot;
+    lampPendulum.armLength = chainLength;
+    lampPendulum.amplitudeRadians = amplitude;
+    lampPendulum.speed = speed;
+    lampPendulum.lightBaseIntensity = lampLight.intensity;
+    lampPendulum.emissiveBaseIntensity = lampMat.emissiveIntensity;
+    lampPendulum.flickerAmount = 0.12f;
+    lampPendulum.flickerSpeed = 5.0f;
 }
 
 VertexArrayObjectPtr DemoScene::CreateFlameMesh(Engine& engine, unsigned int& outIndexCount)
@@ -231,8 +288,16 @@ void DemoScene::CreateMaterialGallery(Engine& engine, ShaderProgramPtr shader, f
     static const std::array<std::string, 5> materials = {"gold", "grass", "plastic", "rusted_iron", "wall"};
     constexpr float sphereRadius = 0.6f;
     constexpr float spacing = 2.2f;
+    constexpr float torchOffsetX = 6.5f;
+    constexpr float torchOffsetZ = 3.5f;
 
     const float startX = -spacing * (static_cast<float>(materials.size() - 1) * 0.5f);
+
+    const auto& shaders = engine.GetShaders();
+    CreateTorch(engine, {torchOffsetX, platformTopY, torchOffsetZ}, shader, shaders.fire);
+    CreateTorch(engine, {-torchOffsetX, platformTopY, torchOffsetZ}, shader, shaders.fire);
+    CreateTorch(engine, {torchOffsetX, platformTopY, -torchOffsetZ}, shader, shaders.fire);
+    CreateTorch(engine, {-torchOffsetX, platformTopY, -torchOffsetZ}, shader, shaders.fire);
 
     for (size_t i = 0; i < materials.size(); i++)
     {
@@ -250,6 +315,9 @@ void DemoScene::CreateMaterialGallery(Engine& engine, ShaderProgramPtr shader, f
         auto& material = world.AddComponent<MaterialComponent>(entity);
         material.diffuseTexture = Texture::LoadFromFile("Assets/Textures/PBR/" + materials[i] + "/albedo.png");
         material.normalTexture = Texture::LoadFromFile("Assets/Textures/PBR/" + materials[i] + "/normal.png");
+        material.roughnessTexture = Texture::LoadFromFile("Assets/Textures/PBR/" + materials[i] + "/roughness.png");
+        material.metallicTexture = Texture::LoadFromFile("Assets/Textures/PBR/" + materials[i] + "/metallic.png");
+        material.aoTexture = Texture::LoadFromFile("Assets/Textures/PBR/" + materials[i] + "/ao.png");
 
         auto& shaderComp = world.AddComponent<ShaderComponent>(entity);
         shaderComp.shader = shader;

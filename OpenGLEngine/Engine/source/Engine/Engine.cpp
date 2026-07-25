@@ -8,6 +8,7 @@
 
 #include "Ecs/Systems/CameraInputSystem.h"
 #include "Ecs/Systems/CameraMatrixSystem.h"
+#include "Ecs/Systems/PendulumSystem.h"
 #include "Ecs/Systems/RenderSystem.h"
 #include "Ecs/Systems/RotatorSystem.h"
 #include "Ecs/Systems/SimplePhysicSystem.h"
@@ -57,6 +58,7 @@ void Engine::CreateStandardSystems()
     systems->Add(std::make_unique<SkyboxSystem>(renderEngine.get()));
     systems->Add(std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer));
     systems->Add(std::make_unique<RotatorSystem>());
+    systems->Add(std::make_unique<PendulumSystem>());
     systems->Add(std::make_unique<UITextSystem>(renderEngine.get(), shaders.text, window.get()));
     systems->Init();
 }

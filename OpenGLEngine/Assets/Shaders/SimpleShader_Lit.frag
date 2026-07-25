@@ -6,14 +6,25 @@ in vec3 fragWorldPos;
 
 uniform sampler2D diffuseTexture;
 uniform sampler2D normalTexture;
+uniform sampler2D roughnessTexture;
+uniform sampler2D metallicTexture;
+uniform sampler2D aoTexture;
 uniform vec4 diffuseColor;
 uniform int hasTexture;
 uniform int hasNormalMap;
+uniform int hasRoughnessMap;
+uniform int hasMetallicMap;
+uniform int hasAoMap;
 
+uniform vec3 viewPos;
 uniform vec3 ambientColor;
 uniform float ambientIntensity;
 
-#define MAX_LIGHTS 8
+uniform vec3 emissiveColor;
+uniform float emissiveIntensity;
+
+#define MAX_LIGHTS 32
+#define PI 3.14159265359
 
 uniform int numLights;
 uniform int lightType[MAX_LIGHTS];
@@ -41,6 +52,34 @@ mat3 CotangentFrame(vec3 n, vec3 p, vec2 uv)
     return mat3(t * invmax, b * invmax, n);
 }
 
+float DistributionGGX(vec3 n, vec3 h, float roughness)
+{
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float nDotH = max(dot(n, h), 0.0);
+    float denom = (nDotH * nDotH) * (a2 - 1.0) + 1.0;
+    return a2 / max(PI * denom * denom, 0.0001);
+}
+
+float GeometrySchlickGGX(float nDotV, float roughness)
+{
+    float r = roughness + 1.0;
+    float k = (r * r) / 8.0;
+    return nDotV / (nDotV * (1.0 - k) + k);
+}
+
+float GeometrySmith(vec3 n, vec3 v, vec3 l, float roughness)
+{
+    float nDotV = max(dot(n, v), 0.0);
+    float nDotL = max(dot(n, l), 0.0);
+    return GeometrySchlickGGX(nDotV, roughness) * GeometrySchlickGGX(nDotL, roughness);
+}
+
+vec3 FresnelSchlick(float cosTheta, vec3 f0)
+{
+    return f0 + (1.0 - f0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
 void main()
 {
     vec3 norm = normalize(fragNormal);
@@ -51,7 +90,19 @@ void main()
         norm = normalize(tbn * mapNormal);
     }
 
-    vec3 lighting = ambientColor * ambientIntensity;
+    vec4 sampledColor = texture(diffuseTexture, fragTexCoord);
+    vec4 texColor = mix(vec4(1.0), sampledColor, float(hasTexture));
+    vec3 albedo = texColor.rgb * diffuseColor.rgb;
+
+    float roughness = mix(1.0, texture(roughnessTexture, fragTexCoord).r, float(hasRoughnessMap));
+    float metallic = mix(0.0, texture(metallicTexture, fragTexCoord).r, float(hasMetallicMap));
+    float ao = mix(1.0, texture(aoTexture, fragTexCoord).r, float(hasAoMap));
+    roughness = clamp(roughness, 0.045, 1.0);
+
+    vec3 viewDir = normalize(viewPos - fragWorldPos);
+    vec3 f0 = mix(vec3(0.04), albedo, metallic);
+
+    vec3 lightingOut = vec3(0.0);
 
     for (int i = 0; i < numLights; i++)
     {
@@ -65,13 +116,23 @@ void main()
 
         float pointAttenuation = clamp(1.0 - dist / max(lightRange[i], 0.0001), 0.0, 1.0);
         float attenuation = mix(1.0, pointAttenuation, isPoint);
+        vec3 radiance = lightColor[i] * lightIntensity[i] * attenuation;
 
-        float diff = max(dot(norm, lightDir), 0.0);
-        lighting += lightColor[i] * diff * lightIntensity[i] * attenuation;
+        vec3 halfVec = normalize(viewDir + lightDir);
+        float ndf = DistributionGGX(norm, halfVec, roughness);
+        float geo = GeometrySmith(norm, viewDir, lightDir, roughness);
+        vec3 fresnel = FresnelSchlick(max(dot(halfVec, viewDir), 0.0), f0);
+
+        vec3 specular = (ndf * geo * fresnel) /
+                        max(4.0 * max(dot(norm, viewDir), 0.0) * max(dot(norm, lightDir), 0.0), 0.0001);
+
+        vec3 kD = (vec3(1.0) - fresnel) * (1.0 - metallic);
+        float nDotL = max(dot(norm, lightDir), 0.0);
+
+        lightingOut += (kD * albedo / PI + specular) * radiance * nDotL;
     }
 
-    vec4 sampledColor = texture(diffuseTexture, fragTexCoord);
-    vec4 texColor = mix(vec4(1.0), sampledColor, float(hasTexture));
-
-    outColor = vec4(texColor.rgb * diffuseColor.rgb * lighting, 1.0);
+    vec3 ambient = ambientColor * ambientIntensity * albedo * ao;
+    vec3 emissive = emissiveColor * emissiveIntensity;
+    outColor = vec4(ambient + lightingOut + emissive, 1.0);
 }

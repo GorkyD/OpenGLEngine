@@ -15,6 +15,7 @@ private:
     void CreateSkybox(Engine& engine, ShaderProgramPtr shader);
     void CreateTorch(Engine& engine, const Vector3& basePosition, ShaderProgramPtr handleShader,
                      ShaderProgramPtr fireShader);
+    void CreateHangingLamp(Engine& engine, const Vector3& pivot, ShaderProgramPtr shader);
     void CreateMaterialGallery(Engine& engine, ShaderProgramPtr shader, float platformTopY, float platformHalfWidth);
     void CreateUiText(Engine& engine);
     VertexArrayObjectPtr CreateFlameMesh(Engine& engine, unsigned int& outIndexCount);
