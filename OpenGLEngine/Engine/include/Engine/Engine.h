@@ -17,6 +17,7 @@ struct StandardShaders
     ShaderProgramPtr lit;
     ShaderProgramPtr skybox;
     ShaderProgramPtr fire;
+    ShaderProgramPtr particle;
     ShaderProgramPtr text;
 };
 

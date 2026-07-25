@@ -5,6 +5,7 @@
 #include "Ecs/Components/LightComponent.h"
 #include "Ecs/Components/AmbientLightComponent.h"
 #include "Ecs/Components/CameraComponent.h"
+#include "Ecs/Components/FogComponent.h"
 #include "Ecs/Components/TransformComponent.h"
 #include "Ecs/Core/IEcsSystem.h"
 #include "Render/RenderEngine.h"
@@ -36,6 +37,13 @@ public:
         for (auto& pair : world.GetPool<AmbientLightComponent>())
         {
             ambient = pair.second;
+            break;
+        }
+
+        FogComponent fog;
+        for (auto& pair : world.GetPool<FogComponent>())
+        {
+            fog = pair.second;
             break;
         }
 
@@ -179,6 +187,10 @@ public:
 
                 glUniform3f(shader->GetUniformLocation("emissiveColor"), emissiveColor.x, emissiveColor.y, emissiveColor.z);
                 glUniform1f(shader->GetUniformLocation("emissiveIntensity"), emissiveIntensity);
+
+                glUniform3f(shader->GetUniformLocation("fogColor"), fog.color.x, fog.color.y, fog.color.z);
+                glUniform1f(shader->GetUniformLocation("fogStart"), fog.start);
+                glUniform1f(shader->GetUniformLocation("fogEnd"), fog.end);
             }
 
             const bool isFire = shaderComp.shaderType == ShaderRenderType::Fire;

@@ -23,6 +23,10 @@ uniform float ambientIntensity;
 uniform vec3 emissiveColor;
 uniform float emissiveIntensity;
 
+uniform vec3 fogColor;
+uniform float fogStart;
+uniform float fogEnd;
+
 #define MAX_LIGHTS 32
 #define PI 3.14159265359
 
@@ -134,5 +138,11 @@ void main()
 
     vec3 ambient = ambientColor * ambientIntensity * albedo * ao;
     vec3 emissive = emissiveColor * emissiveIntensity;
-    outColor = vec4(ambient + lightingOut + emissive, 1.0);
+    vec3 finalColor = ambient + lightingOut + emissive;
+
+    float dist = length(viewPos - fragWorldPos);
+    float fogFactor = clamp((fogEnd - dist) / max(fogEnd - fogStart, 0.0001), 0.0, 1.0);
+    finalColor = mix(fogColor, finalColor, fogFactor);
+
+    outColor = vec4(finalColor, 1.0);
 }

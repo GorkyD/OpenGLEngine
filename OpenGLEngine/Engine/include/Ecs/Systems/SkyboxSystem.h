@@ -1,4 +1,5 @@
 #pragma once
+#include "Ecs/Components/FogComponent.h"
 #include "Ecs/Components/SkyboxComponent.h"
 #include "Ecs/Core/IEcsSystem.h"
 #include "Render/RenderEngine.h"
@@ -14,6 +15,13 @@ public:
 
     void Run(EcsWorld& world, float deltaTime) override
     {
+        FogComponent fog;
+        for (auto& pair : world.GetPool<FogComponent>())
+        {
+            fog = pair.second;
+            break;
+        }
+
         for (auto& pair : world.GetPool<SkyboxComponent>())
         {
             auto& skybox = pair.second;
@@ -28,6 +36,9 @@ public:
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(skybox.cubemap->GetTarget(), skybox.cubemap->GetId());
             glUniform1i(skybox.shader->GetUniformLocation("skyboxTexture"), 0);
+            glUniform3f(skybox.shader->GetUniformLocation("fogColor"), fog.color.x, fog.color.y, fog.color.z);
+            glUniform1f(skybox.shader->GetUniformLocation("fogHorizonSpread"), fog.horizonSpread);
+            glUniform1f(skybox.shader->GetUniformLocation("fogHorizonIntensity"), fog.horizonIntensity);
 
             renderEngine->SetVertexArrayObject(skybox.vao);
             renderEngine->DrawTriangles(List, 36, 0);

@@ -16,11 +16,14 @@
 
 #include "Ecs/Components/AABB.h"
 #include "Ecs/Components/AmbientLightComponent.h"
+#include "Ecs/Components/AutoOrbitComponent.h"
 #include "Ecs/Components/CameraComponent.h"
+#include "Ecs/Components/FogComponent.h"
 #include "Ecs/Components/FpsControlComponent.h"
 #include "Ecs/Components/LightComponent.h"
 #include "Ecs/Components/MaterialComponent.h"
 #include "Ecs/Components/MeshComponent.h"
+#include "Ecs/Components/ParticleEmitterComponent.h"
 #include "Ecs/Components/PendulumComponent.h"
 #include "Ecs/Components/RotatorComponent.h"
 #include "Ecs/Components/ShaderComponent.h"
@@ -48,6 +51,14 @@ void DemoScene::OnLoad(Engine& engine)
     auto& ambient = world.AddComponent<AmbientLightComponent>(ambientEntity);
     ambient.color = {0.55f, 0.45f, 0.2f};
     ambient.intensity = 0.2f;
+
+    const auto fogEntity = world.CreateEntity();
+    auto& fog = world.AddComponent<FogComponent>(fogEntity);
+    fog.color = {0.35f, 0.38f, 0.45f};
+    fog.start = 13.0f;
+    fog.end = 45.0f;
+    fog.horizonSpread = 0.1f;
+    fog.horizonIntensity = 0.85f;
 
     const auto moonEntity = world.CreateEntity();
     auto& moon = world.AddComponent<LightComponent>(moonEntity);
@@ -77,6 +88,39 @@ void DemoScene::OnLoad(Engine& engine)
     CreateMaterialGallery(engine, shaders.lit, platformTopY, floorTransform.scale.x * 0.5f);
 
     CreateHangingLamp(engine, {0.0f, platformTopY + 6.5f, 0.0f}, shaders.lit);
+
+    CreateRain(engine);
+
+    auto& orbit = world.AddComponent<AutoOrbitComponent>(cameraEntity);
+    orbit.center = {0.0f, platformTopY + 0.6f, 0.0f};
+    orbit.radius = 11.0f;
+    orbit.height = platformTopY + 3.6f;
+    orbit.angularSpeed = 0.2f;
+    orbit.idleTimeout = 4.0f;
+    orbit.transitionDuration = 1.5f;
+}
+
+void DemoScene::CreateRain(Engine& engine)
+{
+    auto& world = engine.GetWorld();
+
+    const auto rainEntity = world.CreateEntity();
+    auto& rain = world.AddComponent<ParticleEmitterComponent>(rainEntity);
+    rain.followCamera = true;
+    rain.localOffset = {0.0f, 14.0f, 0.0f};
+    rain.spawnAreaHalfExtents = {25.0f, 0.0f, 25.0f};
+    rain.velocityMin = {-0.4f, -16.0f, -0.4f};
+    rain.velocityMax = {0.4f, -13.0f, 0.4f};
+    rain.gravity = {0.0f, 0.0f, 0.0f};
+    rain.spawnRate = 260.0f;
+    rain.lifetimeMin = 1.3f;
+    rain.lifetimeMax = 1.6f;
+    rain.startSize = 0.6f;
+    rain.endSize = 0.6f;
+    rain.widthScale = 0.05f;
+    rain.color = {0.7f, 0.75f, 0.85f, 0.5f};
+    rain.maxParticles = 500;
+    rain.additive = false;
 }
 
 void DemoScene::CreateSkybox(Engine& engine, ShaderProgramPtr shader)
@@ -167,6 +211,36 @@ void DemoScene::CreateTorch(Engine& engine, const Vector3& basePosition, ShaderP
     flameLight.position = flameTransform.position + Vector3(0.0f, flameTransform.scale.y * 0.3f, 0.0f);
     flameLight.range = 14.0f;
 
+    auto& smoke = world.AddComponent<ParticleEmitterComponent>(flameEntity);
+    smoke.localOffset = {0.0f, flameTransform.scale.y * 0.9f, 0.0f};
+    smoke.spawnRadius = 0.15f;
+    smoke.velocityMin = {-0.5f, 0.5f, -0.5f};
+    smoke.velocityMax = {0.5f, 1.1f, 0.5f};
+    smoke.gravity = {0.0f, 0.05f, 0.0f};
+    smoke.lifetimeMin = 1.4f;
+    smoke.lifetimeMax = 2.4f;
+    smoke.startSize = 0.15f;
+    smoke.endSize = 0.9f;
+    smoke.color = {0.5f, 0.5f, 0.5f, 0.22f};
+
+    const auto sparksEntity = world.CreateEntity();
+    auto& sparksTransform = world.AddComponent<TransformComponent>(sparksEntity);
+    sparksTransform.position = flameTransform.position;
+
+    auto& sparks = world.AddComponent<ParticleEmitterComponent>(sparksEntity);
+    sparks.localOffset = {0.0f, flameTransform.scale.y * 0.4f, 0.0f};
+    sparks.velocityMin = {-0.6f, 1.0f, -0.6f};
+    sparks.velocityMax = {0.6f, 2.4f, 0.6f};
+    sparks.gravity = {0.0f, -2.5f, 0.0f};
+    sparks.spawnRate = 10.0f;
+    sparks.lifetimeMin = 0.3f;
+    sparks.lifetimeMax = 0.7f;
+    sparks.startSize = 0.05f;
+    sparks.endSize = 0.02f;
+    sparks.color = {1.0f, 0.6f, 0.1f, 1.0f};
+    sparks.maxParticles = 24;
+    sparks.additive = true;
+
     audioSystem->RegisterGameObject(flameEntity, "Torch");
     audioSystem->SetPosition(flameEntity, flameTransform.position.x, flameTransform.position.y, flameTransform.position.z);
     audioSystem->PlayEvent("Play_Fire", flameEntity);
@@ -239,28 +313,65 @@ VertexArrayObjectPtr DemoScene::CreateFlameMesh(Engine& engine, unsigned int& ou
 {
     auto* renderEngine = engine.GetRenderEngine();
 
-    constexpr int segments = 8;
+    constexpr int segments = 10;
 
-    std::vector<Vector3> basePoints(segments);
-    for (int i = 0; i < segments; i++)
+    struct RingProfile
     {
-        const float angle = (2.0f * 3.14159265f * static_cast<float>(i)) / static_cast<float>(segments);
-        basePoints[i] = {std::cos(angle), 0.0f, std::sin(angle)};
+        float height;
+        float radius;
+    };
+    static const RingProfile profile[] = {
+        {0.0f, 0.42f}, {0.16f, 0.78f}, {0.36f, 0.66f}, {0.58f, 0.4f}, {0.8f, 0.16f}, {1.0f, 0.0f},
+    };
+    constexpr int ringCount = sizeof(profile) / sizeof(profile[0]);
+
+    std::vector<std::vector<Vector3>> rings(ringCount);
+    for (int r = 0; r < ringCount; r++)
+    {
+        rings[r].resize(segments);
+        for (int s = 0; s < segments; s++)
+        {
+            const float angle = (2.0f * 3.14159265f * static_cast<float>(s)) / static_cast<float>(segments);
+            rings[r][s] = {std::cos(angle) * profile[r].radius, profile[r].height, std::sin(angle) * profile[r].radius};
+        }
     }
 
-    const Vector3 apex = {0.0f, 1.0f, 0.0f};
-    const Vector3 baseCenter = {0.0f, 0.0f, 0.0f};
-
     std::vector<Vector3> vertices;
-    vertices.reserve(segments * 6);
-    for (int i = 0; i < segments; i++)
-    {
-        const Vector3& a = basePoints[i];
-        const Vector3& b = basePoints[(i + 1) % segments];
+    vertices.reserve(segments * (ringCount - 1) * 6);
 
-        vertices.push_back(apex);
-        vertices.push_back(a);
-        vertices.push_back(b);
+    for (int r = 0; r < ringCount - 1; r++)
+    {
+        for (int s = 0; s < segments; s++)
+        {
+            const Vector3& a = rings[r][s];
+            const Vector3& b = rings[r][(s + 1) % segments];
+
+            if (profile[r + 1].radius < 0.001f)
+            {
+                vertices.push_back(a);
+                vertices.push_back(b);
+                vertices.push_back(rings[r + 1][0]);
+                continue;
+            }
+
+            const Vector3& c = rings[r + 1][s];
+            const Vector3& d = rings[r + 1][(s + 1) % segments];
+
+            vertices.push_back(a);
+            vertices.push_back(b);
+            vertices.push_back(d);
+
+            vertices.push_back(a);
+            vertices.push_back(d);
+            vertices.push_back(c);
+        }
+    }
+
+    const Vector3 baseCenter = {0.0f, 0.0f, 0.0f};
+    for (int s = 0; s < segments; s++)
+    {
+        const Vector3& a = rings[0][s];
+        const Vector3& b = rings[0][(s + 1) % segments];
 
         vertices.push_back(baseCenter);
         vertices.push_back(b);
