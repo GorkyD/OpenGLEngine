@@ -7,6 +7,7 @@
 #include "Ecs/Components/TransformComponent.h"
 #include "Ecs/Core/IEcsSystem.h"
 #include "Render/RenderEngine.h"
+#include "Render/ShaderProgram.h"
 #include "Render/UniformBuffer.h"
 #include "Render/Texture.h"
 #include "Math/Matrix4.h"
@@ -84,7 +85,10 @@ public:
 
             Vector4 color = {1, 1, 1, 1};
             int hasTexture = 0;
+            int hasNormalMap = 0;
             glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, 0);
+            glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D, 0);
 
             if (materials.Has(entity))
@@ -93,8 +97,15 @@ public:
                 color = mat.diffuseColor;
                 if (mat.diffuseTexture)
                 {
+                    glActiveTexture(GL_TEXTURE0);
                     glBindTexture(GL_TEXTURE_2D, mat.diffuseTexture->GetId());
                     hasTexture = 1;
+                }
+                if (mat.normalTexture)
+                {
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, mat.normalTexture->GetId());
+                    hasNormalMap = 1;
                 }
             }
 
@@ -105,6 +116,8 @@ public:
 
             if (shaderComp.shaderType == ShaderRenderType::Lit)
             {
+                glUniform1i(shader->GetUniformLocation("normalTexture"), 1);
+                glUniform1i(shader->GetUniformLocation("hasNormalMap"), hasNormalMap);
                 glUniform3f(shader->GetUniformLocation("ambientColor"), ambient.color.x, ambient.color.y, ambient.color.z);
                 glUniform1f(shader->GetUniformLocation("ambientIntensity"), ambient.intensity);
 

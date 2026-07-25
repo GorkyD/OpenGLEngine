@@ -15,7 +15,6 @@ out float heightFactor;
 
 void main()
 {
-    // Local mesh space: y goes from 0 (base) to 1 (tip). Wobble the tip a bit for a simple flame flicker.
     float wobble = position.y * position.y;
     vec3 animatedPos = position;
     animatedPos.x += sin(time * 9.0 + position.y * 5.0) * 0.06 * wobble;

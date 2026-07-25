@@ -8,7 +8,6 @@ class Texture
 public:
     static TexturePtr LoadFromFile(const std::string& path);
 
-    // Order: +X (right), -X (left), +Y (top), -Y (bottom), +Z (front), -Z (back)
     static TexturePtr LoadCubemap(const std::array<std::string, 6>& facePaths);
 
     static TexturePtr CreateFromPixels(const unsigned char* pixels, int width, int height, int channels);

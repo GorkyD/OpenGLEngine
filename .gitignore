@@ -65,3 +65,7 @@ OpenGLEngine/OpenGLEngine.vcxproj.user
 # Wwise generated SoundBanks (regenerate from the Wwise project)
 OpenGLEngine/Assets/Wwise/*.bnk
 OpenGLEngine/Assets/Wwise/*.txt
+
+run_stdout.log
+run_out.log
+run_err.log

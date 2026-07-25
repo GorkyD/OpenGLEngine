@@ -151,9 +151,6 @@ public:
         matrix[3][3] = 1.0f;
     }
 
-    // Inverse-transpose of the upper-left 3x3 (rotation/scale) part, matching the
-    // convention used when this matrix is uploaded as-is to a mat4 uniform.
-    // Row-major output, meant to be uploaded with glUniformMatrix3fv(..., GL_TRUE, ...).
     void GetNormalMatrix(float outMatrix[9]) const
     {
         const float a00 = matrix[0][0], a01 = matrix[0][1], a02 = matrix[0][2];

@@ -5,7 +5,10 @@
 #include "Render/UniformBuffer.h"
 #include "Render/VertexArrayObject.h"
 
-RenderEngine::RenderEngine() {}
+RenderEngine::RenderEngine()
+{
+    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+}
 
 RenderEngine::~RenderEngine() {}
 

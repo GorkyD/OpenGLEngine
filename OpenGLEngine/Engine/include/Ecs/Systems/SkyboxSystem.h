@@ -7,8 +7,6 @@
 #include "Render/VertexArrayObject.h"
 #include <glad/glad.h>
 
-// Draws the skybox first, behind everything else: depth test/write and face culling
-// are disabled for the duration of the draw and restored right after.
 class SkyboxSystem : public IEcsSystem
 {
 public:

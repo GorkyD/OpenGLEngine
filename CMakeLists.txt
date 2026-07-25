@@ -130,11 +130,13 @@ set(ENGINE_SOURCES
     OpenGLEngine/Engine/source/Ecs/Core/EcsSystems.cpp
     OpenGLEngine/Engine/source/Ecs/Core/EcsWorld.cpp
     OpenGLEngine/Engine/source/Resource/ModelLoader.cpp
+    OpenGLEngine/Engine/source/Resource/MeshFactory.cpp
+    OpenGLEngine/Engine/source/Resource/EntityFactory.cpp
+    OpenGLEngine/Engine/source/Scene/DemoScene.cpp
 )
 
 set(GAME_SOURCES
     OpenGLEngine/Game/main.cpp
-    OpenGLEngine/Game/ExampleGame.cpp
 )
 
 add_executable(OpenGLEngine ${ENGINE_SOURCES} ${GAME_SOURCES})

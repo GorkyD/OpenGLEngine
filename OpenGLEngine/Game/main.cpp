@@ -1,12 +1,14 @@
 #include "Engine/Engine.h"
-#include "ExampleGame.h"
+#include "Scene/DemoScene.h"
 #include <iostream>
+#include <memory>
 
 int main()
 {
     try
     {
-        ExampleGame engine;
+        Engine engine;
+        engine.LoadScene(std::make_unique<DemoScene>());
         engine.Run();
     }
     catch (const std::exception& ex)

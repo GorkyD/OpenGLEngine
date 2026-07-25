@@ -5,15 +5,16 @@ in vec3 fragNormal;
 in vec3 fragWorldPos;
 
 uniform sampler2D diffuseTexture;
+uniform sampler2D normalTexture;
 uniform vec4 diffuseColor;
 uniform int hasTexture;
+uniform int hasNormalMap;
 
 uniform vec3 ambientColor;
 uniform float ambientIntensity;
 
 #define MAX_LIGHTS 8
 
-// LightType: 0 = Directional, 1 = Point
 uniform int numLights;
 uniform int lightType[MAX_LIGHTS];
 uniform vec3 lightColor[MAX_LIGHTS];
@@ -24,9 +25,32 @@ uniform float lightRange[MAX_LIGHTS];
 
 out vec4 outColor;
 
+mat3 CotangentFrame(vec3 n, vec3 p, vec2 uv)
+{
+    vec3 dp1 = dFdx(p);
+    vec3 dp2 = dFdy(p);
+    vec2 duv1 = dFdx(uv);
+    vec2 duv2 = dFdy(uv);
+
+    vec3 dp2perp = cross(dp2, n);
+    vec3 dp1perp = cross(n, dp1);
+    vec3 t = dp2perp * duv1.x + dp1perp * duv2.x;
+    vec3 b = dp2perp * duv1.y + dp1perp * duv2.y;
+
+    float invmax = inversesqrt(max(dot(t, t), dot(b, b)));
+    return mat3(t * invmax, b * invmax, n);
+}
+
 void main()
 {
     vec3 norm = normalize(fragNormal);
+    if (hasNormalMap != 0)
+    {
+        vec3 mapNormal = texture(normalTexture, fragTexCoord).xyz * 2.0 - 1.0;
+        mat3 tbn = CotangentFrame(norm, fragWorldPos, fragTexCoord);
+        norm = normalize(tbn * mapNormal);
+    }
+
     vec3 lighting = ambientColor * ambientIntensity;
 
     for (int i = 0; i < numLights; i++)
