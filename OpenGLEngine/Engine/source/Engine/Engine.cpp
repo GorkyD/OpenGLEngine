@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cstdio>
 #include "Window/Window.h"
 #include "Engine/Engine.h"
 #include "Math/Vector4.h"
@@ -16,7 +17,8 @@ Engine::~Engine() {}
 
 void Engine::OnCreate()
 {
-    audioSystem->Init();
+    if (!audioSystem->Init())
+        std::fprintf(stderr, "Engine: AudioSystem::Init failed, continuing without audio\n");
     renderEngine->SetViewPort(window->GetInnerSize());
 }
 

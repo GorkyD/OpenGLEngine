@@ -61,3 +61,7 @@ OpenGLEngine/OpenGLEngine.vcxproj.user
 /.idea/
 /CMakeUserPresets.json
 /vcpkg/
+
+# Wwise generated SoundBanks (regenerate from the Wwise project)
+OpenGLEngine/Assets/Wwise/*.bnk
+OpenGLEngine/Assets/Wwise/*.txt

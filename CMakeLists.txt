@@ -16,8 +16,59 @@ find_package(glfw3 3.3 REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(assimp REQUIRED)
 
-set(WWISE_SDK_DIR "" CACHE PATH "Path to Wwise SDK root")
-option(OPENGLENGINE_ENABLE_WWISE "Enable Wwise integration" OFF)
+function(_ogle_detect_wwise_sdk out_var)
+    if(DEFINED ENV{WWISESDK} AND EXISTS "$ENV{WWISESDK}/include/AK/AkPlatforms.h")
+        set(${out_var} "$ENV{WWISESDK}" PARENT_SCOPE)
+        return()
+    endif()
+    if(DEFINED ENV{WWISEROOT} AND EXISTS "$ENV{WWISEROOT}/SDK/include/AK/AkPlatforms.h")
+        set(${out_var} "$ENV{WWISEROOT}/SDK" PARENT_SCOPE)
+        return()
+    endif()
+    if(DEFINED ENV{WWISE_SDK_DIR} AND EXISTS "$ENV{WWISE_SDK_DIR}/include/AK/AkPlatforms.h")
+        set(${out_var} "$ENV{WWISE_SDK_DIR}" PARENT_SCOPE)
+        return()
+    endif()
+
+    set(_known_installs_json "")
+    if(WIN32)
+        set(_known_installs_json "$ENV{APPDATA}/WwiseLauncher/Json/knownInstalls.json")
+    elseif(APPLE)
+        set(_known_installs_json "$ENV{HOME}/Library/Application Support/WwiseLauncher/Json/knownInstalls.json")
+    else()
+        set(_known_installs_json "$ENV{HOME}/.config/WwiseLauncher/Json/knownInstalls.json")
+    endif()
+
+    if(EXISTS "${_known_installs_json}")
+        file(READ "${_known_installs_json}" _known_installs_contents)
+        string(REGEX MATCHALL "\"[^\"]*\"" _known_install_entries "${_known_installs_contents}")
+        set(_best "")
+        foreach(_entry ${_known_install_entries})
+            string(REGEX REPLACE "^\"|\"$" "" _install_path "${_entry}")
+            string(REPLACE "\\\\" "/" _install_path "${_install_path}")
+            if(EXISTS "${_install_path}/SDK/include/AK/AkPlatforms.h")
+                set(_best "${_install_path}/SDK")
+            endif()
+        endforeach()
+        if(_best)
+            set(${out_var} "${_best}" PARENT_SCOPE)
+            return()
+        endif()
+    endif()
+
+    set(${out_var} "" PARENT_SCOPE)
+endfunction()
+
+_ogle_detect_wwise_sdk(WWISE_SDK_DIR_AUTODETECTED)
+
+set(WWISE_SDK_DIR "${WWISE_SDK_DIR_AUTODETECTED}" CACHE PATH "Path to Wwise SDK root (auto-detected if available)")
+
+set(OPENGLENGINE_ENABLE_WWISE_DEFAULT OFF)
+if(WWISE_SDK_DIR_AUTODETECTED)
+    set(OPENGLENGINE_ENABLE_WWISE_DEFAULT ON)
+endif()
+option(OPENGLENGINE_ENABLE_WWISE "Enable Wwise integration" ${OPENGLENGINE_ENABLE_WWISE_DEFAULT})
+
 if(NOT WWISE_SDK_DIR AND DEFINED ENV{WWISE_SDK_DIR})
     set(WWISE_SDK_DIR "$ENV{WWISE_SDK_DIR}")
 endif()
@@ -30,6 +81,31 @@ if(WWISE_SDK_DIR)
         set(WWISE_SDK_ROOT "${WWISE_SDK_DIR}/SDK")
     endif()
 endif()
+
+if(OPENGLENGINE_ENABLE_WWISE AND WWISE_SDK_ROOT)
+    message(STATUS "Wwise SDK found: ${WWISE_SDK_ROOT}")
+elseif(OPENGLENGINE_ENABLE_WWISE)
+    message(WARNING "OPENGLENGINE_ENABLE_WWISE is ON but no valid Wwise SDK was found (set WWISE_SDK_DIR or the WWISESDK env var)")
+endif()
+
+function(_ogle_detect_wwise_project out_var)
+    if(DEFINED ENV{WWISE_PROJECT_DIR} AND EXISTS "$ENV{WWISE_PROJECT_DIR}")
+        set(${out_var} "$ENV{WWISE_PROJECT_DIR}" PARENT_SCOPE)
+        return()
+    endif()
+    if(DEFINED ENV{WWISEROOT})
+        set(_guess "$ENV{WWISEROOT}/../Projects/${PROJECT_NAME}")
+        if(EXISTS "${_guess}")
+            set(${out_var} "${_guess}" PARENT_SCOPE)
+            return()
+        endif()
+    endif()
+    set(${out_var} "" PARENT_SCOPE)
+endfunction()
+
+_ogle_detect_wwise_project(WWISE_PROJECT_DIR_AUTODETECTED)
+set(WWISE_PROJECT_DIR "${WWISE_PROJECT_DIR_AUTODETECTED}" CACHE PATH
+    "Path to the Wwise project folder that contains GeneratedSoundBanks/ (auto-detected if available)")
 
 # --- GLAD (bundled) ---
 add_library(glad STATIC
@@ -109,6 +185,27 @@ if(OPENGLENGINE_ENABLE_WWISE AND WWISE_SDK_ROOT)
         AkAutobahn
         CommunicationCentral
     )
+    if(WIN32)
+        target_link_libraries(OpenGLEngine PRIVATE ws2_32 winmm)
+    endif()
+
+    if(WWISE_PROJECT_DIR)
+        set(WWISE_GENERATED_BANKS_PLATFORM "Windows")
+        if(APPLE)
+            set(WWISE_GENERATED_BANKS_PLATFORM "Mac")
+        elseif(UNIX)
+            set(WWISE_GENERATED_BANKS_PLATFORM "Linux")
+        endif()
+        set(WWISE_GENERATED_BANKS_DIR "${WWISE_PROJECT_DIR}/GeneratedSoundBanks/${WWISE_GENERATED_BANKS_PLATFORM}")
+
+        add_custom_command(TARGET OpenGLEngine POST_BUILD
+            COMMAND ${CMAKE_COMMAND}
+                -DSRC_DIR=${WWISE_GENERATED_BANKS_DIR}
+                -DDST_DIR=${CMAKE_SOURCE_DIR}/OpenGLEngine/Assets/Wwise
+                -P ${CMAKE_SOURCE_DIR}/cmake/CopyWwiseBanks.cmake
+            COMMENT "Syncing Wwise SoundBanks from ${WWISE_GENERATED_BANKS_DIR}"
+        )
+    endif()
 else()
     target_compile_definitions(OpenGLEngine PRIVATE OPENGLENGINE_USE_WWISE=0)
 endif()

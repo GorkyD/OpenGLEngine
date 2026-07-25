@@ -36,6 +36,12 @@ void ExampleGame::OnCreate()
 {
     Engine::OnCreate();
 
+    audioSystem->SetMasterVolume(100.0f);
+    audioSystem->SetFireVolume(100.0f);
+    audioSystem->SetAmbientVolume(100.0f);
+
+    audioSystem->PlayEvent("Play_Ambient", AudioSystem::AmbientId);
+
     auto uniformBuffer = renderEngine->CreateUniformBuffer({sizeof(UniformData)});
 
     auto shaderUnlit =
@@ -82,7 +88,7 @@ void ExampleGame::OnCreate()
     moon.intensity = 0.7f;
     moon.direction = {0.4f, 1.0f, -0.2f};
 
-    const auto cameraEntity = world.CreateEntity();
+    cameraEntity = world.CreateEntity();
     auto& camTransform = world.AddComponent<TransformComponent>(cameraEntity);
     camTransform.position = {0, 1.0f, -3.0f};
     world.AddComponent<CameraComponent>(cameraEntity);
@@ -254,6 +260,10 @@ void ExampleGame::CreateTorch(const Vector3& basePosition, ShaderProgramPtr hand
     flameLight.intensity = 4.0f;
     flameLight.position = flameTransform.position + Vector3(0.0f, flameTransform.scale.y * 0.3f, 0.0f);
     flameLight.range = 12.0f;
+
+    audioSystem->RegisterGameObject(flameEntity, "Torch");
+    audioSystem->SetPosition(flameEntity, flameTransform.position.x, flameTransform.position.y, flameTransform.position.z);
+    audioSystem->PlayEvent("Play_Fire", flameEntity);
 }
 
 VertexArrayObjectPtr ExampleGame::CreateFlameMesh(unsigned int& outIndexCount)
@@ -324,6 +334,12 @@ void ExampleGame::CreateUiText()
 
 void ExampleGame::OnUpdate(float deltaTime)
 {
+    if (cameraEntity != 0)
+    {
+        const auto& camTransform = world.GetComponent<TransformComponent>(cameraEntity);
+        audioSystem->SetListenerPosition(camTransform.position.x, camTransform.position.y, camTransform.position.z);
+    }
+
     if (fpsTextEntity == 0)
         return;
 

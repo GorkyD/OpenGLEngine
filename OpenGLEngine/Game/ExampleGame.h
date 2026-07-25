@@ -22,4 +22,6 @@ private:
     Entity fpsTextEntity = 0;
     float fpsUpdateTimer = 0.0f;
     int fpsFrameCount = 0;
+
+    Entity cameraEntity = 0;
 };
