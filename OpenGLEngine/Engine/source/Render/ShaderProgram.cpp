@@ -29,6 +29,17 @@ void ShaderProgram::SetUniformBufferSlot(const char* name, unsigned int slot)
     glUniformBlockBinding(programId, index, slot);
 }
 
+int ShaderProgram::GetUniformLocation(const char* name)
+{
+    const auto it = uniformLocationCache.find(name);
+    if (it != uniformLocationCache.end())
+        return it->second;
+
+    const int location = glGetUniformLocation(programId, name);
+    uniformLocationCache[name] = location;
+    return location;
+}
+
 void ShaderProgram::Attach(const char* shaderFilePath, const ShaderType& type)
 {
     std::ifstream shaderStream(shaderFilePath);

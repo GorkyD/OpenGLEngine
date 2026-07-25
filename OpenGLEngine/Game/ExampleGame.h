@@ -1,5 +1,6 @@
 #pragma once
 #include "Engine/Engine.h"
+#include "Math/Vector3.h"
 #include <string>
 
 class ExampleGame : public Engine
@@ -13,4 +14,7 @@ public:
 
 private:
     Entity LoadModel(const std::string& path, ShaderProgramPtr shader);
+    void CreateSkybox(ShaderProgramPtr shader);
+    void CreateTorch(const Vector3& basePosition, ShaderProgramPtr handleShader, ShaderProgramPtr fireShader);
+    VertexArrayObjectPtr CreateFlameMesh(unsigned int& outIndexCount);
 };

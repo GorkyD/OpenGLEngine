@@ -139,5 +139,29 @@ public:
         matrix[3][3] = 1.0f;
     }
 
+    // Inverse-transpose of the upper-left 3x3 (rotation/scale) part, matching the
+    // convention used when this matrix is uploaded as-is to a mat4 uniform.
+    // Row-major output, meant to be uploaded with glUniformMatrix3fv(..., GL_TRUE, ...).
+    void GetNormalMatrix(float outMatrix[9]) const
+    {
+        const float a00 = matrix[0][0], a01 = matrix[0][1], a02 = matrix[0][2];
+        const float a10 = matrix[1][0], a11 = matrix[1][1], a12 = matrix[1][2];
+        const float a20 = matrix[2][0], a21 = matrix[2][1], a22 = matrix[2][2];
+
+        const float det = a00 * (a11 * a22 - a12 * a21) - a01 * (a10 * a22 - a12 * a20) +
+                           a02 * (a10 * a21 - a11 * a20);
+        const float invDet = (det != 0.0f) ? 1.0f / det : 0.0f;
+
+        outMatrix[0] = (a11 * a22 - a12 * a21) * invDet;
+        outMatrix[1] = -(a01 * a22 - a02 * a21) * invDet;
+        outMatrix[2] = (a01 * a12 - a02 * a11) * invDet;
+        outMatrix[3] = -(a10 * a22 - a12 * a20) * invDet;
+        outMatrix[4] = (a00 * a22 - a02 * a20) * invDet;
+        outMatrix[5] = -(a00 * a12 - a02 * a10) * invDet;
+        outMatrix[6] = (a10 * a21 - a11 * a20) * invDet;
+        outMatrix[7] = -(a00 * a21 - a01 * a20) * invDet;
+        outMatrix[8] = (a00 * a11 - a01 * a10) * invDet;
+    }
+
     float matrix[4][4] = {};
 };

@@ -1,5 +1,8 @@
 #include "ExampleGame.h"
 
+#include <array>
+#include <cmath>
+#include <vector>
 #include "Math/Vector2.h"
 #include "Math/Vector3.h"
 #include "Render/RenderEngine.h"
@@ -11,12 +14,16 @@
 
 #include "Ecs/Systems/SimplePhysicSystem.h"
 #include "Ecs/Components/AABB.h"
+#include "Ecs/Components/LightComponent.h"
+#include "Ecs/Components/AmbientLightComponent.h"
 #include "Ecs/Components/MaterialComponent.h"
 #include "Ecs/Components/MeshComponent.h"
 #include "Ecs/Components/ShaderComponent.h"
+#include "Ecs/Components/SkyboxComponent.h"
 #include "Ecs/Systems/CameraInputSystem.h"
 #include "Ecs/Systems/CameraMatrixSystem.h"
 #include "Ecs/Systems/RenderSystem.h"
+#include "Ecs/Systems/SkyboxSystem.h"
 
 ExampleGame::ExampleGame() {}
 
@@ -28,16 +35,43 @@ void ExampleGame::OnCreate()
 
     auto uniformBuffer = renderEngine->CreateUniformBuffer({sizeof(UniformData)});
 
-    auto shader =
-        renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader.vert", "Assets/Shaders/SimpleShader.frag"});
-    shader->SetUniformBufferSlot("UniformData", 0);
+    auto shaderUnlit =
+        renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Unlit.vert", "Assets/Shaders/SimpleShader_Unlit.frag"});
+    shaderUnlit->SetUniformBufferSlot("UniformData", 0);
+
+    auto shaderLit =
+        renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Lit.vert", "Assets/Shaders/SimpleShader_Lit.frag"});
+    shaderLit->SetUniformBufferSlot("UniformData", 0);
+
+    auto shaderSkybox =
+        renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Skybox.vert", "Assets/Shaders/SimpleShader_Skybox.frag"});
+    shaderSkybox->SetUniformBufferSlot("UniformData", 0);
+
+    auto shaderFire =
+        renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Fire.vert", "Assets/Shaders/SimpleShader_Fire.frag"});
+    shaderFire->SetUniformBufferSlot("UniformData", 0);
 
     systems = std::make_unique<EcsSystems>(world);
     systems->Add(std::make_unique<CameraInputSystem>(inputSystem.get()));
     systems->Add(std::make_unique<SimplePhysicSystem>());
     systems->Add(std::make_unique<CameraMatrixSystem>(renderEngine.get(), uniformBuffer, window.get()));
+    systems->Add(std::make_unique<SkyboxSystem>(renderEngine.get()));
     systems->Add(std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer));
     systems->Init();
+
+    CreateSkybox(shaderSkybox);
+
+    const auto ambientEntity = world.CreateEntity();
+    auto& ambient = world.AddComponent<AmbientLightComponent>(ambientEntity);
+    ambient.color = {0.55f, 0.45f, 0.2f};
+    ambient.intensity = 0.2f;
+
+    const auto moonEntity = world.CreateEntity();
+    auto& moon = world.AddComponent<LightComponent>(moonEntity);
+    moon.type = LightType::Directional;
+    moon.color = {1.0f, 0.85f, 0.4f};
+    moon.intensity = 0.7f;
+    moon.direction = {0.4f, 1.0f, -0.2f};
 
     const auto cameraEntity = world.CreateEntity();
     auto& camTransform = world.AddComponent<TransformComponent>(cameraEntity);
@@ -48,20 +82,36 @@ void ExampleGame::OnCreate()
 
     for (int i = 0; i < 10; i++)
     {
-        auto cubeEntity = LoadModel("Assets/Models/cube.obj", shader);
+        auto cubeEntity = LoadModel("Assets/Models/cube.obj", shaderLit);
         world.AddComponent<RigidbodyComponent>(cubeEntity);
         auto& cubeTransform = world.GetComponent<TransformComponent>(cubeEntity);
         cubeTransform.position = {0.5f * (float)i, 50.0f + (float)i, 0};
         cubeTransform.rotation.SetRotationX(30.0f + 10.0f * (float)i);
+        
+        auto& shaderComp = world.GetComponent<ShaderComponent>(cubeEntity);
+        shaderComp.shaderType = ShaderRenderType::Lit;
     }
 
-    auto floorEntity = LoadModel("Assets/Models/cube.obj", shader);
+    auto floorEntity = LoadModel("Assets/Models/cube.obj", shaderLit);
     auto& floorTransform = world.GetComponent<TransformComponent>(floorEntity);
     floorTransform.position = {0, -2.0f, 0};
     floorTransform.scale = {20.0f, 0.5f, 20.0f};
     auto& floorMat = world.GetComponent<MaterialComponent>(floorEntity);
-    floorMat.diffuseTexture = nullptr;
-    floorMat.diffuseColor = {0.35f, 0.55f, 0.35f, 1.0f};
+    floorMat.diffuseTexture = Texture::LoadFromFile("Assets/Textures/Stone.jpg");
+    floorMat.diffuseColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    auto& floorShaderComp = world.GetComponent<ShaderComponent>(floorEntity);
+    floorShaderComp.shaderType = ShaderRenderType::Lit;
+
+    const float platformTopY = floorTransform.position.y + floorTransform.scale.y * 0.5f;
+    const float torchInset = floorTransform.scale.x * 0.5f - 1.0f;
+    const Vector3 corners[4] = {
+        {torchInset, platformTopY, torchInset},
+        {-torchInset, platformTopY, torchInset},
+        {torchInset, platformTopY, -torchInset},
+        {-torchInset, platformTopY, -torchInset},
+    };
+    for (const auto& corner : corners)
+        CreateTorch(corner, shaderLit, shaderFire);
 }
 
 Entity ExampleGame::LoadModel(const std::string& path, ShaderProgramPtr shader)
@@ -113,6 +163,131 @@ Entity ExampleGame::LoadModel(const std::string& path, ShaderProgramPtr shader)
     }
 
     return result;
+}
+
+void ExampleGame::CreateSkybox(ShaderProgramPtr shader)
+{
+    const std::array<std::string, 6> faces = {
+        "Assets/Textures/Skybox/right.jpg", "Assets/Textures/Skybox/left.jpg",
+        "Assets/Textures/Skybox/top.jpg",   "Assets/Textures/Skybox/bottom.jpg",
+        "Assets/Textures/Skybox/front.jpg", "Assets/Textures/Skybox/back.jpg",
+    };
+    auto cubemap = Texture::LoadCubemap(faces);
+    if (!cubemap)
+        return;
+
+    static const float skyboxVertices[] = {
+        -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f,
+        1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f,
+
+        -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f,
+        -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,
+
+        1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f,
+
+        -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,
+
+        -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f,
+
+        -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f,
+        1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,
+    };
+
+    VertexAttributes attrs[] = {{3}};
+    const auto vao = renderEngine->CreateVertexArrayObject(
+        {(void*)skyboxVertices, 3 * sizeof(float), 36, attrs, 1});
+
+    const auto skyboxEntity = world.CreateEntity();
+    auto& skybox = world.AddComponent<SkyboxComponent>(skyboxEntity);
+    skybox.shader = shader;
+    skybox.cubemap = cubemap;
+    skybox.vao = vao;
+}
+
+void ExampleGame::CreateTorch(const Vector3& basePosition, ShaderProgramPtr handleShader, ShaderProgramPtr fireShader)
+{
+    const float handleHeight = 1.2f;
+    const float handleRadius = 0.12f;
+
+    auto handleEntity = LoadModel("Assets/Models/cube.obj", handleShader);
+    auto& handleTransform = world.GetComponent<TransformComponent>(handleEntity);
+    handleTransform.position = basePosition + Vector3(0.0f, handleHeight * 0.5f, 0.0f);
+    handleTransform.scale = {handleRadius, handleHeight, handleRadius};
+    auto& handleMat = world.GetComponent<MaterialComponent>(handleEntity);
+    handleMat.diffuseTexture = nullptr;
+    handleMat.diffuseColor = {0.35f, 0.22f, 0.12f, 1.0f};
+    auto& handleShaderComp = world.GetComponent<ShaderComponent>(handleEntity);
+    handleShaderComp.shaderType = ShaderRenderType::Lit;
+
+    unsigned int flameIndexCount = 0;
+    const auto flameVao = CreateFlameMesh(flameIndexCount);
+
+    const auto flameEntity = world.CreateEntity();
+    auto& flameTransform = world.AddComponent<TransformComponent>(flameEntity);
+    flameTransform.position = basePosition + Vector3(0.0f, handleHeight, 0.0f);
+    flameTransform.scale = {0.18f, 0.5f, 0.18f};
+
+    auto& flameMesh = world.AddComponent<MeshComponent>(flameEntity);
+    flameMesh.vao = flameVao;
+    flameMesh.indexCount = flameIndexCount;
+
+    auto& flameShaderComp = world.AddComponent<ShaderComponent>(flameEntity);
+    flameShaderComp.shader = fireShader;
+    flameShaderComp.shaderType = ShaderRenderType::Fire;
+
+    const auto flameLightEntity = world.CreateEntity();
+    auto& flameLight = world.AddComponent<LightComponent>(flameLightEntity);
+    flameLight.type = LightType::Point;
+    flameLight.color = {1.0f, 0.55f, 0.15f};
+    flameLight.intensity = 4.0f;
+    flameLight.position = flameTransform.position + Vector3(0.0f, flameTransform.scale.y * 0.3f, 0.0f);
+    flameLight.range = 12.0f;
+}
+
+VertexArrayObjectPtr ExampleGame::CreateFlameMesh(unsigned int& outIndexCount)
+{
+    constexpr int segments = 8;
+
+    std::vector<Vector3> basePoints(segments);
+    for (int i = 0; i < segments; i++)
+    {
+        const float angle = (2.0f * 3.14159265f * static_cast<float>(i)) / static_cast<float>(segments);
+        basePoints[i] = {std::cos(angle), 0.0f, std::sin(angle)};
+    }
+
+    const Vector3 apex = {0.0f, 1.0f, 0.0f};
+    const Vector3 baseCenter = {0.0f, 0.0f, 0.0f};
+
+    std::vector<Vector3> vertices;
+    vertices.reserve(segments * 6);
+    for (int i = 0; i < segments; i++)
+    {
+        const Vector3& a = basePoints[i];
+        const Vector3& b = basePoints[(i + 1) % segments];
+
+        vertices.push_back(apex);
+        vertices.push_back(a);
+        vertices.push_back(b);
+
+        vertices.push_back(baseCenter);
+        vertices.push_back(b);
+        vertices.push_back(a);
+    }
+
+    std::vector<unsigned int> indices(vertices.size());
+    for (unsigned int i = 0; i < indices.size(); i++)
+        indices[i] = i;
+
+    VertexAttributes attrs[] = {{3}};
+    const auto vao = renderEngine->CreateVertexArrayObject(
+        {static_cast<void*>(vertices.data()), 3 * sizeof(float), static_cast<int>(vertices.size()), attrs, 1},
+        {static_cast<void*>(indices.data()), static_cast<int>(indices.size() * sizeof(unsigned int))});
+
+    outIndexCount = static_cast<unsigned int>(indices.size());
+    return vao;
 }
 
 void ExampleGame::OnUpdate(float deltaTime) {}

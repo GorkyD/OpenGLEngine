@@ -2,6 +2,8 @@
 #include "Ecs/Components/MeshComponent.h"
 #include "Ecs/Components/ShaderComponent.h"
 #include "Ecs/Components/MaterialComponent.h"
+#include "Ecs/Components/LightComponent.h"
+#include "Ecs/Components/AmbientLightComponent.h"
 #include "Ecs/Components/TransformComponent.h"
 #include "Ecs/Core/IEcsSystem.h"
 #include "Render/RenderEngine.h"
@@ -14,14 +16,54 @@
 class RenderSystem : public IEcsSystem
 {
 public:
+    static constexpr int MaxLights = 8;
+
     RenderSystem(RenderEngine* re, UniformBufferPtr ub) : renderEngine(re), uniformBuffer(ub) {}
 
     void Run(EcsWorld& world, float deltaTime) override
     {
+        elapsedTime += deltaTime;
+
         auto& meshes = world.GetPool<MeshComponent>();
         auto& shaders = world.GetPool<ShaderComponent>();
         auto& materials = world.GetPool<MaterialComponent>();
         auto& transforms = world.GetPool<TransformComponent>();
+
+        AmbientLightComponent ambient;
+        for (auto& pair : world.GetPool<AmbientLightComponent>())
+        {
+            ambient = pair.second;
+            break;
+        }
+
+        int numLights = 0;
+        int lightType[MaxLights] = {};
+        float lightColor[MaxLights * 3] = {};
+        float lightIntensity[MaxLights] = {};
+        float lightDirection[MaxLights * 3] = {};
+        float lightPosition[MaxLights * 3] = {};
+        float lightRange[MaxLights] = {};
+
+        for (auto& pair : world.GetPool<LightComponent>())
+        {
+            if (numLights >= MaxLights)
+                break;
+
+            const auto& light = pair.second;
+            lightType[numLights] = static_cast<int>(light.type);
+            lightColor[numLights * 3 + 0] = light.color.x;
+            lightColor[numLights * 3 + 1] = light.color.y;
+            lightColor[numLights * 3 + 2] = light.color.z;
+            lightIntensity[numLights] = light.intensity;
+            lightDirection[numLights * 3 + 0] = light.direction.x;
+            lightDirection[numLights * 3 + 1] = light.direction.y;
+            lightDirection[numLights * 3 + 2] = light.direction.z;
+            lightPosition[numLights * 3 + 0] = light.position.x;
+            lightPosition[numLights * 3 + 1] = light.position.y;
+            lightPosition[numLights * 3 + 2] = light.position.z;
+            lightRange[numLights] = light.range;
+            numLights++;
+        }
 
         for (auto& pair : meshes)
         {
@@ -56,18 +98,56 @@ public:
                 }
             }
 
-            int colorLoc = glGetUniformLocation(shaderComp.shader->GetId(), "diffuseColor");
-            glUniform4f(colorLoc, color.x, color.y, color.z, color.w);
+            auto* shader = shaderComp.shader.get();
 
-            int hasTexLoc = glGetUniformLocation(shaderComp.shader->GetId(), "hasTexture");
-            glUniform1i(hasTexLoc, hasTexture);
+            glUniform4f(shader->GetUniformLocation("diffuseColor"), color.x, color.y, color.z, color.w);
+            glUniform1i(shader->GetUniformLocation("hasTexture"), hasTexture);
+
+            if (shaderComp.shaderType == ShaderRenderType::Lit)
+            {
+                glUniform3f(shader->GetUniformLocation("ambientColor"), ambient.color.x, ambient.color.y, ambient.color.z);
+                glUniform1f(shader->GetUniformLocation("ambientIntensity"), ambient.intensity);
+
+                glUniform1i(shader->GetUniformLocation("numLights"), numLights);
+                if (numLights > 0)
+                {
+                    glUniform1iv(shader->GetUniformLocation("lightType"), numLights, lightType);
+                    glUniform3fv(shader->GetUniformLocation("lightColor"), numLights, lightColor);
+                    glUniform1fv(shader->GetUniformLocation("lightIntensity"), numLights, lightIntensity);
+                    glUniform3fv(shader->GetUniformLocation("lightDirection"), numLights, lightDirection);
+                    glUniform3fv(shader->GetUniformLocation("lightPosition"), numLights, lightPosition);
+                    glUniform1fv(shader->GetUniformLocation("lightRange"), numLights, lightRange);
+                }
+
+                float normalMatrix[9];
+                worldMatrix.GetNormalMatrix(normalMatrix);
+                glUniformMatrix3fv(shader->GetUniformLocation("normalMatrix"), 1, GL_TRUE, normalMatrix);
+            }
+
+            const bool isFire = shaderComp.shaderType == ShaderRenderType::Fire;
+            if (isFire)
+            {
+                glUniform1f(shader->GetUniformLocation("time"), elapsedTime);
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                glDepthMask(GL_FALSE);
+                glDisable(GL_CULL_FACE);
+            }
 
             renderEngine->SetVertexArrayObject(mesh.vao);
             renderEngine->DrawIndexedTriangles(List, mesh.indexCount);
+
+            if (isFire)
+            {
+                glEnable(GL_CULL_FACE);
+                glDepthMask(GL_TRUE);
+                glDisable(GL_BLEND);
+            }
         }
     }
 
 private:
     RenderEngine* renderEngine;
     UniformBufferPtr uniformBuffer;
+    float elapsedTime = 0.0f;
 };
