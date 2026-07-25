@@ -8,11 +8,13 @@ class VertexArrayObject;
 class UniformBuffer;
 class ShaderProgram;
 class Texture;
+class Font;
 
 typedef std::shared_ptr<VertexArrayObject> VertexArrayObjectPtr;
 typedef std::shared_ptr<UniformBuffer> UniformBufferPtr;
 typedef std::shared_ptr<ShaderProgram> ShaderProgramPtr;
 typedef std::shared_ptr<Texture> TexturePtr;
+typedef std::shared_ptr<Font> FontPtr;
 
 struct VertexAttributes
 {

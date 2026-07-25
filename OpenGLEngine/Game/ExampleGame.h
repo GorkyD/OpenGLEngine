@@ -17,4 +17,9 @@ private:
     void CreateSkybox(ShaderProgramPtr shader);
     void CreateTorch(const Vector3& basePosition, ShaderProgramPtr handleShader, ShaderProgramPtr fireShader);
     VertexArrayObjectPtr CreateFlameMesh(unsigned int& outIndexCount);
+    void CreateUiText();
+
+    Entity fpsTextEntity = 0;
+    float fpsUpdateTimer = 0.0f;
+    int fpsFrameCount = 0;
 };

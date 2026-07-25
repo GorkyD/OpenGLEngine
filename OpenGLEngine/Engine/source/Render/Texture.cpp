@@ -104,6 +104,35 @@ TexturePtr Texture::LoadCubemap(const std::array<std::string, 6>& facePaths)
     return texture;
 }
 
+TexturePtr Texture::CreateFromPixels(const unsigned char* pixels, int width, int height, int channels)
+{
+    GLenum format = channels == 1 ? GL_RED : GL_RGBA;
+
+    unsigned int texId = 0;
+    glGenTextures(1, &texId);
+    glBindTexture(GL_TEXTURE_2D, texId);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, pixels);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    auto texture = std::shared_ptr<Texture>(new Texture());
+    texture->id = texId;
+    texture->target = GL_TEXTURE_2D;
+    texture->width = width;
+    texture->height = height;
+    texture->channels = channels;
+
+    return texture;
+}
+
 Texture::~Texture()
 {
     if (id)
