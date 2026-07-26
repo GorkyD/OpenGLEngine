@@ -6,4 +6,5 @@ struct MeshComponent
 {
     VertexArrayObjectPtr vao;
     unsigned int indexCount = 0;
+    bool visible = true;
 };

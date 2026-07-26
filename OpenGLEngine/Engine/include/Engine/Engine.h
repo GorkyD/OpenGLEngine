@@ -16,6 +16,7 @@ struct StandardShaders
 {
     ShaderProgramPtr unlit;
     ShaderProgramPtr lit;
+    ShaderProgramPtr litInstanced;
     ShaderProgramPtr skybox;
     ShaderProgramPtr fire;
     ShaderProgramPtr particle;

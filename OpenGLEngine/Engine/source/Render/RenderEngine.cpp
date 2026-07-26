@@ -109,6 +109,27 @@ void RenderEngine::DrawIndexedTriangles(const TriangleType& type, unsigned int i
     glDrawElements(glTriType, indicesCount, GL_UNSIGNED_INT, nullptr);
 }
 
+void RenderEngine::DrawIndexedTrianglesInstanced(const TriangleType& type, unsigned int indicesCount, unsigned int instanceCount)
+{
+    auto glTriType = GL_TRIANGLES;
+
+    switch (type)
+    {
+    case List:
+    {
+        glTriType = GL_TRIANGLES;
+        break;
+    }
+    case Strip:
+    {
+        glTriType = GL_TRIANGLE_STRIP;
+        break;
+    }
+    }
+
+    glDrawElementsInstanced(glTriType, indicesCount, GL_UNSIGNED_INT, nullptr, instanceCount);
+}
+
 VertexArrayObjectPtr RenderEngine::CreateVertexArrayObject(const VertexBufferDesc& desc)
 {
     return std::make_shared<VertexArrayObject>(desc);

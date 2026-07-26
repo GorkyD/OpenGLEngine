@@ -67,13 +67,20 @@ void ShaderProgram::Attach(const char* shaderFilePath, const ShaderType& type)
     glShaderSource(shaderId, 1, &sourcePointer, nullptr);
     glCompileShader(shaderId);
 
-    int logLength = 0;
-    glGetShaderiv(shaderId, GL_INFO_LOG_LENGTH, &logLength);
-    if (logLength > 0)
+    int compileStatus = GL_FALSE;
+    glGetShaderiv(shaderId, GL_COMPILE_STATUS, &compileStatus);
+    if (compileStatus == GL_FALSE)
     {
-        std::vector<char> errorMessage(logLength + 1);
-        glGetShaderInfoLog(shaderId, logLength, nullptr, errorMessage.data());
-        OGL_WARNING("ShaderProgram | " << shaderFilePath << " compiled with errors: " << std::endl << errorMessage.data())
+        int logLength = 0;
+        glGetShaderiv(shaderId, GL_INFO_LOG_LENGTH, &logLength);
+        if (logLength > 0)
+        {
+            std::vector<char> errorMessage(logLength + 1);
+            glGetShaderInfoLog(shaderId, logLength, nullptr, errorMessage.data());
+            OGL_WARNING("ShaderProgram | " << shaderFilePath << " compiled with errors: " << std::endl << errorMessage.data())
+        }
+
+        glDeleteShader(shaderId);
         return;
     }
 

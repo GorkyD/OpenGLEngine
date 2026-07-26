@@ -24,4 +24,5 @@ public:
     void SetUniformBuffer(const UniformBufferPtr& buffer, unsigned int slot);
     void DrawTriangles(const TriangleType& type, unsigned int vertexCount, unsigned int offset);
     void DrawIndexedTriangles(const TriangleType& type, unsigned int indicesCount);
+    void DrawIndexedTrianglesInstanced(const TriangleType& type, unsigned int indicesCount, unsigned int instanceCount);
 };

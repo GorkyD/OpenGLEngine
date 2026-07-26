@@ -14,17 +14,26 @@
 #include "Render/ShaderProgram.h"
 #include "Render/UniformBuffer.h"
 #include "Render/Texture.h"
+#include "Render/InstanceData.h"
+#include "Render/VertexArrayObject.h"
 #include "Math/Matrix4.h"
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
 #include <glad/glad.h>
+#include <cstring>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 class RenderSystem : public IEcsSystem
 {
 public:
     static constexpr int MaxLights = 32;
 
-    RenderSystem(RenderEngine* re, const UniformBufferPtr& ub, const ShaderProgramPtr& outlineShader) : renderEngine(re), uniformBuffer(ub), outlineShader(outlineShader) {}
+    RenderSystem(RenderEngine* re, const UniformBufferPtr& ub, const ShaderProgramPtr& outlineShader, const ShaderProgramPtr& litInstancedShader) :
+        renderEngine(re), uniformBuffer(ub), outlineShader(outlineShader), litInstancedShader(litInstancedShader)
+    {
+    }
 
     void Run(EcsWorld& world, float deltaTime) override
     {
@@ -90,6 +99,9 @@ public:
         auto drawEntity = [&](Entity entity, MeshComponent& mesh)
         {
             if (!shaders.Has(entity))
+                return;
+
+            if (!mesh.visible)
                 return;
 
             Matrix4 worldMatrix;
@@ -221,10 +233,104 @@ public:
 
         auto typeOf = [&](Entity entity) -> ShaderRenderType { return shaders.Has(entity) ? shaders.Get(entity).shaderType : ShaderRenderType::Unlit; };
 
+        std::unordered_map<VertexArrayObject*, std::vector<Entity>> batchGroups;
+        for (auto& [entityId, meshComponent] : meshes)
+        {
+            if (!meshComponent.visible)
+                continue;
+            if (typeOf(entityId) != ShaderRenderType::Lit)
+                continue;
+            if (world.HasComponent<OutlineComponent>(entityId))
+                continue;
+            if (materials.Has(entityId))
+            {
+                auto& mat = materials.Get(entityId);
+                if (mat.diffuseTexture || mat.normalTexture || mat.roughnessTexture || mat.metallicTexture || mat.aoTexture)
+                    continue;
+            }
+            batchGroups[meshComponent.vao.get()].push_back(entityId);
+        }
+
+        std::unordered_set<Entity> batchedEntities;
+
+        for (auto& [vaoPtr, entityList] : batchGroups)
+        {
+            if (entityList.size() < 2)
+                continue;
+
+            std::vector<InstanceData> instances;
+            instances.reserve(entityList.size());
+            for (auto entity : entityList)
+            {
+                InstanceData instance = {};
+
+                Matrix4 worldMatrix;
+                if (transforms.Has(entity))
+                    worldMatrix = transforms.Get(entity).GetModelMatrix();
+                std::memcpy(instance.world, worldMatrix.matrix, sizeof(float) * 16);
+
+                if (materials.Has(entity))
+                {
+                    auto& mat = materials.Get(entity);
+                    instance.diffuseColor[0] = mat.diffuseColor.x;
+                    instance.diffuseColor[1] = mat.diffuseColor.y;
+                    instance.diffuseColor[2] = mat.diffuseColor.z;
+                    instance.diffuseColor[3] = mat.diffuseColor.w;
+                    instance.emissiveColorIntensity[0] = mat.emissiveColor.x;
+                    instance.emissiveColorIntensity[1] = mat.emissiveColor.y;
+                    instance.emissiveColorIntensity[2] = mat.emissiveColor.z;
+                    instance.emissiveColorIntensity[3] = mat.emissiveIntensity;
+                }
+                else
+                {
+                    instance.diffuseColor[0] = 1;
+                    instance.diffuseColor[1] = 1;
+                    instance.diffuseColor[2] = 1;
+                    instance.diffuseColor[3] = 1;
+                    instance.emissiveColorIntensity[0] = 0;
+                    instance.emissiveColorIntensity[1] = 0;
+                    instance.emissiveColorIntensity[2] = 0;
+                    instance.emissiveColorIntensity[3] = 0;
+                }
+
+                instances.push_back(instance);
+            }
+
+            renderEngine->SetShaderProgram(litInstancedShader);
+
+            glUniform3f(litInstancedShader->GetUniformLocation("viewPos"), viewPos.x, viewPos.y, viewPos.z);
+            glUniform3f(litInstancedShader->GetUniformLocation("ambientColor"), ambient.color.x, ambient.color.y, ambient.color.z);
+            glUniform1f(litInstancedShader->GetUniformLocation("ambientIntensity"), ambient.intensity);
+
+            glUniform1i(litInstancedShader->GetUniformLocation("numLights"), numLights);
+            if (numLights > 0)
+            {
+                glUniform1iv(litInstancedShader->GetUniformLocation("lightType"), numLights, lightType);
+                glUniform3fv(litInstancedShader->GetUniformLocation("lightColor"), numLights, lightColor);
+                glUniform1fv(litInstancedShader->GetUniformLocation("lightIntensity"), numLights, lightIntensity);
+                glUniform3fv(litInstancedShader->GetUniformLocation("lightDirection"), numLights, lightDirection);
+                glUniform3fv(litInstancedShader->GetUniformLocation("lightPosition"), numLights, lightPosition);
+                glUniform1fv(litInstancedShader->GetUniformLocation("lightRange"), numLights, lightRange);
+            }
+
+            glUniform3f(litInstancedShader->GetUniformLocation("fogColor"), fog.color.x, fog.color.y, fog.color.z);
+            glUniform1f(litInstancedShader->GetUniformLocation("fogStart"), fog.start);
+            glUniform1f(litInstancedShader->GetUniformLocation("fogEnd"), fog.end);
+
+            vaoPtr->UploadInstanceData(instances.data(), static_cast<unsigned int>(instances.size()));
+            renderEngine->SetVertexArrayObject(meshes.Get(entityList[0]).vao);
+            renderEngine->DrawIndexedTrianglesInstanced(List, meshes.Get(entityList[0]).indexCount, static_cast<unsigned int>(instances.size()));
+
+            for (auto entity : entityList)
+                batchedEntities.insert(entity);
+        }
+
         for (auto& [entityId, meshComponent] : meshes)
         {
             const auto type = typeOf(entityId);
             if (type == ShaderRenderType::Fire || type == ShaderRenderType::Shadow)
+                continue;
+            if (batchedEntities.count(entityId))
                 continue;
             drawEntity(entityId, meshComponent);
         }
@@ -246,7 +352,7 @@ public:
             for (auto& [entityId, outlineComponent] : world.GetPool<OutlineComponent>())
             {
                 const Entity entity = entityId;
-                if (!meshes.Has(entity) || !transforms.Has(entity))
+                if (!meshes.Has(entity) || !transforms.Has(entity) || !meshes.Get(entity).visible)
                     continue;
 
                 Matrix4 worldMatrix = transforms.Get(entity).GetModelMatrix();
@@ -268,6 +374,7 @@ private:
     RenderEngine* renderEngine;
     UniformBufferPtr uniformBuffer;
     ShaderProgramPtr outlineShader;
+    ShaderProgramPtr litInstancedShader;
 
     float elapsedTime = 0.0f;
 };

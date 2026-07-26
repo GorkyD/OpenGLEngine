@@ -39,6 +39,9 @@ void Engine::CreateStandardShaders()
     shaders.lit = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Lit.vert", "Assets/Shaders/SimpleShader_Lit.frag"});
     shaders.lit->SetUniformBufferSlot("UniformData", 0);
 
+    shaders.litInstanced = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_LitInstanced.vert", "Assets/Shaders/SimpleShader_LitInstanced.frag"});
+    shaders.litInstanced->SetUniformBufferSlot("UniformData", 0);
+
     shaders.skybox = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Skybox.vert", "Assets/Shaders/SimpleShader_Skybox.frag"});
     shaders.skybox->SetUniformBufferSlot("UniformData", 0);
 
@@ -63,7 +66,7 @@ void Engine::CreateStandardSystems()
     systems->Add(std::make_unique<CameraMatrixSystem>(renderEngine.get(), uniformBuffer, window.get()));
     systems->Add(std::make_unique<SkyboxSystem>(renderEngine.get()));
     systems->Add(std::make_unique<HoverSystem>(inputSystem.get(), window.get()));
-    systems->Add(std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer, shaders.outline));
+    systems->Add(std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer, shaders.outline, shaders.litInstanced));
     systems->Add(std::make_unique<ParticleSystem>(renderEngine.get(), shaders.particle, uniformBuffer));
     systems->Add(std::make_unique<RotatorSystem>());
     systems->Add(std::make_unique<PendulumSystem>());
