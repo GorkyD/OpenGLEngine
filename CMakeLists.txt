@@ -136,9 +136,23 @@ set(ENGINE_SOURCES
     OpenGLEngine/Engine/source/Scene/DemoScene.cpp
 )
 
-set(GAME_SOURCES
-    OpenGLEngine/Game/main.cpp
+# Any game dropped into OpenGLEngine/Game/ (with its own .cpp files and, optionally,
+# its own subfolder) is picked up automatically - no per-game entries needed here.
+# CONFIGURE_DEPENDS makes CMake re-scan this on the next build after files are
+# added/removed/renamed under OpenGLEngine/Game/.
+file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/OpenGLEngine/Game/*.cpp"
 )
+
+file(GLOB GAME_ENTRIES CONFIGURE_DEPENDS LIST_DIRECTORIES true
+    "${CMAKE_SOURCE_DIR}/OpenGLEngine/Game/*"
+)
+set(GAME_INCLUDE_DIRS "")
+foreach(_entry ${GAME_ENTRIES})
+    if(IS_DIRECTORY "${_entry}")
+        list(APPEND GAME_INCLUDE_DIRS "${_entry}")
+    endif()
+endforeach()
 
 add_executable(OpenGLEngine ${ENGINE_SOURCES} ${GAME_SOURCES})
 
@@ -146,6 +160,7 @@ target_include_directories(OpenGLEngine PRIVATE
     OpenGLEngine/Engine/include
     OpenGLEngine/Engine
     OpenGLEngine/Game
+    ${GAME_INCLUDE_DIRS}
 )
 
 if(OPENGLENGINE_ENABLE_WWISE AND WWISE_SDK_ROOT)
