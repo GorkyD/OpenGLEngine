@@ -25,6 +25,9 @@ Window::Window()
         glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
         glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
         window = glfwCreateWindow(mode->width, mode->height, "OpenGLEngine", monitor, nullptr);
+        glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+        glfwSetWindowPos(window, 0, 0);
+        glfwSetWindowSize(window, mode->width, mode->height);
     }
     else
     {

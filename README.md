@@ -1,5 +1,7 @@
 # OpenGLEngine
 
+![Demo](docs/demo.gif)
+
 ## Build Setup
 
 Dependencies are managed through `vcpkg` manifest mode (`vcpkg.json`). On Linux and macOS, the helper scripts bootstrap `vcpkg` into the local `./vcpkg` directory. The macOS preset targets Apple Silicon (`arm64-osx`).
