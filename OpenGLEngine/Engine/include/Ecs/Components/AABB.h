@@ -11,9 +11,9 @@ struct AABB
 
 struct CollisionInfo
 {
-    bool collided = false;
     Vector3 normal;
     float depth = 0.0f;
+    bool collided = false;
 };
 
 inline CollisionInfo CheckCollision(const AABB& a, const AABB& b)
