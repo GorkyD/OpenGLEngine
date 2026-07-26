@@ -9,14 +9,14 @@ uniform UniformData
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec2 uv;
-layout(location = 2) in float alpha;
+layout(location = 2) in vec4 color;
 
 out vec2 fragUv;
-out float fragAlpha;
+out vec4 fragColor;
 
 void main()
 {
     gl_Position = projection * view * vec4(position, 1.0);
     fragUv = uv;
-    fragAlpha = alpha;
+    fragColor = color;
 }

@@ -32,7 +32,7 @@ public:
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(ParticleVertex), reinterpret_cast<void*>(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(ParticleVertex), reinterpret_cast<void*>(5 * sizeof(float)));
+        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(ParticleVertex), reinterpret_cast<void*>(5 * sizeof(float)));
         glEnableVertexAttribArray(2);
 
         glBindVertexArray(0);
@@ -89,21 +89,31 @@ public:
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
+        std::vector<ParticleVertex> normalVertices;
+        std::vector<ParticleVertex> additiveVertices;
+
         for (auto& [entityId, emitterComponent] : emitters)
         {
             if (emitterComponent.particles.empty())
                 continue;
 
-            BuildBillboards(emitterComponent, cameraPos);
-            if (vertexScratch.empty())
-                continue;
+            BuildBillboards(emitterComponent, cameraPos, emitterComponent.additive ? additiveVertices : normalVertices);
+        }
 
-            EnsureCapacity(vertexScratch.size());
+        if (!normalVertices.empty())
+        {
+            EnsureCapacity(normalVertices.size());
+            glBufferSubData(GL_ARRAY_BUFFER, 0, normalVertices.size() * sizeof(ParticleVertex), normalVertices.data());
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(normalVertices.size()));
+        }
 
-            glBufferSubData(GL_ARRAY_BUFFER, 0, vertexScratch.size() * sizeof(ParticleVertex), vertexScratch.data());
-            glBlendFunc(GL_SRC_ALPHA, emitterComponent.additive ? GL_ONE : GL_ONE_MINUS_SRC_ALPHA);
-            glUniform3f(particleShader->GetUniformLocation("particleColor"), emitterComponent.color.x, emitterComponent.color.y, emitterComponent.color.z);
-            glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexScratch.size()));
+        if (!additiveVertices.empty())
+        {
+            EnsureCapacity(additiveVertices.size());
+            glBufferSubData(GL_ARRAY_BUFFER, 0, additiveVertices.size() * sizeof(ParticleVertex), additiveVertices.data());
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+            glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(additiveVertices.size()));
         }
 
         glBindVertexArray(0);
@@ -117,7 +127,7 @@ private:
     {
         Vector3 position;
         float u, v;
-        float alpha;
+        float r, g, b, a;
     };
 
     static float RandomRange(const float minValue, const float maxValue)
@@ -179,10 +189,9 @@ private:
         }
     }
 
-    void BuildBillboards(const ParticleEmitterComponent& emitter, const Vector3& cameraPos)
+    void BuildBillboards(const ParticleEmitterComponent& emitter, const Vector3& cameraPos, std::vector<ParticleVertex>& outVertices)
     {
-        vertexScratch.clear();
-        vertexScratch.reserve(emitter.particles.size() * 6);
+        outVertices.reserve(outVertices.size() + emitter.particles.size() * 6);
 
         for (const auto& particle : emitter.particles)
         {
@@ -212,13 +221,13 @@ private:
             const Vector3 tr = particle.position + rightOffset + upOffset;
             const Vector3 tl = particle.position - rightOffset + upOffset;
 
-            vertexScratch.push_back({bl, 0.0f, 0.0f, alpha});
-            vertexScratch.push_back({br, 1.0f, 0.0f, alpha});
-            vertexScratch.push_back({tr, 1.0f, 1.0f, alpha});
+            outVertices.push_back({bl, 0.0f, 0.0f, emitter.color.x, emitter.color.y, emitter.color.z, alpha});
+            outVertices.push_back({br, 1.0f, 0.0f, emitter.color.x, emitter.color.y, emitter.color.z, alpha});
+            outVertices.push_back({tr, 1.0f, 1.0f, emitter.color.x, emitter.color.y, emitter.color.z, alpha});
 
-            vertexScratch.push_back({bl, 0.0f, 0.0f, alpha});
-            vertexScratch.push_back({tr, 1.0f, 1.0f, alpha});
-            vertexScratch.push_back({tl, 0.0f, 1.0f, alpha});
+            outVertices.push_back({bl, 0.0f, 0.0f, emitter.color.x, emitter.color.y, emitter.color.z, alpha});
+            outVertices.push_back({tr, 1.0f, 1.0f, emitter.color.x, emitter.color.y, emitter.color.z, alpha});
+            outVertices.push_back({tl, 0.0f, 1.0f, emitter.color.x, emitter.color.y, emitter.color.z, alpha});
         }
     }
 
@@ -234,8 +243,6 @@ private:
     RenderEngine* renderEngine;
     ShaderProgramPtr particleShader;
     UniformBufferPtr uniformBuffer;
-
-    std::vector<ParticleVertex> vertexScratch;
 
     size_t bufferCapacity = 512;
 
