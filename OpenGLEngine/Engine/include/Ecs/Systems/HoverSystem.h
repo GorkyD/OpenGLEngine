@@ -140,7 +140,7 @@ public:
 private:
     InputSystem* input;
     Window* window;
-    
+
     Entity tooltipEntity = 0;
     Entity hoveredEntity = 0;
 

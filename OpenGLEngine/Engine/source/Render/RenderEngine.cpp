@@ -113,8 +113,7 @@ VertexArrayObjectPtr RenderEngine::CreateVertexArrayObject(const VertexBufferDes
     return std::make_shared<VertexArrayObject>(desc);
 }
 
-VertexArrayObjectPtr RenderEngine::CreateVertexArrayObject(const VertexBufferDesc& vertexBufferDesc,
-                                                           const IndexBufferDesc& indexBufferDesc)
+VertexArrayObjectPtr RenderEngine::CreateVertexArrayObject(const VertexBufferDesc& vertexBufferDesc, const IndexBufferDesc& indexBufferDesc)
 {
     return std::make_shared<VertexArrayObject>(vertexBufferDesc, indexBufferDesc);
 }

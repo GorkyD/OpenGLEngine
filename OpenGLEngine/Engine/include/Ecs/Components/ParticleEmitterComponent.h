@@ -35,7 +35,7 @@ struct ParticleEmitterComponent
     float spawnAccumulator = 0.0f;
 
     unsigned int maxParticles = 48;
-    
+
     bool additive = false;
     bool followCamera = false;
 };

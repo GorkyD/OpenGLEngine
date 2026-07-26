@@ -17,7 +17,7 @@ struct AutoOrbitComponent
     float angle = 0.0f;
     float idleTimer = 0.0f;
     float transitionT = 0.0f;
-    
+
     float transitionStartYaw = 0.0f;
     float transitionStartPitch = 0.0f;
 

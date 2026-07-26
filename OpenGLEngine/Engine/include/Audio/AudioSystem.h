@@ -43,6 +43,12 @@ private:
 
 #if OPENGLENGINE_USE_WWISE
     CAkDefaultIOHookDeferred g_lowLevelIO;
+
+    bool memoryMgrInitialized = false;
+    bool streamMgrCreated = false;
+    bool lowLevelIoInitialized = false;
+    bool soundEngineInitialized = false;
+    bool commInitialized = false;
 #endif
     bool initialized = false;
 };

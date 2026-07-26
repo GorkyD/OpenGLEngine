@@ -72,3 +72,118 @@ VertexArrayObjectPtr MeshFactory::CreateSphere(RenderEngine* renderEngine, unsig
     outIndexCount = static_cast<unsigned int>(indices.size());
     return vao;
 }
+
+VertexArrayObjectPtr MeshFactory::CreateGem(RenderEngine* renderEngine, unsigned int& outIndexCount, int sides, float radius, float topHeight, float bottomHeight)
+{
+    struct GemVertex
+    {
+        Vector3 position;
+        Vector2 uv;
+        Vector3 normal;
+    };
+
+    std::vector<GemVertex> vertices;
+    vertices.reserve(static_cast<size_t>(sides + 1) * 3);
+
+    constexpr float pi = 3.14159265358979323846f;
+
+    for (int r = 0; r <= 2; r++)
+    {
+        for (int s = 0; s <= sides; s++)
+        {
+            const float u = static_cast<float>(s) / static_cast<float>(sides);
+            const float theta = u * 2.0f * pi;
+            const float cosT = std::cos(theta);
+            const float sinT = std::sin(theta);
+
+            GemVertex vertex;
+            if (r == 0)
+            {
+                vertex.position = {0.0f, topHeight, 0.0f};
+                vertex.normal = Vector3::Normalize({topHeight * cosT, radius, topHeight * sinT});
+                vertex.uv = {u, 0.0f};
+            }
+            else if (r == 1)
+            {
+                vertex.position = {cosT * radius, 0.0f, sinT * radius};
+                vertex.normal = {cosT, 0.0f, sinT};
+                vertex.uv = {u, 0.5f};
+            }
+            else
+            {
+                vertex.position = {0.0f, -bottomHeight, 0.0f};
+                vertex.normal = Vector3::Normalize({bottomHeight * cosT, -radius, bottomHeight * sinT});
+                vertex.uv = {u, 1.0f};
+            }
+
+            vertices.push_back(vertex);
+        }
+    }
+
+    std::vector<unsigned int> indices;
+    indices.reserve(static_cast<size_t>(sides) * 12);
+
+    const int stride = sides + 1;
+    for (int r = 0; r < 2; r++)
+    {
+        for (int s = 0; s < sides; s++)
+        {
+            const unsigned int a = r * stride + s;
+            const unsigned int b = a + stride;
+
+            indices.push_back(a);
+            indices.push_back(a + 1);
+            indices.push_back(b);
+
+            indices.push_back(a + 1);
+            indices.push_back(b + 1);
+            indices.push_back(b);
+        }
+    }
+
+    VertexAttributes attrs[] = {{3}, {2}, {3}};
+    const auto vao = renderEngine->CreateVertexArrayObject({static_cast<void*>(vertices.data()), sizeof(GemVertex), static_cast<int>(vertices.size()), attrs, 3},
+                                                           {static_cast<void*>(indices.data()), static_cast<int>(indices.size() * sizeof(unsigned int))});
+
+    outIndexCount = static_cast<unsigned int>(indices.size());
+    return vao;
+}
+
+VertexArrayObjectPtr MeshFactory::CreateDisc(RenderEngine* renderEngine, unsigned int& outIndexCount, int segments, float radius)
+{
+    struct DiscVertex
+    {
+        Vector3 position;
+        Vector2 uv;
+        Vector3 normal;
+    };
+
+    std::vector<DiscVertex> vertices;
+    vertices.reserve(static_cast<size_t>(segments) + 2);
+    vertices.push_back({{0.0f, 0.0f, 0.0f}, {0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}});
+
+    constexpr float pi = 3.14159265358979323846f;
+    for (int i = 0; i <= segments; i++)
+    {
+        const float angle = (2.0f * pi * static_cast<float>(i)) / static_cast<float>(segments);
+        const float x = std::cos(angle) * radius;
+        const float z = std::sin(angle) * radius;
+        vertices.push_back({{x, 0.0f, z}, {0.5f + 0.5f * std::cos(angle), 0.5f + 0.5f * std::sin(angle)}, {0.0f, 1.0f, 0.0f}});
+    }
+
+    std::vector<unsigned int> indices;
+    indices.reserve(static_cast<size_t>(segments) * 3);
+    for (int i = 0; i < segments; i++)
+    {
+        indices.push_back(0);
+        indices.push_back(static_cast<unsigned int>(i + 1));
+        indices.push_back(static_cast<unsigned int>(i + 2));
+    }
+
+    VertexAttributes attrs[] = {{3}, {2}, {3}};
+    const auto vao = renderEngine->CreateVertexArrayObject({static_cast<void*>(vertices.data()), sizeof(DiscVertex), static_cast<int>(vertices.size()), attrs, 3},
+                                                           {static_cast<void*>(indices.data()), static_cast<int>(indices.size() * sizeof(unsigned int))});
+
+    outIndexCount = static_cast<unsigned int>(indices.size());
+    return vao;
+}

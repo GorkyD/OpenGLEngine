@@ -73,8 +73,7 @@ void ShaderProgram::Attach(const char* shaderFilePath, const ShaderType& type)
     {
         std::vector<char> errorMessage(logLength + 1);
         glGetShaderInfoLog(shaderId, logLength, nullptr, errorMessage.data());
-        OGL_WARNING("ShaderProgram | " << shaderFilePath << " compiled with errors: " << std::endl
-                                       << errorMessage.data())
+        OGL_WARNING("ShaderProgram | " << shaderFilePath << " compiled with errors: " << std::endl << errorMessage.data())
         return;
     }
 

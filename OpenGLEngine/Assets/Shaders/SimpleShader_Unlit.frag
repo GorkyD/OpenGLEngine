@@ -16,5 +16,5 @@ void main()
     if (hasTexture != 0)
         texColor = texture(diffuseTexture, fragTexCoord);
 
-    outColor = vec4(texColor.rgb * diffuseColor.rgb, 1.0);
+    outColor = vec4(texColor.rgb * diffuseColor.rgb, diffuseColor.a);
 }

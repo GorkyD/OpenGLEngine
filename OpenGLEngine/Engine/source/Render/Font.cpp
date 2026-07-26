@@ -1,10 +1,11 @@
 #include "Render/Font.h"
 #include "Render/Texture.h"
-#include "stb/stb_truetype.h"
-#include <algorithm>
-#include <fstream>
 
 #define STB_TRUETYPE_IMPLEMENTATION
+#include "stb/stb_truetype.h"
+
+#include <algorithm>
+#include <fstream>
 
 FontPtr Font::LoadFromFile(const std::string& path, float pixelHeight)
 {

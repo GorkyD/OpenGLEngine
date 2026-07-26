@@ -8,7 +8,7 @@
 struct TextComponent
 {
     std::string text;
-    
+
     FontPtr font;
 
     Vector4 color = {1.0f, 1.0f, 1.0f, 1.0f};

@@ -15,5 +15,8 @@ struct CameraComponent
     float nearPlane = 0.01f;
     float farPlane = 100.0f;
 
+    float orthoSize = 10.0f;
+
     bool isActive = true;
+    bool orthographic = false;
 };

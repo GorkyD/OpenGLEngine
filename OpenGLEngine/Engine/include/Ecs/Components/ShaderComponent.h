@@ -6,7 +6,8 @@ enum class ShaderRenderType
 {
     Unlit,
     Lit,
-    Fire
+    Fire,
+    Shadow
 };
 
 struct ShaderComponent

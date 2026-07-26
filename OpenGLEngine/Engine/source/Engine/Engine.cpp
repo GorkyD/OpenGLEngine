@@ -23,6 +23,7 @@ Engine::Engine()
     renderEngine = std::make_unique<RenderEngine>();
     inputSystem = std::make_shared<InputSystem>(window->GetGLFWWindow());
     audioSystem = std::make_shared<AudioSystem>();
+    saveService = std::make_unique<SaveService>("save.txt");
 }
 
 Engine::~Engine() {}
@@ -111,7 +112,8 @@ void Engine::OnUpdateInternal()
 
     audioSystem->Update();
 
-    renderEngine->Clear(Vector4(0, 0, 0, 1));
+    const Vector4 clearColor = activeScene ? activeScene->GetClearColor() : Vector4(0, 0, 0, 1);
+    renderEngine->Clear(clearColor);
     renderEngine->SetFaceCulling(CullingType::BackFace);
     renderEngine->SetWindingOrder(ClockWise);
 

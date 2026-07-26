@@ -36,7 +36,16 @@ public:
             const float aspect = static_cast<float>(displaySize.width) / static_cast<float>(displaySize.height);
 
             Matrix4 projection;
-            projection.SetPerspectiveLeftHanded(cam.fovY, aspect, cam.nearPlane, cam.farPlane);
+            if (cam.orthographic)
+            {
+                const float height = cam.orthoSize * 2.0f;
+                const float width = height * aspect;
+                projection.SetOrthogonalLeftHanded(width, height, cam.nearPlane, cam.farPlane);
+            }
+            else
+            {
+                projection.SetPerspectiveLeftHanded(cam.fovY, aspect, cam.nearPlane, cam.farPlane);
+            }
 
             UniformData data = {Matrix4(), view, projection};
             uniformBuffer->SetData(&data);

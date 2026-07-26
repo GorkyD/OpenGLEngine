@@ -132,6 +132,7 @@ set(ENGINE_SOURCES
     OpenGLEngine/Engine/source/Resource/ModelLoader.cpp
     OpenGLEngine/Engine/source/Resource/MeshFactory.cpp
     OpenGLEngine/Engine/source/Resource/EntityFactory.cpp
+    OpenGLEngine/Engine/source/Save/SaveService.cpp
     OpenGLEngine/Engine/source/Scene/DemoScene.cpp
 )
 

@@ -196,11 +196,14 @@ public:
             }
 
             const bool isFire = shaderComp.shaderType == ShaderRenderType::Fire;
+            const bool isShadow = shaderComp.shaderType == ShaderRenderType::Shadow;
             if (isFire)
-            {
                 glUniform1f(shader->GetUniformLocation("time"), elapsedTime);
+
+            if (isFire || isShadow)
+            {
                 glEnable(GL_BLEND);
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+                glBlendFunc(GL_SRC_ALPHA, isFire ? GL_ONE : GL_ONE_MINUS_SRC_ALPHA);
                 glDepthMask(GL_FALSE);
                 glDisable(GL_CULL_FACE);
             }
@@ -208,7 +211,7 @@ public:
             renderEngine->SetVertexArrayObject(mesh.vao);
             renderEngine->DrawIndexedTriangles(List, mesh.indexCount);
 
-            if (isFire)
+            if (isFire || isShadow)
             {
                 glEnable(GL_CULL_FACE);
                 glDepthMask(GL_TRUE);
@@ -216,18 +219,26 @@ public:
             }
         };
 
+        auto typeOf = [&](Entity entity) -> ShaderRenderType { return shaders.Has(entity) ? shaders.Get(entity).shaderType : ShaderRenderType::Unlit; };
+
         for (auto& [entityId, meshComponent] : meshes)
         {
-            if (shaders.Has(entityId) && shaders.Get(entityId).shaderType == ShaderRenderType::Fire)
+            const auto type = typeOf(entityId);
+            if (type == ShaderRenderType::Fire || type == ShaderRenderType::Shadow)
                 continue;
             drawEntity(entityId, meshComponent);
         }
 
         for (auto& [entityId, meshComponent] : meshes)
         {
-            const Entity entity = entityId;
-            if (shaders.Has(entity) && shaders.Get(entity).shaderType == ShaderRenderType::Fire)
-                drawEntity(entity, meshComponent);
+            if (typeOf(entityId) == ShaderRenderType::Fire)
+                drawEntity(entityId, meshComponent);
+        }
+
+        for (auto& [entityId, meshComponent] : meshes)
+        {
+            if (typeOf(entityId) == ShaderRenderType::Shadow)
+                drawEntity(entityId, meshComponent);
         }
 
         if (outlineShader)
@@ -257,6 +268,6 @@ private:
     RenderEngine* renderEngine;
     UniformBufferPtr uniformBuffer;
     ShaderProgramPtr outlineShader;
-    
+
     float elapsedTime = 0.0f;
 };

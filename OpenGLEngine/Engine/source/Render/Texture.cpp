@@ -1,8 +1,9 @@
-#include "stb/stb_image.h"
 #include "Render/Texture.h"
-#include <glad/glad.h>
 
 #define STB_IMAGE_IMPLEMENTATION
+#include "stb/stb_image.h"
+
+#include <glad/glad.h>
 
 TexturePtr Texture::LoadFromFile(const std::string& path)
 {

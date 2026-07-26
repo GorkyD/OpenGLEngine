@@ -6,6 +6,7 @@
 #include "Extension/Extension.h"
 #include "Input/InputSystem.h"
 #include "Ecs/Core/EcsSystems.h"
+#include "Save/SaveService.h"
 #include "Scene/IScene.h"
 
 class RenderEngine;
@@ -53,6 +54,10 @@ public:
     {
         return audioSystem.get();
     }
+    SaveService* GetSaveService() const
+    {
+        return saveService.get();
+    }
     const StandardShaders& GetShaders() const
     {
         return shaders;
@@ -83,6 +88,7 @@ protected:
 
     std::shared_ptr<InputSystem> inputSystem;
     std::shared_ptr<AudioSystem> audioSystem;
+    std::unique_ptr<SaveService> saveService;
 
     StandardShaders shaders;
     UniformBufferPtr uniformBuffer;

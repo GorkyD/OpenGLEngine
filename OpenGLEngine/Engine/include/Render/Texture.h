@@ -25,7 +25,7 @@ public:
 
 private:
     Texture() = default;
-    
+
     unsigned int id = 0;
     unsigned int target = 0;
 

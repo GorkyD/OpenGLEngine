@@ -13,10 +13,7 @@
 class UITextSystem : public IEcsSystem
 {
 public:
-    UITextSystem(RenderEngine* re, const ShaderProgramPtr& shader, Window* window)
-        : renderEngine(re), textShader(shader), window(window)
-    {
-    }
+    UITextSystem(RenderEngine* re, const ShaderProgramPtr& shader, Window* window) : renderEngine(re), textShader(shader), window(window) {}
 
     void Init(EcsWorld& world) override
     {
@@ -29,8 +26,7 @@ public:
 
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(FontGlyphVertex), static_cast<void*>(nullptr));
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(FontGlyphVertex),
-                              reinterpret_cast<void*>(2 * sizeof(float)));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(FontGlyphVertex), reinterpret_cast<void*>(2 * sizeof(float)));
         glEnableVertexAttribArray(1);
 
         glBindVertexArray(0);
@@ -66,8 +62,7 @@ public:
         const Rect screen = window->GetInnerSize();
 
         Matrix4 projection;
-        projection.SetOrthographicOffCenter(0.0f, static_cast<float>(screen.width), static_cast<float>(screen.height),
-                                            0.0f, -1.0f, 1.0f);
+        projection.SetOrthographicOffCenter(0.0f, static_cast<float>(screen.width), static_cast<float>(screen.height), 0.0f, -1.0f, 1.0f);
 
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
@@ -96,8 +91,7 @@ public:
             glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(FontGlyphVertex), vertices.data());
 
             glBindTexture(GL_TEXTURE_2D, text.font->GetAtlasTexture()->GetId());
-            glUniform4f(textShader->GetUniformLocation("textColor"), text.color.x, text.color.y, text.color.z,
-                        text.color.w);
+            glUniform4f(textShader->GetUniformLocation("textColor"), text.color.x, text.color.y, text.color.z, text.color.w);
 
             glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size()));
         }
@@ -123,6 +117,6 @@ private:
 
     unsigned int vao = 0;
     unsigned int vbo = 0;
-    
+
     size_t bufferCapacity = 1024;
 };

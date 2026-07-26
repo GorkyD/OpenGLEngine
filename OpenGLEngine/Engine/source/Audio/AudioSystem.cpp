@@ -12,22 +12,29 @@ bool AudioSystem::Init()
     if (AK::MemoryMgr::Init(&memSettings) != AK_Success)
     {
         std::fprintf(stderr, "AudioSystem: MemoryMgr::Init failed\n");
+        Shutdown();
         return false;
     }
+    memoryMgrInitialized = true;
 
     AkStreamMgrSettings stmSettings;
     AK::StreamMgr::GetDefaultSettings(stmSettings);
     if (!AK::StreamMgr::Create(stmSettings))
     {
         std::fprintf(stderr, "AudioSystem: StreamMgr::Create failed\n");
+        Shutdown();
         return false;
     }
+    streamMgrCreated = true;
 
     AkDeviceSettings deviceSettings;
     AK::StreamMgr::GetDefaultDeviceSettings(deviceSettings);
-    if (g_lowLevelIO.Init(deviceSettings) != AK_Success)
+    const AKRESULT lowLevelIoResult = g_lowLevelIO.Init(deviceSettings);
+    lowLevelIoInitialized = true;
+    if (lowLevelIoResult != AK_Success)
     {
         std::fprintf(stderr, "AudioSystem: low-level IO Init failed\n");
+        Shutdown();
         return false;
     }
     g_lowLevelIO.SetBasePath(L"Assets/Wwise/");
@@ -39,14 +46,18 @@ bool AudioSystem::Init()
     if (AK::SoundEngine::Init(&initSettings, &platformSettings) != AK_Success)
     {
         std::fprintf(stderr, "AudioSystem: SoundEngine::Init failed\n");
+        Shutdown();
         return false;
     }
+    soundEngineInitialized = true;
 
 #if !defined(NDEBUG)
     AkCommSettings commSettings;
     AK::Comm::GetDefaultInitSettings(commSettings);
     if (AK::Comm::Init(commSettings) != AK_Success)
         std::fprintf(stderr, "AudioSystem: Comm::Init failed (profiler connection unavailable)\n");
+    else
+        commInitialized = true;
 #endif
 
     RegisterGameObject(ListenerId, "Listener");
@@ -61,11 +72,13 @@ bool AudioSystem::Init()
     if (AK::SoundEngine::LoadBank("Init.bnk", initBank) != AK_Success)
     {
         std::fprintf(stderr, "AudioSystem: failed to load Init.bnk (missing SoundBank?)\n");
+        Shutdown();
         return false;
     }
     if (AK::SoundEngine::LoadBank("Main.bnk", mainBank) != AK_Success)
     {
         std::fprintf(stderr, "AudioSystem: failed to load Main.bnk (missing SoundBank?)\n");
+        Shutdown();
         return false;
     }
 
@@ -87,21 +100,41 @@ void AudioSystem::Update()
 void AudioSystem::Shutdown()
 {
 #if OPENGLENGINE_USE_WWISE
-    if (!initialized)
-        return;
-
-    AK::SoundEngine::UnregisterAllGameObj();
+    if (soundEngineInitialized)
+        AK::SoundEngine::UnregisterAllGameObj();
 
 #if !defined(NDEBUG)
-    AK::Comm::Term();
+    if (commInitialized)
+    {
+        AK::Comm::Term();
+        commInitialized = false;
+    }
 #endif
 
-    AK::SoundEngine::Term();
+    if (soundEngineInitialized)
+    {
+        AK::SoundEngine::Term();
+        soundEngineInitialized = false;
+    }
 
-    g_lowLevelIO.Term();
-    if (AK::IAkStreamMgr::Get())
-        AK::IAkStreamMgr::Get()->Destroy();
-    AK::MemoryMgr::Term();
+    if (lowLevelIoInitialized)
+    {
+        g_lowLevelIO.Term();
+        lowLevelIoInitialized = false;
+    }
+
+    if (streamMgrCreated)
+    {
+        if (AK::IAkStreamMgr::Get())
+            AK::IAkStreamMgr::Get()->Destroy();
+        streamMgrCreated = false;
+    }
+
+    if (memoryMgrInitialized)
+    {
+        AK::MemoryMgr::Term();
+        memoryMgrInitialized = false;
+    }
 
     initialized = false;
 #endif
