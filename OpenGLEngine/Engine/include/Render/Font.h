@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Extension/Extension.h"
+#include "Math/Vector4.h"
 #include <string>
 #include <vector>
 
@@ -8,6 +9,7 @@ struct FontGlyphVertex
 {
     float x, y;
     float u, v;
+    float r, g, b, a;
 };
 
 class Font
@@ -15,7 +17,7 @@ class Font
 public:
     static FontPtr LoadFromFile(const std::string& path, float pixelHeight = 48.0f);
 
-    std::vector<FontGlyphVertex> BuildGeometry(const std::string& text, float x, float y, float scale) const;
+    std::vector<FontGlyphVertex> BuildGeometry(const std::string& text, float x, float y, float scale, const Vector4& color) const;
 
     float MeasureWidth(const std::string& text, float scale) const;
     float GetLineHeight(float scale) const;

@@ -56,7 +56,7 @@ FontPtr Font::LoadFromFile(const std::string& path, float pixelHeight)
     return font;
 }
 
-std::vector<FontGlyphVertex> Font::BuildGeometry(const std::string& text, float x, float y, float scale) const
+std::vector<FontGlyphVertex> Font::BuildGeometry(const std::string& text, float x, float y, float scale, const Vector4& color) const
 {
     std::vector<FontGlyphVertex> vertices;
     if (!atlasTexture)
@@ -91,13 +91,13 @@ std::vector<FontGlyphVertex> Font::BuildGeometry(const std::string& text, float 
         const float y0 = cursorY + quad.y0 * scale;
         const float y1 = cursorY + quad.y1 * scale;
 
-        vertices.push_back({x0, y0, quad.s0, quad.t0});
-        vertices.push_back({x1, y0, quad.s1, quad.t0});
-        vertices.push_back({x1, y1, quad.s1, quad.t1});
+        vertices.push_back({x0, y0, quad.s0, quad.t0, color.x, color.y, color.z, color.w});
+        vertices.push_back({x1, y0, quad.s1, quad.t0, color.x, color.y, color.z, color.w});
+        vertices.push_back({x1, y1, quad.s1, quad.t1, color.x, color.y, color.z, color.w});
 
-        vertices.push_back({x0, y0, quad.s0, quad.t0});
-        vertices.push_back({x1, y1, quad.s1, quad.t1});
-        vertices.push_back({x0, y1, quad.s0, quad.t1});
+        vertices.push_back({x0, y0, quad.s0, quad.t0, color.x, color.y, color.z, color.w});
+        vertices.push_back({x1, y1, quad.s1, quad.t1, color.x, color.y, color.z, color.w});
+        vertices.push_back({x0, y1, quad.s0, quad.t1, color.x, color.y, color.z, color.w});
 
         cursorX += unscaledX * scale;
     }

@@ -9,6 +9,7 @@
 #include "Window/Window.h"
 #include "Math/Matrix4.h"
 #include <glad/glad.h>
+#include <unordered_map>
 
 class UITextSystem : public IEcsSystem
 {
@@ -28,6 +29,8 @@ public:
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(FontGlyphVertex), reinterpret_cast<void*>(2 * sizeof(float)));
         glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(FontGlyphVertex), reinterpret_cast<void*>(4 * sizeof(float)));
+        glEnableVertexAttribArray(2);
 
         glBindVertexArray(0);
     }
@@ -47,16 +50,27 @@ public:
 
         auto& texts = world.GetPool<TextComponent>();
 
-        bool any = false;
+        std::unordered_map<Texture*, std::vector<FontGlyphVertex>> batches;
+
         for (auto& pair : texts)
         {
-            if (pair.second.visible && pair.second.font && !pair.second.text.empty())
-            {
-                any = true;
-                break;
-            }
+            auto& text = pair.second;
+            if (!text.visible || !text.font || text.text.empty())
+                continue;
+
+            Texture* atlasPtr = text.font->GetAtlasTexture().get();
+            if (!atlasPtr)
+                continue;
+
+            const auto vertices = text.font->BuildGeometry(text.text, text.position.x, text.position.y, text.scale, text.color);
+            if (vertices.empty())
+                continue;
+
+            auto& batch = batches[atlasPtr];
+            batch.insert(batch.end(), vertices.begin(), vertices.end());
         }
-        if (!any)
+
+        if (batches.empty())
             return;
 
         const Rect screen = window->GetInnerSize();
@@ -76,13 +90,10 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glActiveTexture(GL_TEXTURE0);
 
-        for (auto& pair : texts)
+        for (auto& batchPair : batches)
         {
-            auto& text = pair.second;
-            if (!text.visible || !text.font || text.text.empty())
-                continue;
-
-            const auto vertices = text.font->BuildGeometry(text.text, text.position.x, text.position.y, text.scale);
+            Texture* atlasPtr = batchPair.first;
+            auto& vertices = batchPair.second;
             if (vertices.empty())
                 continue;
 
@@ -90,8 +101,7 @@ public:
 
             glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(FontGlyphVertex), vertices.data());
 
-            glBindTexture(GL_TEXTURE_2D, text.font->GetAtlasTexture()->GetId());
-            glUniform4f(textShader->GetUniformLocation("textColor"), text.color.x, text.color.y, text.color.z, text.color.w);
+            glBindTexture(GL_TEXTURE_2D, atlasPtr->GetId());
 
             glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size()));
         }
