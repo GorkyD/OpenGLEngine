@@ -14,6 +14,14 @@ public:
 
     float GetMouseDeltaX() const;
     float GetMouseDeltaY() const;
+    float GetMouseX() const
+    {
+        return static_cast<float>(lastMouseX);
+    }
+    float GetMouseY() const
+    {
+        return static_cast<float>(lastMouseY);
+    }
 
     bool IsKeyDown(Key key) const;
     bool IsLeftMouseDown() const

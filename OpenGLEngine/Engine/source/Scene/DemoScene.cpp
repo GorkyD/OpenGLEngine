@@ -25,6 +25,7 @@
 #include "Ecs/Components/MeshComponent.h"
 #include "Ecs/Components/ParticleEmitterComponent.h"
 #include "Ecs/Components/PendulumComponent.h"
+#include "Ecs/Components/PickableComponent.h"
 #include "Ecs/Components/RotatorComponent.h"
 #include "Ecs/Components/ShaderComponent.h"
 #include "Ecs/Components/SkyboxComponent.h"
@@ -436,6 +437,10 @@ void DemoScene::CreateMaterialGallery(Engine& engine, ShaderProgramPtr shader, f
 
         auto& rotator = world.AddComponent<RotatorComponent>(entity);
         rotator.degreesPerSecond = 4.0f + 2.0f * static_cast<float>(i);
+
+        auto& pickable = world.AddComponent<PickableComponent>(entity);
+        pickable.name = materials[i];
+        pickable.radius = sphereRadius;
     }
 }
 

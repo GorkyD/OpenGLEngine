@@ -19,6 +19,7 @@ struct StandardShaders
     ShaderProgramPtr fire;
     ShaderProgramPtr particle;
     ShaderProgramPtr text;
+    ShaderProgramPtr outline;
 };
 
 class Engine

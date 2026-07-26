@@ -6,6 +6,7 @@
 #include "Ecs/Components/AmbientLightComponent.h"
 #include "Ecs/Components/CameraComponent.h"
 #include "Ecs/Components/FogComponent.h"
+#include "Ecs/Components/OutlineComponent.h"
 #include "Ecs/Components/TransformComponent.h"
 #include "Ecs/Core/IEcsSystem.h"
 #include "Render/RenderEngine.h"
@@ -22,7 +23,10 @@ class RenderSystem : public IEcsSystem
 public:
     static constexpr int MaxLights = 32;
 
-    RenderSystem(RenderEngine* re, UniformBufferPtr ub) : renderEngine(re), uniformBuffer(ub) {}
+    RenderSystem(RenderEngine* re, UniformBufferPtr ub, ShaderProgramPtr outlineShader)
+        : renderEngine(re), uniformBuffer(ub), outlineShader(outlineShader)
+    {
+    }
 
     void Run(EcsWorld& world, float deltaTime) override
     {
@@ -228,10 +232,36 @@ public:
             if (shaders.Has(entity) && shaders.Get(entity).shaderType == ShaderRenderType::Fire)
                 drawEntity(entity, pair.second);
         }
+
+        if (outlineShader)
+        {
+            for (auto& pair : world.GetPool<OutlineComponent>())
+            {
+                const Entity entity = pair.first;
+                if (!meshes.Has(entity) || !transforms.Has(entity))
+                    continue;
+
+                const auto& outline = pair.second;
+
+                Matrix4 worldMatrix = transforms.Get(entity).GetModelMatrix();
+                uniformBuffer->SetSubData(&worldMatrix, 0, sizeof(Matrix4));
+
+                renderEngine->SetShaderProgram(outlineShader);
+                glUniform1f(outlineShader->GetUniformLocation("outlineWidth"), outline.width);
+                glUniform3f(outlineShader->GetUniformLocation("outlineColor"), outline.color[0], outline.color[1],
+                            outline.color[2]);
+
+                glCullFace(GL_FRONT);
+                renderEngine->SetVertexArrayObject(meshes.Get(entity).vao);
+                renderEngine->DrawIndexedTriangles(List, meshes.Get(entity).indexCount);
+                glCullFace(GL_BACK);
+            }
+        }
     }
 
 private:
     RenderEngine* renderEngine;
     UniformBufferPtr uniformBuffer;
+    ShaderProgramPtr outlineShader;
     float elapsedTime = 0.0f;
 };

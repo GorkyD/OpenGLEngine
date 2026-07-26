@@ -9,6 +9,7 @@
 #include "Ecs/Systems/AutoOrbitSystem.h"
 #include "Ecs/Systems/CameraInputSystem.h"
 #include "Ecs/Systems/CameraMatrixSystem.h"
+#include "Ecs/Systems/HoverSystem.h"
 #include "Ecs/Systems/ParticleSystem.h"
 #include "Ecs/Systems/PendulumSystem.h"
 #include "Ecs/Systems/RenderSystem.h"
@@ -53,6 +54,10 @@ void Engine::CreateStandardShaders()
 
     shaders.text =
         renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Text.vert", "Assets/Shaders/SimpleShader_Text.frag"});
+
+    shaders.outline = renderEngine->CreateShaderProgram(
+        {"Assets/Shaders/SimpleShader_Outline.vert", "Assets/Shaders/SimpleShader_Outline.frag"});
+    shaders.outline->SetUniformBufferSlot("UniformData", 0);
 }
 
 void Engine::CreateStandardSystems()
@@ -63,7 +68,8 @@ void Engine::CreateStandardSystems()
     systems->Add(std::make_unique<SimplePhysicSystem>());
     systems->Add(std::make_unique<CameraMatrixSystem>(renderEngine.get(), uniformBuffer, window.get()));
     systems->Add(std::make_unique<SkyboxSystem>(renderEngine.get()));
-    systems->Add(std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer));
+    systems->Add(std::make_unique<HoverSystem>(inputSystem.get(), window.get()));
+    systems->Add(std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer, shaders.outline));
     systems->Add(std::make_unique<ParticleSystem>(renderEngine.get(), shaders.particle, uniformBuffer));
     systems->Add(std::make_unique<RotatorSystem>());
     systems->Add(std::make_unique<PendulumSystem>());
