@@ -8,6 +8,7 @@
 #include "Ecs/Systems/AutoOrbitSystem.h"
 #include "Ecs/Systems/CameraInputSystem.h"
 #include "Ecs/Systems/CameraMatrixSystem.h"
+#include "Ecs/Systems/FpsCounterSystem.h"
 #include "Ecs/Systems/HoverSystem.h"
 #include "Ecs/Systems/ParticleSystem.h"
 #include "Ecs/Systems/PendulumSystem.h"
@@ -66,6 +67,7 @@ void Engine::CreateStandardSystems()
     systems->Add(std::make_unique<ParticleSystem>(renderEngine.get(), shaders.particle, uniformBuffer));
     systems->Add(std::make_unique<RotatorSystem>());
     systems->Add(std::make_unique<PendulumSystem>());
+    systems->Add(std::make_unique<FpsCounterSystem>());
     systems->Add(std::make_unique<UITextSystem>(renderEngine.get(), shaders.text, window.get()));
     systems->Init();
 }

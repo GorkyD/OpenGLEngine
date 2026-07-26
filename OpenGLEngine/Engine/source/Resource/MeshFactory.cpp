@@ -15,6 +15,56 @@ struct SphereVertex
 };
 } // namespace
 
+VertexArrayObjectPtr MeshFactory::CreateCube(RenderEngine* renderEngine, unsigned int& outIndexCount, float size)
+{
+    struct CubeVertex
+    {
+        Vector3 position;
+        Vector2 uv;
+        Vector3 normal;
+    };
+
+    const float h = size * 0.5f;
+
+    const Vector3 facePositions[6][4] = {
+        {{-h, -h, h}, {h, -h, h}, {h, h, h}, {-h, h, h}},     // +Z
+        {{h, -h, -h}, {-h, -h, -h}, {-h, h, -h}, {h, h, -h}}, // -Z
+        {{h, -h, h}, {h, -h, -h}, {h, h, -h}, {h, h, h}},     // +X
+        {{-h, -h, -h}, {-h, -h, h}, {-h, h, h}, {-h, h, -h}}, // -X
+        {{-h, h, h}, {h, h, h}, {h, h, -h}, {-h, h, -h}},     // +Y
+        {{-h, -h, -h}, {h, -h, -h}, {h, -h, h}, {-h, -h, h}}, // -Y
+    };
+    const Vector3 faceNormals[6] = {{0, 0, 1}, {0, 0, -1}, {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}};
+    const Vector2 faceUvs[4] = {{0, 1}, {1, 1}, {1, 0}, {0, 0}};
+
+    std::vector<CubeVertex> vertices;
+    vertices.reserve(24);
+
+    std::vector<unsigned int> indices;
+    indices.reserve(36);
+
+    for (int face = 0; face < 6; face++)
+    {
+        const unsigned int base = static_cast<unsigned int>(vertices.size());
+        for (int corner = 0; corner < 4; corner++)
+            vertices.push_back({facePositions[face][corner], faceUvs[corner], faceNormals[face]});
+
+        indices.push_back(base + 0);
+        indices.push_back(base + 1);
+        indices.push_back(base + 2);
+        indices.push_back(base + 0);
+        indices.push_back(base + 2);
+        indices.push_back(base + 3);
+    }
+
+    VertexAttributes attrs[] = {{3}, {2}, {3}};
+    const auto vao = renderEngine->CreateVertexArrayObject({static_cast<void*>(vertices.data()), sizeof(CubeVertex), static_cast<int>(vertices.size()), attrs, 3},
+                                                           {static_cast<void*>(indices.data()), static_cast<int>(indices.size() * sizeof(unsigned int))});
+
+    outIndexCount = static_cast<unsigned int>(indices.size());
+    return vao;
+}
+
 VertexArrayObjectPtr MeshFactory::CreateSphere(RenderEngine* renderEngine, unsigned int& outIndexCount, int rings, int sectors, float radius)
 {
     std::vector<SphereVertex> vertices;
