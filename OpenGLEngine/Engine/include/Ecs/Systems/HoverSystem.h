@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Ecs/Components/CameraComponent.h"
 #include "Ecs/Components/OutlineComponent.h"
 #include "Ecs/Components/PickableComponent.h"
@@ -19,7 +20,7 @@ public:
 
     void Init(EcsWorld& world) override
     {
-        auto font = Font::LoadFromFile("Assets/Fonts/JetBrainsMono-Regular.ttf", 28.0f);
+        const auto font = Font::LoadFromFile("Assets/Fonts/JetBrainsMono-Regular.ttf", 28.0f);
         if (!font)
             return;
 
@@ -139,8 +140,10 @@ public:
 private:
     InputSystem* input;
     Window* window;
+    
     Entity tooltipEntity = 0;
-    bool hasTooltip = false;
     Entity hoveredEntity = 0;
+
+    bool hasTooltip = false;
     bool hasHovered = false;
 };

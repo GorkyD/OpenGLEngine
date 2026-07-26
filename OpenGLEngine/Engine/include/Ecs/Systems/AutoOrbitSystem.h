@@ -1,6 +1,6 @@
 #pragma once
-#include <cmath>
 
+#include <cmath>
 #include "Ecs/Components/AutoOrbitComponent.h"
 #include "Ecs/Components/CameraComponent.h"
 #include "Ecs/Components/TransformComponent.h"
@@ -20,11 +20,8 @@ public:
         auto& cameras = world.GetPool<CameraComponent>();
         auto& transforms = world.GetPool<TransformComponent>();
 
-        const bool mouseRotating = input->IsLeftMouseDown() && (std::abs(input->GetMouseDeltaX()) > 0.01f ||
-                                                                 std::abs(input->GetMouseDeltaY()) > 0.01f);
-        const bool userInput = mouseRotating || input->IsKeyDown(Key::W) || input->IsKeyDown(Key::A) ||
-                               input->IsKeyDown(Key::S) || input->IsKeyDown(Key::D) ||
-                               input->IsKeyDown(Key::Space) || input->IsKeyDown(Key::LControl);
+        const bool mouseRotating = input->IsLeftMouseDown() && (std::abs(input->GetMouseDeltaX()) > 0.01f || std::abs(input->GetMouseDeltaY()) > 0.01f);
+        const bool userInput = mouseRotating || input->IsKeyDown(Key::W) || input->IsKeyDown(Key::A) || input->IsKeyDown(Key::S) || input->IsKeyDown(Key::D) || input->IsKeyDown(Key::Space) || input->IsKeyDown(Key::LControl);
 
         for (auto& pair : orbits)
         {
@@ -92,8 +89,7 @@ public:
 private:
     static Vector3 OrbitPosition(const AutoOrbitComponent& orbit, float angle)
     {
-        return {orbit.center.x + std::sin(angle) * orbit.radius, orbit.height,
-                orbit.center.z + std::cos(angle) * orbit.radius};
+        return {orbit.center.x + std::sin(angle) * orbit.radius, orbit.height, orbit.center.z + std::cos(angle) * orbit.radius};
     }
 
     static Vector3 Lerp(const Vector3& a, const Vector3& b, float t)

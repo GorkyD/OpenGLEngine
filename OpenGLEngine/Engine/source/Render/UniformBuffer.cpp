@@ -1,5 +1,4 @@
 #include "Render/UniformBuffer.h"
-
 #include <glad/glad.h>
 
 UniformBuffer::UniformBuffer(const UniformBufferDesc& desc)

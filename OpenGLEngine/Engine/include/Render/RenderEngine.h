@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Extension/Extension.h"
 #include "Math/Rect.h"
 #include "Math/Vector4.h"
@@ -10,8 +11,7 @@ public:
     ~RenderEngine();
 
     VertexArrayObjectPtr CreateVertexArrayObject(const VertexBufferDesc& desc);
-    VertexArrayObjectPtr CreateVertexArrayObject(const VertexBufferDesc& vertexBufferDesc,
-                                                 const IndexBufferDesc& indexBufferDesc);
+    VertexArrayObjectPtr CreateVertexArrayObject(const VertexBufferDesc& vertexBufferDesc, const IndexBufferDesc& indexBufferDesc);
     ShaderProgramPtr CreateShaderProgram(const ShaderProgramDesc& desc);
     UniformBufferPtr CreateUniformBuffer(const UniformBufferDesc& desc);
 

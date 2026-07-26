@@ -1,4 +1,5 @@
 #pragma once
+
 #include <memory>
 #include <sstream>
 #include <iostream>
@@ -123,11 +124,11 @@ enum class Key
     Count
 };
 
-#define OGL_ERROR(message)                                                                                             \
-    {                                                                                                                  \
-        std::stringstream m;                                                                                           \
-        m << "OGL_ERROR: " << message << std::endl;                                                                    \
-        throw std::runtime_error(m.str());                                                                             \
+#define OGL_ERROR(message)                                                                                                                                                                                                                     \
+    {                                                                                                                                                                                                                                          \
+        std::stringstream m;                                                                                                                                                                                                                   \
+        m << "OGL_ERROR: " << message << std::endl;                                                                                                                                                                                            \
+        throw std::runtime_error(m.str());                                                                                                                                                                                                     \
     }
 
 #define OGL_WARNING(message) std::clog << "OGL_WARNING: " << message << std::endl;

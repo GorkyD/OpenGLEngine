@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Extension/Extension.h"
 #include <string>
 #include <vector>
@@ -31,9 +32,12 @@ private:
     static constexpr int NumChars = 96;
 
     TexturePtr atlasTexture;
+
     std::vector<unsigned char> bakedChars;
-    int atlasWidth = 0;
-    int atlasHeight = 0;
+
     float pixelHeight = 48.0f;
     float ascent = 0.0f;
+
+    int atlasWidth = 0;
+    int atlasHeight = 0;
 };

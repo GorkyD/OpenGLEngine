@@ -12,10 +12,7 @@
 class CameraMatrixSystem : public IEcsSystem
 {
 public:
-    CameraMatrixSystem(RenderEngine* re, UniformBufferPtr ub, Window* w)
-        : renderEngine(re), uniformBuffer(ub), window(w)
-    {
-    }
+    CameraMatrixSystem(RenderEngine* re, UniformBufferPtr ub, Window* w) : renderEngine(re), uniformBuffer(ub), window(w) {}
 
     void Run(EcsWorld& world, float deltaTime) override
     {

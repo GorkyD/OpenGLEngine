@@ -1,5 +1,4 @@
 #include "Audio/AudioSystem.h"
-
 #include <cstdio>
 
 AudioSystem::AudioSystem() {}
@@ -51,7 +50,7 @@ bool AudioSystem::Init()
 #endif
 
     RegisterGameObject(ListenerId, "Listener");
-    AkGameObjectID listenerId = static_cast<AkGameObjectID>(ListenerId);
+    AkGameObjectID listenerId = ListenerId;
     AK::SoundEngine::SetDefaultListeners(&listenerId, 1);
 
     RegisterGameObject(AmbientId, "Ambient");
@@ -111,7 +110,7 @@ void AudioSystem::Shutdown()
 void AudioSystem::RegisterGameObject(AudioObjectId gameObject, const char* name)
 {
 #if OPENGLENGINE_USE_WWISE
-    AK::SoundEngine::RegisterGameObj(static_cast<AkGameObjectID>(gameObject), name);
+    AK::SoundEngine::RegisterGameObj(gameObject, name);
 #else
     (void)gameObject;
     (void)name;
@@ -121,7 +120,7 @@ void AudioSystem::RegisterGameObject(AudioObjectId gameObject, const char* name)
 void AudioSystem::UnregisterGameObject(AudioObjectId gameObject)
 {
 #if OPENGLENGINE_USE_WWISE
-    AK::SoundEngine::UnregisterGameObj(static_cast<AkGameObjectID>(gameObject));
+    AK::SoundEngine::UnregisterGameObj(gameObject);
 #else
     (void)gameObject;
 #endif
@@ -133,7 +132,7 @@ void AudioSystem::SetPosition(AudioObjectId gameObject, float x, float y, float 
     AkSoundPosition soundPos;
     soundPos.SetPosition(x, y, z);
     soundPos.SetOrientation(0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
-    AK::SoundEngine::SetPosition(static_cast<AkGameObjectID>(gameObject), soundPos);
+    AK::SoundEngine::SetPosition(gameObject, soundPos);
 #else
     (void)gameObject;
     (void)x;
@@ -152,7 +151,7 @@ void AudioSystem::PlayEvent(const char* eventName, AudioObjectId gameObject)
 #if OPENGLENGINE_USE_WWISE
     if (!initialized)
         return;
-    AK::SoundEngine::PostEvent(eventName, static_cast<AkGameObjectID>(gameObject));
+    AK::SoundEngine::PostEvent(eventName, gameObject);
 #else
     (void)eventName;
     (void)gameObject;

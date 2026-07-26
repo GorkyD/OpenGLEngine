@@ -1,9 +1,7 @@
 #include "Scene/DemoScene.h"
-
 #include <array>
 #include <cmath>
 #include <vector>
-
 #include "Engine/Engine.h"
 #include "Math/Vector2.h"
 #include "Math/Vector3.h"
@@ -13,7 +11,6 @@
 #include "Render/Texture.h"
 #include "Resource/EntityFactory.h"
 #include "Resource/MeshFactory.h"
-
 #include "Ecs/Components/AABB.h"
 #include "Ecs/Components/AmbientLightComponent.h"
 #include "Ecs/Components/AutoOrbitComponent.h"
@@ -130,37 +127,28 @@ void DemoScene::CreateSkybox(Engine& engine, ShaderProgramPtr shader)
     auto* renderEngine = engine.GetRenderEngine();
 
     const std::array<std::string, 6> faces = {
-        "Assets/Textures/Skybox/right.jpg", "Assets/Textures/Skybox/left.jpg",
-        "Assets/Textures/Skybox/top.jpg",   "Assets/Textures/Skybox/bottom.jpg",
-        "Assets/Textures/Skybox/front.jpg", "Assets/Textures/Skybox/back.jpg",
+        "Assets/Textures/Skybox/right.jpg", "Assets/Textures/Skybox/left.jpg", "Assets/Textures/Skybox/top.jpg", "Assets/Textures/Skybox/bottom.jpg", "Assets/Textures/Skybox/front.jpg", "Assets/Textures/Skybox/back.jpg",
     };
     auto cubemap = Texture::LoadCubemap(faces);
     if (!cubemap)
         return;
 
     static const float skyboxVertices[] = {
-        -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f,
-        1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f,
+        -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f,
 
-        -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f,
-        -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,
 
-        1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f,
+        1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f,
 
-        -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,
 
-        -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f,
+        -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f,
 
-        -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f,
-        1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,
+        -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,
     };
 
     VertexAttributes attrs[] = {{3}};
-    const auto vao = renderEngine->CreateVertexArrayObject(
-        {(void*)skyboxVertices, 3 * sizeof(float), 36, attrs, 1});
+    const auto vao = renderEngine->CreateVertexArrayObject({(void*)skyboxVertices, 3 * sizeof(float), 36, attrs, 1});
 
     const auto skyboxEntity = world.CreateEntity();
     auto& skybox = world.AddComponent<SkyboxComponent>(skyboxEntity);
@@ -169,8 +157,7 @@ void DemoScene::CreateSkybox(Engine& engine, ShaderProgramPtr shader)
     skybox.vao = vao;
 }
 
-void DemoScene::CreateTorch(Engine& engine, const Vector3& basePosition, ShaderProgramPtr handleShader,
-                            ShaderProgramPtr fireShader)
+void DemoScene::CreateTorch(Engine& engine, const Vector3& basePosition, ShaderProgramPtr handleShader, ShaderProgramPtr fireShader)
 {
     auto& world = engine.GetWorld();
     auto* audioSystem = engine.GetAudioSystem();
@@ -384,9 +371,8 @@ VertexArrayObjectPtr DemoScene::CreateFlameMesh(Engine& engine, unsigned int& ou
         indices[i] = i;
 
     VertexAttributes attrs[] = {{3}};
-    const auto vao = renderEngine->CreateVertexArrayObject(
-        {static_cast<void*>(vertices.data()), 3 * sizeof(float), static_cast<int>(vertices.size()), attrs, 1},
-        {static_cast<void*>(indices.data()), static_cast<int>(indices.size() * sizeof(unsigned int))});
+    const auto vao = renderEngine->CreateVertexArrayObject({static_cast<void*>(vertices.data()), 3 * sizeof(float), static_cast<int>(vertices.size()), attrs, 1},
+                                                           {static_cast<void*>(indices.data()), static_cast<int>(indices.size() * sizeof(unsigned int))});
 
     outIndexCount = static_cast<unsigned int>(indices.size());
     return vao;

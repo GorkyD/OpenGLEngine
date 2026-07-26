@@ -1,4 +1,5 @@
 #pragma once
+
 #include <cstring>
 #include "Vector3.h"
 
@@ -86,8 +87,7 @@ public:
         {
             for (auto j = 0; j < 4; j++)
             {
-                out.matrix[i][j] = matrix[i][0] * otherMatrix.matrix[0][j] + matrix[i][1] * otherMatrix.matrix[1][j] +
-                                   matrix[i][2] * otherMatrix.matrix[2][j] + matrix[i][3] * otherMatrix.matrix[3][j];
+                out.matrix[i][j] = matrix[i][0] * otherMatrix.matrix[0][j] + matrix[i][1] * otherMatrix.matrix[1][j] + matrix[i][2] * otherMatrix.matrix[2][j] + matrix[i][3] * otherMatrix.matrix[3][j];
             }
         }
         return out;
@@ -157,8 +157,7 @@ public:
         const float a10 = matrix[1][0], a11 = matrix[1][1], a12 = matrix[1][2];
         const float a20 = matrix[2][0], a21 = matrix[2][1], a22 = matrix[2][2];
 
-        const float det = a00 * (a11 * a22 - a12 * a21) - a01 * (a10 * a22 - a12 * a20) +
-                           a02 * (a10 * a21 - a11 * a20);
+        const float det = a00 * (a11 * a22 - a12 * a21) - a01 * (a10 * a22 - a12 * a20) + a02 * (a10 * a21 - a11 * a20);
         const float invDet = (det != 0.0f) ? 1.0f / det : 0.0f;
 
         outMatrix[0] = (a11 * a22 - a12 * a21) * invDet;

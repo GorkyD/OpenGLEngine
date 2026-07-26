@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Ecs/Components/MeshComponent.h"
 #include "Ecs/Components/ShaderComponent.h"
 #include "Ecs/Components/MaterialComponent.h"
@@ -23,10 +24,7 @@ class RenderSystem : public IEcsSystem
 public:
     static constexpr int MaxLights = 32;
 
-    RenderSystem(RenderEngine* re, UniformBufferPtr ub, ShaderProgramPtr outlineShader)
-        : renderEngine(re), uniformBuffer(ub), outlineShader(outlineShader)
-    {
-    }
+    RenderSystem(RenderEngine* re, const UniformBufferPtr& ub, const ShaderProgramPtr& outlineShader) : renderEngine(re), uniformBuffer(ub), outlineShader(outlineShader) {}
 
     void Run(EcsWorld& world, float deltaTime) override
     {
@@ -38,25 +36,25 @@ public:
         auto& transforms = world.GetPool<TransformComponent>();
 
         AmbientLightComponent ambient;
-        for (auto& pair : world.GetPool<AmbientLightComponent>())
+        for (auto& [entityId, ambientLightComponent] : world.GetPool<AmbientLightComponent>())
         {
-            ambient = pair.second;
+            ambient = ambientLightComponent;
             break;
         }
 
         FogComponent fog;
-        for (auto& pair : world.GetPool<FogComponent>())
+        for (auto& [entityId, fogComponent] : world.GetPool<FogComponent>())
         {
-            fog = pair.second;
+            fog = fogComponent;
             break;
         }
 
         Vector3 viewPos;
-        for (auto& pair : world.GetPool<CameraComponent>())
+        for (auto& [entityId, cameraComponent] : world.GetPool<CameraComponent>())
         {
-            if (!pair.second.isActive || !transforms.Has(pair.first))
+            if (!cameraComponent.isActive || !transforms.Has(entityId))
                 continue;
-            viewPos = transforms.Get(pair.first).position;
+            viewPos = transforms.Get(entityId).position;
             break;
         }
 
@@ -68,12 +66,12 @@ public:
         float lightPosition[MaxLights * 3] = {};
         float lightRange[MaxLights] = {};
 
-        for (auto& pair : world.GetPool<LightComponent>())
+        for (auto& [entityId, lightComponent] : world.GetPool<LightComponent>())
         {
             if (numLights >= MaxLights)
                 break;
 
-            const auto& light = pair.second;
+            const auto& light = lightComponent;
             lightType[numLights] = static_cast<int>(light.type);
             lightColor[numLights * 3 + 0] = light.color.x;
             lightColor[numLights * 3 + 1] = light.color.y;
@@ -218,38 +216,34 @@ public:
             }
         };
 
-        for (auto& pair : meshes)
+        for (auto& [entityId, meshComponent] : meshes)
         {
-            const Entity entity = pair.first;
-            if (shaders.Has(entity) && shaders.Get(entity).shaderType == ShaderRenderType::Fire)
+            if (shaders.Has(entityId) && shaders.Get(entityId).shaderType == ShaderRenderType::Fire)
                 continue;
-            drawEntity(entity, pair.second);
+            drawEntity(entityId, meshComponent);
         }
 
-        for (auto& pair : meshes)
+        for (auto& [entityId, meshComponent] : meshes)
         {
-            const Entity entity = pair.first;
+            const Entity entity = entityId;
             if (shaders.Has(entity) && shaders.Get(entity).shaderType == ShaderRenderType::Fire)
-                drawEntity(entity, pair.second);
+                drawEntity(entity, meshComponent);
         }
 
         if (outlineShader)
         {
-            for (auto& pair : world.GetPool<OutlineComponent>())
+            for (auto& [entityId, outlineComponent] : world.GetPool<OutlineComponent>())
             {
-                const Entity entity = pair.first;
+                const Entity entity = entityId;
                 if (!meshes.Has(entity) || !transforms.Has(entity))
                     continue;
-
-                const auto& outline = pair.second;
 
                 Matrix4 worldMatrix = transforms.Get(entity).GetModelMatrix();
                 uniformBuffer->SetSubData(&worldMatrix, 0, sizeof(Matrix4));
 
                 renderEngine->SetShaderProgram(outlineShader);
-                glUniform1f(outlineShader->GetUniformLocation("outlineWidth"), outline.width);
-                glUniform3f(outlineShader->GetUniformLocation("outlineColor"), outline.color[0], outline.color[1],
-                            outline.color[2]);
+                glUniform1f(outlineShader->GetUniformLocation("outlineWidth"), outlineComponent.width);
+                glUniform3f(outlineShader->GetUniformLocation("outlineColor"), outlineComponent.color[0], outlineComponent.color[1], outlineComponent.color[2]);
 
                 glCullFace(GL_FRONT);
                 renderEngine->SetVertexArrayObject(meshes.Get(entity).vao);
@@ -263,5 +257,6 @@ private:
     RenderEngine* renderEngine;
     UniformBufferPtr uniformBuffer;
     ShaderProgramPtr outlineShader;
+    
     float elapsedTime = 0.0f;
 };

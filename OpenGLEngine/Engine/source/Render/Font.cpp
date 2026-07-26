@@ -1,11 +1,10 @@
 #include "Render/Font.h"
 #include "Render/Texture.h"
-
-#define STB_TRUETYPE_IMPLEMENTATION
 #include "stb/stb_truetype.h"
-
 #include <algorithm>
 #include <fstream>
+
+#define STB_TRUETYPE_IMPLEMENTATION
 
 FontPtr Font::LoadFromFile(const std::string& path, float pixelHeight)
 {
@@ -31,9 +30,7 @@ FontPtr Font::LoadFromFile(const std::string& path, float pixelHeight)
     std::vector<unsigned char> atlasPixels(atlasWidth * atlasHeight);
     std::vector<unsigned char> bakedChars(NumChars * sizeof(stbtt_bakedchar));
 
-    const int result = stbtt_BakeFontBitmap(fontData.data(), 0, pixelHeight, atlasPixels.data(), atlasWidth,
-                                            atlasHeight, FirstChar, NumChars,
-                                            reinterpret_cast<stbtt_bakedchar*>(bakedChars.data()));
+    const int result = stbtt_BakeFontBitmap(fontData.data(), 0, pixelHeight, atlasPixels.data(), atlasWidth, atlasHeight, FirstChar, NumChars, reinterpret_cast<stbtt_bakedchar*>(bakedChars.data()));
     if (result <= 0)
     {
         OGL_WARNING("Font | Atlas too small or bake failed for: " << path)

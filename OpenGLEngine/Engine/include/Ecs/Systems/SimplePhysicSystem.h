@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Ecs/Components/RigidbodyComponent.h"
 #include "Ecs/Components/AABB.h"
 #include "Ecs/Components/TransformComponent.h"
@@ -31,12 +32,10 @@ public:
         }
 
         std::vector<Entity> collidables;
-        for (auto& pair : aabbPool)
+        for (auto& [entityId, AABBCollider] : aabbPool)
         {
-            auto& entity = pair.first;
-
-            if (transformPool.Has(entity))
-                collidables.push_back(entity);
+            if (transformPool.Has(entityId))
+                collidables.push_back(entityId);
         }
 
         for (const auto entity : collidables)
@@ -99,12 +98,9 @@ public:
 
     Vector3 RotateHalfExtents(const Vector3& half, const Matrix4& rot)
     {
-        return {std::abs(rot.matrix[0][0]) * half.x + std::abs(rot.matrix[1][0]) * half.y +
-                    std::abs(rot.matrix[2][0]) * half.z,
-                std::abs(rot.matrix[0][1]) * half.x + std::abs(rot.matrix[1][1]) * half.y +
-                    std::abs(rot.matrix[2][1]) * half.z,
-                std::abs(rot.matrix[0][2]) * half.x + std::abs(rot.matrix[1][2]) * half.y +
-                    std::abs(rot.matrix[2][2]) * half.z};
+        return {std::abs(rot.matrix[0][0]) * half.x + std::abs(rot.matrix[1][0]) * half.y + std::abs(rot.matrix[2][0]) * half.z,
+                std::abs(rot.matrix[0][1]) * half.x + std::abs(rot.matrix[1][1]) * half.y + std::abs(rot.matrix[2][1]) * half.z,
+                std::abs(rot.matrix[0][2]) * half.x + std::abs(rot.matrix[1][2]) * half.y + std::abs(rot.matrix[2][2]) * half.z};
     }
 
 private:

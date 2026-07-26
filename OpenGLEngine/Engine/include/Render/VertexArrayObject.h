@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Extension/Extension.h"
 
 class VertexArrayObject
@@ -9,7 +10,6 @@ public:
     ~VertexArrayObject();
 
     unsigned int GetId() const;
-
     unsigned int GetVertexBufferSize() const;
     unsigned int GetVertexSize() const;
 

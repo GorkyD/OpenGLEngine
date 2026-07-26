@@ -1,8 +1,8 @@
 #pragma once
+
 #include <cmath>
 #include <cstdlib>
 #include <vector>
-
 #include "Ecs/Components/CameraComponent.h"
 #include "Ecs/Components/ParticleEmitterComponent.h"
 #include "Ecs/Components/TransformComponent.h"
@@ -17,10 +17,7 @@
 class ParticleSystem : public IEcsSystem
 {
 public:
-    ParticleSystem(RenderEngine* re, ShaderProgramPtr shader, UniformBufferPtr ub)
-        : renderEngine(re), particleShader(shader), uniformBuffer(ub)
-    {
-    }
+    ParticleSystem(RenderEngine* re, ShaderProgramPtr shader, UniformBufferPtr ub) : renderEngine(re), particleShader(shader), uniformBuffer(ub) {}
 
     void Init(EcsWorld& world) override
     {
@@ -31,11 +28,11 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, bufferCapacity * sizeof(ParticleVertex), nullptr, GL_DYNAMIC_DRAW);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(ParticleVertex), (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(ParticleVertex), static_cast<void*>(nullptr));
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(ParticleVertex), (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(ParticleVertex), reinterpret_cast<void*>(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(ParticleVertex), (void*)(5 * sizeof(float)));
+        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(ParticleVertex), reinterpret_cast<void*>(5 * sizeof(float)));
         glEnableVertexAttribArray(2);
 
         glBindVertexArray(0);
@@ -60,27 +57,24 @@ public:
             return;
 
         Vector3 cameraPos;
-        for (auto& pair : world.GetPool<CameraComponent>())
+        for (const auto& [entityId, cameraComponent] : world.GetPool<CameraComponent>())
         {
-            if (!pair.second.isActive || !transforms.Has(pair.first))
+            if (!cameraComponent.isActive || !transforms.Has(entityId))
                 continue;
-            cameraPos = transforms.Get(pair.first).position;
+            cameraPos = transforms.Get(entityId).position;
             break;
         }
 
-        for (auto& pair : emitters)
+        for (auto& [entityId, emitterComponent] : emitters)
         {
-            Entity entity = pair.first;
-            auto& emitter = pair.second;
+            Vector3 origin = emitterComponent.localOffset;
+            if (emitterComponent.followCamera)
+                origin = cameraPos + emitterComponent.localOffset;
+            else if (transforms.Has(entityId))
+                origin = transforms.Get(entityId).position + emitterComponent.localOffset;
 
-            Vector3 origin = emitter.localOffset;
-            if (emitter.followCamera)
-                origin = cameraPos + emitter.localOffset;
-            else if (transforms.Has(entity))
-                origin = transforms.Get(entity).position + emitter.localOffset;
-
-            SpawnParticles(emitter, origin, deltaTime);
-            UpdateParticles(emitter, deltaTime);
+            SpawnParticles(emitterComponent, origin, deltaTime);
+            UpdateParticles(emitterComponent, deltaTime);
         }
 
         Matrix4 identity;
@@ -95,24 +89,20 @@ public:
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-        for (auto& pair : emitters)
+        for (auto& [entityId, emitterComponent] : emitters)
         {
-            auto& emitter = pair.second;
-            if (emitter.particles.empty())
+            if (emitterComponent.particles.empty())
                 continue;
 
-            BuildBillboards(emitter, cameraPos);
+            BuildBillboards(emitterComponent, cameraPos);
             if (vertexScratch.empty())
                 continue;
 
             EnsureCapacity(vertexScratch.size());
+
             glBufferSubData(GL_ARRAY_BUFFER, 0, vertexScratch.size() * sizeof(ParticleVertex), vertexScratch.data());
-
-            glBlendFunc(GL_SRC_ALPHA, emitter.additive ? GL_ONE : GL_ONE_MINUS_SRC_ALPHA);
-
-            glUniform3f(particleShader->GetUniformLocation("particleColor"), emitter.color.x, emitter.color.y,
-                        emitter.color.z);
-
+            glBlendFunc(GL_SRC_ALPHA, emitterComponent.additive ? GL_ONE : GL_ONE_MINUS_SRC_ALPHA);
+            glUniform3f(particleShader->GetUniformLocation("particleColor"), emitterComponent.color.x, emitterComponent.color.y, emitterComponent.color.z);
             glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexScratch.size()));
         }
 
@@ -130,7 +120,7 @@ private:
         float alpha;
     };
 
-    static float RandomRange(float minValue, float maxValue)
+    static float RandomRange(const float minValue, const float maxValue)
     {
         const float t = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
         return minValue + t * (maxValue - minValue);
@@ -160,16 +150,14 @@ private:
             if (emitter.spawnAreaHalfExtents.z > 0.0f)
                 particle.position.z += RandomRange(-emitter.spawnAreaHalfExtents.z, emitter.spawnAreaHalfExtents.z);
 
-            particle.velocity = {RandomRange(emitter.velocityMin.x, emitter.velocityMax.x),
-                                  RandomRange(emitter.velocityMin.y, emitter.velocityMax.y),
-                                  RandomRange(emitter.velocityMin.z, emitter.velocityMax.z)};
+            particle.velocity = {RandomRange(emitter.velocityMin.x, emitter.velocityMax.x), RandomRange(emitter.velocityMin.y, emitter.velocityMax.y), RandomRange(emitter.velocityMin.z, emitter.velocityMax.z)};
             particle.lifetime = RandomRange(emitter.lifetimeMin, emitter.lifetimeMax);
             particle.age = 0.0f;
             emitter.particles.push_back(particle);
         }
     }
 
-    void UpdateParticles(ParticleEmitterComponent& emitter, float deltaTime)
+    void UpdateParticles(ParticleEmitterComponent& emitter, const float deltaTime)
     {
         for (size_t i = 0; i < emitter.particles.size();)
         {
@@ -247,9 +235,10 @@ private:
     ShaderProgramPtr particleShader;
     UniformBufferPtr uniformBuffer;
 
-    unsigned int vao = 0;
-    unsigned int vbo = 0;
+    std::vector<ParticleVertex> vertexScratch;
+
     size_t bufferCapacity = 512;
 
-    std::vector<ParticleVertex> vertexScratch;
+    unsigned int vao = 0;
+    unsigned int vbo = 0;
 };

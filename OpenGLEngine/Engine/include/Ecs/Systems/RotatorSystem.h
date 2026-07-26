@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Ecs/Components/RotatorComponent.h"
 #include "Ecs/Components/TransformComponent.h"
 #include "Ecs/Core/IEcsSystem.h"
@@ -11,22 +12,19 @@ public:
         auto& rotators = world.GetPool<RotatorComponent>();
         auto& transforms = world.GetPool<TransformComponent>();
 
-        for (auto& pair : rotators)
+        for (auto& [entityId, rotatorComponent] : rotators)
         {
-            Entity entity = pair.first;
-            auto& rotator = pair.second;
-
-            if (!transforms.Has(entity))
+            if (!transforms.Has(entityId))
                 continue;
 
-            rotator.currentAngle += rotator.degreesPerSecond * deltaTime;
-            if (rotator.currentAngle > 360.0f)
-                rotator.currentAngle -= 360.0f;
+            rotatorComponent.currentAngle += rotatorComponent.degreesPerSecond * deltaTime;
+            if (rotatorComponent.currentAngle > 360.0f)
+                rotatorComponent.currentAngle -= 360.0f;
 
             constexpr float degToRad = 3.14159265f / 180.0f;
 
-            auto& transform = transforms.Get(entity);
-            transform.rotation.SetRotationY(rotator.currentAngle * degToRad);
+            auto& transform = transforms.Get(entityId);
+            transform.rotation.SetRotationY(rotatorComponent.currentAngle * degToRad);
         }
     }
 };

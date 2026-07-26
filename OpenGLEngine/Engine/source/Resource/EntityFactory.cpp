@@ -1,7 +1,5 @@
 #include "Resource/EntityFactory.h"
-
 #include <vector>
-
 #include "Ecs/Components/AABB.h"
 #include "Ecs/Components/MaterialComponent.h"
 #include "Ecs/Components/MeshComponent.h"
@@ -14,8 +12,7 @@
 #include "Render/Texture.h"
 #include "Resource/ModelLoader.h"
 
-Entity EntityFactory::CreateModelEntity(EcsWorld& world, RenderEngine* renderEngine, const std::string& path,
-                                        ShaderProgramPtr shader)
+Entity EntityFactory::CreateModelEntity(EcsWorld& world, RenderEngine* renderEngine, const std::string& path, ShaderProgramPtr shader)
 {
     ModelData modelData = ModelLoader::Load(path);
 
@@ -28,18 +25,14 @@ Entity EntityFactory::CreateModelEntity(EcsWorld& world, RenderEngine* renderEng
             textures.push_back(nullptr);
     }
 
-    VertexAttributes attrs[] = {
-        {sizeof(Vector3) / sizeof(float)}, {sizeof(Vector2) / sizeof(float)}, {sizeof(Vector3) / sizeof(float)}};
+    VertexAttributes attrs[] = {{sizeof(Vector3) / sizeof(float)}, {sizeof(Vector2) / sizeof(float)}, {sizeof(Vector3) / sizeof(float)}};
 
     Entity result = 0;
 
     for (auto& meshData : modelData.meshes)
     {
-        const auto vao =
-            renderEngine->CreateVertexArrayObject({static_cast<void*>(meshData.vertices.data()), sizeof(MeshVertex),
-                                                   static_cast<int>(meshData.vertices.size()), attrs, 3},
-                                                  {static_cast<void*>(meshData.indices.data()),
-                                                   static_cast<int>(meshData.indices.size() * sizeof(unsigned int))});
+        const auto vao = renderEngine->CreateVertexArrayObject({static_cast<void*>(meshData.vertices.data()), sizeof(MeshVertex), static_cast<int>(meshData.vertices.size()), attrs, 3},
+                                                               {static_cast<void*>(meshData.indices.data()), static_cast<int>(meshData.indices.size() * sizeof(unsigned int))});
 
         const auto entity = world.CreateEntity();
         world.AddComponent<TransformComponent>(entity);

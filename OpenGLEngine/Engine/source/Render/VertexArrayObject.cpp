@@ -15,15 +15,12 @@ VertexArrayObject::VertexArrayObject(const VertexBufferDesc& vertexBufferDesc)
 
     glGenBuffers(1, &vertexBufferId);
     glBindBuffer(GL_ARRAY_BUFFER, vertexBufferId);
-    glBufferData(GL_ARRAY_BUFFER, vertexBufferDesc.vertexSize * vertexBufferDesc.listSize,
-                 vertexBufferDesc.verticesList, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertexBufferDesc.vertexSize * vertexBufferDesc.listSize, vertexBufferDesc.verticesList, GL_STATIC_DRAW);
 
     unsigned int offset = 0;
     for (int i = 0; i < vertexBufferDesc.attributesListSize; i++)
     {
-        glVertexAttribPointer(i, vertexBufferDesc.attributesList[i].numElements, GL_FLOAT, GL_FALSE,
-                              vertexBufferDesc.vertexSize, (void*)(uintptr_t)offset);
-
+        glVertexAttribPointer(i, vertexBufferDesc.attributesList[i].numElements, GL_FLOAT, GL_FALSE, vertexBufferDesc.vertexSize, reinterpret_cast<void*>(static_cast<uintptr_t>(offset)));
         glEnableVertexAttribArray(i);
         offset += vertexBufferDesc.attributesList[i].numElements * sizeof(float);
     }
@@ -33,8 +30,7 @@ VertexArrayObject::VertexArrayObject(const VertexBufferDesc& vertexBufferDesc)
     vertexBufferDescData = vertexBufferDesc;
 }
 
-VertexArrayObject::VertexArrayObject(const VertexBufferDesc& vertexBufferDesc, const IndexBufferDesc& indexBufferDesc)
-    : VertexArrayObject(vertexBufferDesc)
+VertexArrayObject::VertexArrayObject(const VertexBufferDesc& vertexBufferDesc, const IndexBufferDesc& indexBufferDesc) : VertexArrayObject(vertexBufferDesc)
 {
     if (!indexBufferDesc.listSize)
         OGL_ERROR("VertexArrayObject | listSize is NULL")

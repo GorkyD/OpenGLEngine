@@ -1,8 +1,6 @@
 #include "Resource/MeshFactory.h"
-
 #include <cmath>
 #include <vector>
-
 #include "Math/Vector2.h"
 #include "Math/Vector3.h"
 #include "Render/RenderEngine.h"
@@ -17,8 +15,7 @@ struct SphereVertex
 };
 } // namespace
 
-VertexArrayObjectPtr MeshFactory::CreateSphere(RenderEngine* renderEngine, unsigned int& outIndexCount, int rings,
-                                               int sectors, float radius)
+VertexArrayObjectPtr MeshFactory::CreateSphere(RenderEngine* renderEngine, unsigned int& outIndexCount, int rings, int sectors, float radius)
 {
     std::vector<SphereVertex> vertices;
     vertices.reserve(static_cast<size_t>(rings + 1) * (sectors + 1));
@@ -69,9 +66,8 @@ VertexArrayObjectPtr MeshFactory::CreateSphere(RenderEngine* renderEngine, unsig
     }
 
     VertexAttributes attrs[] = {{3}, {2}, {3}};
-    const auto vao = renderEngine->CreateVertexArrayObject(
-        {static_cast<void*>(vertices.data()), sizeof(SphereVertex), static_cast<int>(vertices.size()), attrs, 3},
-        {static_cast<void*>(indices.data()), static_cast<int>(indices.size() * sizeof(unsigned int))});
+    const auto vao = renderEngine->CreateVertexArrayObject({static_cast<void*>(vertices.data()), sizeof(SphereVertex), static_cast<int>(vertices.size()), attrs, 3},
+                                                           {static_cast<void*>(indices.data()), static_cast<int>(indices.size() * sizeof(unsigned int))});
 
     outIndexCount = static_cast<unsigned int>(indices.size());
     return vao;

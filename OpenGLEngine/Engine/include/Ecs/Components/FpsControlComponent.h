@@ -1,4 +1,5 @@
 #pragma once
+
 struct FpsControllerComponent
 {
     float moveSpeed = 3.0f;

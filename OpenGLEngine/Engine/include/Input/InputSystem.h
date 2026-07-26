@@ -1,4 +1,5 @@
 #pragma once
+
 #include <array>
 #include "Extension/Extension.h"
 
@@ -38,14 +39,15 @@ private:
     static Key TranslateKey(int glfwKey);
     void ClearState();
 
-    float mouseDeltaX = 0;
-    float mouseDeltaY = 0;
-    double lastMouseX = 0;
-    double lastMouseY = 0;
-    bool firstMouse = true;
-
     std::array<bool, 256> keys = {};
 
+    float mouseDeltaX = 0;
+    float mouseDeltaY = 0;
+
+    double lastMouseX = 0;
+    double lastMouseY = 0;
+
+    bool firstMouse = true;
     bool leftMouseDown = false;
     bool rightMouseDown = false;
 };

@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Extension/Extension.h"
 
 enum class ShaderRenderType

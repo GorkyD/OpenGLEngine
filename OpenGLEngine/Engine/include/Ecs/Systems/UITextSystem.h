@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Ecs/Components/TextComponent.h"
 #include "Ecs/Core/IEcsSystem.h"
 #include "Render/Font.h"
@@ -12,7 +13,7 @@
 class UITextSystem : public IEcsSystem
 {
 public:
-    UITextSystem(RenderEngine* re, ShaderProgramPtr shader, Window* window)
+    UITextSystem(RenderEngine* re, const ShaderProgramPtr& shader, Window* window)
         : renderEngine(re), textShader(shader), window(window)
     {
     }
@@ -26,9 +27,10 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, bufferCapacity * sizeof(FontGlyphVertex), nullptr, GL_DYNAMIC_DRAW);
 
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(FontGlyphVertex), (void*)0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(FontGlyphVertex), static_cast<void*>(nullptr));
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(FontGlyphVertex), (void*)(2 * sizeof(float)));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(FontGlyphVertex),
+                              reinterpret_cast<void*>(2 * sizeof(float)));
         glEnableVertexAttribArray(1);
 
         glBindVertexArray(0);
@@ -64,7 +66,8 @@ public:
         const Rect screen = window->GetInnerSize();
 
         Matrix4 projection;
-        projection.SetOrthographicOffCenter(0.0f, (float)screen.width, (float)screen.height, 0.0f, -1.0f, 1.0f);
+        projection.SetOrthographicOffCenter(0.0f, static_cast<float>(screen.width), static_cast<float>(screen.height),
+                                            0.0f, -1.0f, 1.0f);
 
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
@@ -96,7 +99,7 @@ public:
             glUniform4f(textShader->GetUniformLocation("textColor"), text.color.x, text.color.y, text.color.z,
                         text.color.w);
 
-            glDrawArrays(GL_TRIANGLES, 0, (GLsizei)vertices.size());
+            glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size()));
         }
 
         glBindVertexArray(0);
@@ -120,5 +123,6 @@ private:
 
     unsigned int vao = 0;
     unsigned int vbo = 0;
+    
     size_t bufferCapacity = 1024;
 };

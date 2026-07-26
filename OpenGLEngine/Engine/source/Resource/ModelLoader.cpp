@@ -1,6 +1,5 @@
 #include "Resource/ModelLoader.h"
 #include "Extension/Extension.h"
-
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -51,8 +50,7 @@ static void ProcessNode(aiNode* node, const aiScene* scene, std::vector<MeshData
 ModelData ModelLoader::Load(const std::string& filePath)
 {
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_FlipUVs |
-                                                           aiProcess_GenNormals | aiProcess_CalcTangentSpace);
+    const aiScene* scene = importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals | aiProcess_CalcTangentSpace);
 
     if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !scene->mRootNode)
     {
@@ -84,8 +82,7 @@ ModelData ModelLoader::Load(const std::string& filePath)
 
     ProcessNode(scene->mRootNode, scene, model.meshes);
 
-    OGL_INFO("ModelLoader | Loaded: " << filePath << model.meshes.size() << " meshes, " << model.materials.size()
-                                      << " materials)")
+    OGL_INFO("ModelLoader | Loaded: " << filePath << model.meshes.size() << " meshes, " << model.materials.size() << " materials)")
 
     return model;
 }

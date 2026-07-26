@@ -5,7 +5,6 @@
 #include "Math/Vector4.h"
 #include "Render/RenderEngine.h"
 #include "Render/UniformData.h"
-
 #include "Ecs/Systems/AutoOrbitSystem.h"
 #include "Ecs/Systems/CameraInputSystem.h"
 #include "Ecs/Systems/CameraMatrixSystem.h"
@@ -32,31 +31,24 @@ void Engine::CreateStandardShaders()
 {
     uniformBuffer = renderEngine->CreateUniformBuffer({sizeof(UniformData)});
 
-    shaders.unlit =
-        renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Unlit.vert", "Assets/Shaders/SimpleShader_Unlit.frag"});
+    shaders.unlit = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Unlit.vert", "Assets/Shaders/SimpleShader_Unlit.frag"});
     shaders.unlit->SetUniformBufferSlot("UniformData", 0);
 
-    shaders.lit =
-        renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Lit.vert", "Assets/Shaders/SimpleShader_Lit.frag"});
+    shaders.lit = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Lit.vert", "Assets/Shaders/SimpleShader_Lit.frag"});
     shaders.lit->SetUniformBufferSlot("UniformData", 0);
 
-    shaders.skybox =
-        renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Skybox.vert", "Assets/Shaders/SimpleShader_Skybox.frag"});
+    shaders.skybox = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Skybox.vert", "Assets/Shaders/SimpleShader_Skybox.frag"});
     shaders.skybox->SetUniformBufferSlot("UniformData", 0);
 
-    shaders.fire =
-        renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Fire.vert", "Assets/Shaders/SimpleShader_Fire.frag"});
+    shaders.fire = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Fire.vert", "Assets/Shaders/SimpleShader_Fire.frag"});
     shaders.fire->SetUniformBufferSlot("UniformData", 0);
 
-    shaders.particle = renderEngine->CreateShaderProgram(
-        {"Assets/Shaders/SimpleShader_Particle.vert", "Assets/Shaders/SimpleShader_Particle.frag"});
+    shaders.particle = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Particle.vert", "Assets/Shaders/SimpleShader_Particle.frag"});
     shaders.particle->SetUniformBufferSlot("UniformData", 0);
 
-    shaders.text =
-        renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Text.vert", "Assets/Shaders/SimpleShader_Text.frag"});
+    shaders.text = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Text.vert", "Assets/Shaders/SimpleShader_Text.frag"});
 
-    shaders.outline = renderEngine->CreateShaderProgram(
-        {"Assets/Shaders/SimpleShader_Outline.vert", "Assets/Shaders/SimpleShader_Outline.frag"});
+    shaders.outline = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Outline.vert", "Assets/Shaders/SimpleShader_Outline.frag"});
     shaders.outline->SetUniformBufferSlot("UniformData", 0);
 }
 

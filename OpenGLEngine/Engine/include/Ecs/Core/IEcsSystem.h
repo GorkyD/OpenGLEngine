@@ -1,4 +1,5 @@
 #pragma once
+
 #include "EcsWorld.h"
 
 class IEcsSystem
