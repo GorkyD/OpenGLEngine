@@ -20,14 +20,9 @@ Window::Window()
 
     if (mode)
     {
-        glfwWindowHint(GLFW_RED_BITS, mode->redBits);
-        glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
-        glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
-        glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
-        window = glfwCreateWindow(mode->width, mode->height, "OpenGLEngine", monitor, nullptr);
-        glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+        window = glfwCreateWindow(mode->width, mode->height, "OpenGLEngine", nullptr, nullptr);
         glfwSetWindowPos(window, 0, 0);
-        glfwSetWindowSize(window, mode->width, mode->height);
     }
     else
     {

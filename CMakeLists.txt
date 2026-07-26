@@ -136,10 +136,6 @@ set(ENGINE_SOURCES
     OpenGLEngine/Engine/source/Scene/DemoScene.cpp
 )
 
-# Any game dropped into OpenGLEngine/Game/ (with its own .cpp files and, optionally,
-# its own subfolder) is picked up automatically - no per-game entries needed here.
-# CONFIGURE_DEPENDS makes CMake re-scan this on the next build after files are
-# added/removed/renamed under OpenGLEngine/Game/.
 file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/OpenGLEngine/Game/*.cpp"
 )
