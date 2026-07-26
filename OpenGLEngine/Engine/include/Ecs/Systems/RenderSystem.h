@@ -116,6 +116,8 @@ public:
             Vector4 color = {1, 1, 1, 1};
             Vector3 emissiveColor = {0, 0, 0};
             float emissiveIntensity = 0.0f;
+            float roughnessScalar = 1.0f;
+            float metallicScalar = 0.0f;
             int hasTexture = 0;
             int hasNormalMap = 0;
             int hasRoughnessMap = 0;
@@ -133,6 +135,8 @@ public:
                 color = mat.diffuseColor;
                 emissiveColor = mat.emissiveColor;
                 emissiveIntensity = mat.emissiveIntensity;
+                roughnessScalar = mat.roughness;
+                metallicScalar = mat.metallic;
                 if (mat.diffuseTexture)
                 {
                     glActiveTexture(GL_TEXTURE0);
@@ -180,6 +184,8 @@ public:
                 glUniform1i(shader->GetUniformLocation("hasMetallicMap"), hasMetallicMap);
                 glUniform1i(shader->GetUniformLocation("aoTexture"), 4);
                 glUniform1i(shader->GetUniformLocation("hasAoMap"), hasAoMap);
+                glUniform1f(shader->GetUniformLocation("roughnessScalar"), roughnessScalar);
+                glUniform1f(shader->GetUniformLocation("metallicScalar"), metallicScalar);
                 glUniform3f(shader->GetUniformLocation("viewPos"), viewPos.x, viewPos.y, viewPos.z);
                 glUniform3f(shader->GetUniformLocation("ambientColor"), ambient.color.x, ambient.color.y, ambient.color.z);
                 glUniform1f(shader->GetUniformLocation("ambientIntensity"), ambient.intensity);

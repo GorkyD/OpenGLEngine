@@ -16,4 +16,7 @@ struct MaterialComponent
     Vector3 emissiveColor = {0, 0, 0};
 
     float emissiveIntensity = 0.0f;
+
+    float roughness = 1.0f;
+    float metallic = 0.0f;
 };

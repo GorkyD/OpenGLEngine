@@ -16,6 +16,9 @@ uniform int hasRoughnessMap;
 uniform int hasMetallicMap;
 uniform int hasAoMap;
 
+uniform float roughnessScalar;
+uniform float metallicScalar;
+
 uniform vec3 viewPos;
 uniform vec3 ambientColor;
 uniform float ambientIntensity;
@@ -98,8 +101,8 @@ void main()
     vec4 texColor = mix(vec4(1.0), sampledColor, float(hasTexture));
     vec3 albedo = texColor.rgb * diffuseColor.rgb;
 
-    float roughness = mix(1.0, texture(roughnessTexture, fragTexCoord).r, float(hasRoughnessMap));
-    float metallic = mix(0.0, texture(metallicTexture, fragTexCoord).r, float(hasMetallicMap));
+    float roughness = mix(roughnessScalar, texture(roughnessTexture, fragTexCoord).r, float(hasRoughnessMap));
+    float metallic = mix(metallicScalar, texture(metallicTexture, fragTexCoord).r, float(hasMetallicMap));
     float ao = mix(1.0, texture(aoTexture, fragTexCoord).r, float(hasAoMap));
     roughness = clamp(roughness, 0.045, 1.0);
 

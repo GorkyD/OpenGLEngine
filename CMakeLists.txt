@@ -239,3 +239,13 @@ add_custom_command(TARGET OpenGLEngine POST_BUILD
         ${CMAKE_SOURCE_DIR}/OpenGLEngine/Assets
         $<TARGET_FILE_DIR:OpenGLEngine>/Assets
 )
+
+foreach(_entry ${GAME_ENTRIES})
+    if(IS_DIRECTORY "${_entry}" AND EXISTS "${_entry}/Assets")
+        add_custom_command(TARGET OpenGLEngine POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${_entry}/Assets"
+                $<TARGET_FILE_DIR:OpenGLEngine>/Assets
+        )
+    endif()
+endforeach()
