@@ -445,14 +445,6 @@ void DemoScene::CreateUiText(Engine& engine)
     title.position = {16.0f, 16.0f};
     title.color = {1.0f, 1.0f, 1.0f, 1.0f};
     title.scale = 1.0f;
-
-    fpsTextEntity = world.CreateEntity();
-    auto& fpsText = world.AddComponent<TextComponent>(fpsTextEntity);
-    fpsText.font = font;
-    fpsText.text = "FPS: 0";
-    fpsText.position = {16.0f, 56.0f};
-    fpsText.color = {0.4f, 1.0f, 0.4f, 1.0f};
-    fpsText.scale = 0.75f;
 }
 
 void DemoScene::OnUpdate(Engine& engine, float deltaTime)
@@ -465,19 +457,4 @@ void DemoScene::OnUpdate(Engine& engine, float deltaTime)
         const auto& camTransform = world.GetComponent<TransformComponent>(cameraEntity);
         audioSystem->SetListenerPosition(camTransform.position.x, camTransform.position.y, camTransform.position.z);
     }
-
-    if (fpsTextEntity == 0)
-        return;
-
-    fpsUpdateTimer += deltaTime;
-    fpsFrameCount++;
-    if (fpsUpdateTimer < 0.2f)
-        return;
-
-    auto& fpsText = world.GetComponent<TextComponent>(fpsTextEntity);
-    const int fps = fpsUpdateTimer > 0.0f ? static_cast<int>((float)fpsFrameCount / fpsUpdateTimer) : 0;
-    fpsText.text = "FPS: " + std::to_string(fps);
-
-    fpsUpdateTimer = 0.0f;
-    fpsFrameCount = 0;
 }

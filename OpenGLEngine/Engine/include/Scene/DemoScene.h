@@ -21,9 +21,5 @@ private:
 
     VertexArrayObjectPtr CreateFlameMesh(Engine& engine, unsigned int& outIndexCount);
 
-    Entity fpsTextEntity = 0;
     Entity cameraEntity = 0;
-
-    float fpsUpdateTimer = 0.0f;
-    int fpsFrameCount = 0;
 };

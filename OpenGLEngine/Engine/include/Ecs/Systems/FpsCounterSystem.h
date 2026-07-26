@@ -4,11 +4,14 @@
 #include "Ecs/Core/Entity.h"
 #include "Ecs/Core/IEcsSystem.h"
 #include "Render/Font.h"
+#include "Window/Window.h"
 #include <cstdio>
 
 class FpsCounterSystem : public IEcsSystem
 {
 public:
+    explicit FpsCounterSystem(Window* window) : window(window) {}
+
     void Init(EcsWorld& world) override
     {
         auto font = Font::LoadFromFile("Assets/Fonts/JetBrainsMono-Regular.ttf", 22.0f);
@@ -22,13 +25,16 @@ public:
         text.text = "FPS: --";
         text.color = {0.05f, 0.05f, 0.05f, 1.0f};
         text.scale = 1.0f;
-        text.position = {10.0f, 8.0f};
+
+        UpdatePosition(text);
     }
 
     void Run(EcsWorld& world, float deltaTime) override
     {
         if (entity == 0 || !world.HasComponent<TextComponent>(entity))
             return;
+
+        auto& text = world.GetComponent<TextComponent>(entity);
 
         accumulatedTime += deltaTime;
         frameCount++;
@@ -43,10 +49,22 @@ public:
 
         char buffer[32];
         std::snprintf(buffer, sizeof(buffer), "FPS: %.0f", fps);
-        world.GetComponent<TextComponent>(entity).text = buffer;
+        text.text = buffer;
+
+        UpdatePosition(text);
     }
 
 private:
+    void UpdatePosition(TextComponent& text)
+    {
+        const Rect screen = window->GetInnerSize();
+        const float textWidth = text.font->MeasureWidth(text.text, text.scale);
+        constexpr float margin = 10.0f;
+        text.position = {static_cast<float>(screen.width) - textWidth - margin, margin};
+    }
+
+    Window* window;
+
     Entity entity = 0;
     float accumulatedTime = 0.0f;
     int frameCount = 0;

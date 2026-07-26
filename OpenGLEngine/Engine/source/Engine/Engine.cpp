@@ -70,7 +70,7 @@ void Engine::CreateStandardSystems()
     systems->Add(std::make_unique<ParticleSystem>(renderEngine.get(), shaders.particle, uniformBuffer));
     systems->Add(std::make_unique<RotatorSystem>());
     systems->Add(std::make_unique<PendulumSystem>());
-    systems->Add(std::make_unique<FpsCounterSystem>());
+    systems->Add(std::make_unique<FpsCounterSystem>(window.get()));
     systems->Add(std::make_unique<UITextSystem>(renderEngine.get(), shaders.text, window.get()));
     systems->Init();
 }
