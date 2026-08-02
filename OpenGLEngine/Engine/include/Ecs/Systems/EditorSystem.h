@@ -73,10 +73,16 @@ private:
 
     void DrawSceneList()
     {
-        for (auto& [name, factory] : engine->GetSceneRegistry())
+        for (const auto& entry : engine->GetSceneRegistry())
         {
-            if (ImGui::Button(name.c_str()))
-                engine->LoadScene(factory(), name);
+            if (ImGui::Button(entry.name.c_str()))
+                engine->LoadScene(entry.factory(), entry.name);
+
+            if (!entry.ownerName.empty())
+            {
+                ImGui::SameLine();
+                ImGui::TextDisabled("%s", entry.ownerName.c_str());
+            }
         }
     }
 

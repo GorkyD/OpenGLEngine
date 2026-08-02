@@ -1,0 +1,30 @@
+#pragma once
+
+#include <string>
+#include <vector>
+
+struct GameAssetsEntry
+{
+    const char* name;
+    const char* assetsPath;
+};
+
+inline const std::vector<GameAssetsEntry>& GetGameAssetsRegistry()
+{
+    static const std::vector<GameAssetsEntry> entries = {
+@GAME_REGISTRY_ENTRIES@
+    };
+
+    return entries;
+}
+
+inline std::string FindGameAssetsPath(const std::string& gameName)
+{
+    for (const auto& entry : GetGameAssetsRegistry())
+    {
+        if (gameName == entry.name)
+            return entry.assetsPath;
+    }
+
+    return "";
+}

@@ -8,7 +8,8 @@ int main()
     try
     {
         Engine engine(EngineMode::Play);
-        engine.LoadScene(std::make_unique<DemoScene>());
+        engine.RegisterScene("Demo", [] { return std::make_unique<DemoScene>(); });
+        engine.LoadScene(std::make_unique<DemoScene>(), "Demo");
         engine.Run();
     }
     catch (const std::exception& ex)

@@ -69,13 +69,13 @@ struct SceneData
 class SceneSerializer
 {
 public:
-    static std::string GetScenePath(const std::string& sceneName);
-    static std::string GetSourceScenePath(const std::string& sceneName);
+    static std::string GetScenePath(const std::string& sceneName, const std::string& ownerName);
+    static std::string GetSourceScenePath(const std::string& sceneName, const std::string& ownerName, const std::string& sourceAssetsPath);
 
-    static bool Save(EcsWorld& world, const std::string& sceneName);
+    static bool Save(Engine& engine, const std::string& sceneName);
     static bool Load(Engine& engine, const std::string& sceneName);
 
-    static SceneData ReadFile(const std::string& sceneName);
+    static SceneData ReadFile(const std::string& sceneName, const std::string& ownerName, const std::string& sourceAssetsPath);
 
     static std::string MakeUniqueGroupName(EcsWorld& world, const std::string& assetPath);
 };

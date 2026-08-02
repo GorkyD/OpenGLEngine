@@ -13,7 +13,8 @@ public:
     Rect GetInnerSize() const;
 
     void MakeCurrentContext() const;
-    void Present(bool vSync) const;
+    void SetVSync(bool vSync);
+    void Present() const;
     bool ShouldClose() const;
 
     void PollEvents();

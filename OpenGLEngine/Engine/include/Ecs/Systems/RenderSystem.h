@@ -289,7 +289,6 @@ public:
 
         auto typeOf = [&](Entity entity) -> ShaderRenderType { return shaders.Has(entity) ? shaders.Get(entity).shaderType : ShaderRenderType::Unlit; };
 
-        // Clear previous frame batches completely to avoid unbounded growth of the map
         batchGroups.clear();
 
         for (auto& [entityId, meshComponent] : meshes)

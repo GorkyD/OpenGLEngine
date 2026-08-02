@@ -67,9 +67,13 @@ void Window::MakeCurrentContext() const
     glfwMakeContextCurrent(window);
 }
 
-void Window::Present(bool vSync) const
+void Window::SetVSync(bool vSync)
 {
     glfwSwapInterval(vSync ? 1 : 0);
+}
+
+void Window::Present() const
+{
     glfwSwapBuffers(window);
 }
 

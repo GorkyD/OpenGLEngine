@@ -22,17 +22,23 @@
 #include "Render/RenderEngine.h"
 #include "Resource/EntityFactory.h"
 
-std::string SceneSerializer::GetScenePath(const std::string& sceneName)
+std::string SceneSerializer::GetScenePath(const std::string& sceneName, const std::string& ownerName)
 {
-    return "Assets/Scenes/" + sceneName + ".scene";
+    if (ownerName.empty())
+        return "Assets/Scenes/" + sceneName + ".scene";
+
+    return "Assets/Scenes/" + ownerName + "/" + sceneName + ".scene";
 }
 
-std::string SceneSerializer::GetSourceScenePath(const std::string& sceneName)
+std::string SceneSerializer::GetSourceScenePath(const std::string& sceneName, const std::string& ownerName, const std::string& sourceAssetsPath)
 {
+    if (!sourceAssetsPath.empty())
+        return sourceAssetsPath + "/Scenes/" + ownerName + "/" + sceneName + ".scene";
+
 #ifdef OPENGLENGINE_SOURCE_ASSETS
     return std::string(OPENGLENGINE_SOURCE_ASSETS) + "/Scenes/" + sceneName + ".scene";
 #else
-    return GetScenePath(sceneName);
+    return GetScenePath(sceneName, ownerName);
 #endif
 }
 
@@ -157,17 +163,21 @@ static void WriteScene(EcsWorld& world, std::ostream& file, int& outObjects, int
     }
 }
 
-bool SceneSerializer::Save(EcsWorld& world, const std::string& sceneName)
+bool SceneSerializer::Save(Engine& engine, const std::string& sceneName)
 {
+    const Engine::SceneEntry* entry = engine.FindSceneEntry(sceneName);
+    const std::string ownerName = entry ? entry->ownerName : "";
+    const std::string sourceAssets = entry ? entry->sourceAssetsPath : "";
+
     std::ostringstream buffer;
     int objectCount = 0;
     int lightCount = 0;
-    WriteScene(world, buffer, objectCount, lightCount);
+    WriteScene(engine.GetWorld(), buffer, objectCount, lightCount);
 
     const std::string contents = buffer.str();
     bool wroteAny = false;
 
-    for (const std::string& path : {GetScenePath(sceneName), GetSourceScenePath(sceneName)})
+    for (const std::string& path : {GetScenePath(sceneName, ownerName), GetSourceScenePath(sceneName, ownerName, sourceAssets)})
     {
         std::error_code ec;
         std::filesystem::create_directories(std::filesystem::path(path).parent_path(), ec);
@@ -189,13 +199,13 @@ bool SceneSerializer::Save(EcsWorld& world, const std::string& sceneName)
     return wroteAny;
 }
 
-SceneData SceneSerializer::ReadFile(const std::string& sceneName)
+SceneData SceneSerializer::ReadFile(const std::string& sceneName, const std::string& ownerName, const std::string& sourceAssetsPath)
 {
     SceneData data;
 
-    std::ifstream file(GetScenePath(sceneName));
+    std::ifstream file(GetScenePath(sceneName, ownerName));
     if (!file.is_open())
-        file.open(GetSourceScenePath(sceneName));
+        file.open(GetSourceScenePath(sceneName, ownerName, sourceAssetsPath));
     if (!file.is_open())
         return data;
 
@@ -299,7 +309,11 @@ SceneData SceneSerializer::ReadFile(const std::string& sceneName)
 
 bool SceneSerializer::Load(Engine& engine, const std::string& sceneName)
 {
-    const SceneData data = ReadFile(sceneName);
+    const Engine::SceneEntry* entry = engine.FindSceneEntry(sceneName);
+    const std::string ownerName = entry ? entry->ownerName : "";
+    const std::string sourceAssets = entry ? entry->sourceAssetsPath : "";
+
+    const SceneData data = ReadFile(sceneName, ownerName, sourceAssets);
     if (data.Empty())
         return false;
 
@@ -415,6 +429,6 @@ bool SceneSerializer::Load(Engine& engine, const std::string& sceneName)
         }
     }
 
-    OGL_INFO("SceneSerializer | Loaded " << data.objects.size() << " objects, " << data.lights.size() << " lights from " << GetScenePath(sceneName))
+    OGL_INFO("SceneSerializer | Loaded " << data.objects.size() << " objects, " << data.lights.size() << " lights from " << GetScenePath(sceneName, ownerName))
     return true;
 }

@@ -21,7 +21,7 @@ public:
         ImGui::SameLine();
         const std::string& sceneName = engine.GetActiveSceneName();
         if (ImGui::Button("Save Scene") && !sceneName.empty())
-            SceneSerializer::Save(world, sceneName);
+            SceneSerializer::Save(engine, sceneName);
 
         ImGui::SameLine();
         ImGui::TextUnformatted(sceneName.empty() ? "(unnamed scene)" : sceneName.c_str());

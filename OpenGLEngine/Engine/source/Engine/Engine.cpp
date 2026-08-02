@@ -1,9 +1,6 @@
 #include <chrono>
 #include <cstdio>
 #include <thread>
-#ifdef _WIN32
-#include <windows.h>
-#endif
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -11,6 +8,7 @@
 #include <imgui_impl_opengl3.h>
 #include "Window/Window.h"
 #include "Engine/Engine.h"
+#include "Platform/ProcessLauncher.h"
 #include "Math/Vector4.h"
 #include "Render/RenderEngine.h"
 #include "Render/UniformData.h"
@@ -42,7 +40,12 @@
 Engine::Engine(EngineMode startMode) : mode(startMode)
 {
     const bool editing = mode == EngineMode::Editor;
+
+    vsyncEnabled = false;
+    frameCapEnabled = (mode == EngineMode::Editor);
+
     window = std::make_unique<Window>(editing, editing ? "OpenGLEngine Editor" : "OpenGLEngine");
+    window->SetVSync(vsyncEnabled);
     renderEngine = std::make_unique<RenderEngine>();
     inputSystem = std::make_shared<InputSystem>(window->GetGLFWWindow());
     audioSystem = std::make_shared<AudioSystem>();
@@ -101,35 +104,23 @@ bool Engine::LaunchPlayInstance()
         return false;
     }
 
-    SceneSerializer::Save(world, activeSceneName);
+    SceneSerializer::Save(*this, activeSceneName);
 
-#ifdef _WIN32
-    char exePath[MAX_PATH] = {};
-    if (GetModuleFileNameA(nullptr, exePath, MAX_PATH) == 0)
+    const std::string exePath = ProcessLauncher::GetExecutablePath();
+    if (exePath.empty())
+    {
+        OGL_WARNING("Engine | Cannot resolve executable path")
         return false;
+    }
 
-    std::string commandLine = "\"" + std::string(exePath) + "\" --play --scene=" + activeSceneName;
-
-    STARTUPINFOA startupInfo = {};
-    startupInfo.cb = sizeof(startupInfo);
-    PROCESS_INFORMATION processInfo = {};
-
-    const BOOL created = CreateProcessA(nullptr, commandLine.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startupInfo, &processInfo);
-    if (!created)
+    if (!ProcessLauncher::Launch("\"" + exePath + "\" --play --scene=" + activeSceneName))
     {
         OGL_WARNING("Engine | Failed to launch play instance")
         return false;
     }
 
-    CloseHandle(processInfo.hProcess);
-    CloseHandle(processInfo.hThread);
-
     OGL_INFO("Engine | Launched play instance for scene: " << activeSceneName)
     return true;
-#else
-    OGL_WARNING("Engine | Play instance launching is not implemented on this platform")
-    return false;
-#endif
 }
 
 void Engine::ApplyCursorMode(bool panelOpen)
@@ -258,6 +249,8 @@ void Engine::Run()
 
 void Engine::OnUpdateInternal()
 {
+    const auto frameStart = std::chrono::high_resolution_clock::now();
+
     window->PollEvents();
     renderEngine->SetViewPort(window->GetInnerSize());
 
@@ -306,9 +299,28 @@ void Engine::OnUpdateInternal()
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-    window->Present(vsyncEnabled);
+    window->Present();
+
+    const bool editorIdle = mode == EngineMode::Editor && !window->IsFocused();
+    if (frameCapEnabled && frameCap > 0 && !editorIdle)
+        WaitForFrameDeadline(frameStart);
 
     ThrottleWhenUnfocused();
+}
+
+void Engine::WaitForFrameDeadline(const std::chrono::high_resolution_clock::time_point& frameStart) const
+{
+    using namespace std::chrono;
+
+    const duration<double, std::milli> target(1000.0 / static_cast<double>(frameCap));
+    const auto deadline = frameStart + duration_cast<high_resolution_clock::duration>(target);
+
+    const auto coarseDeadline = deadline - milliseconds(spinMarginMs);
+    if (high_resolution_clock::now() < coarseDeadline)
+        std::this_thread::sleep_until(coarseDeadline);
+
+    while (high_resolution_clock::now() < deadline)
+        std::this_thread::yield();
 }
 
 void Engine::ThrottleWhenUnfocused() const

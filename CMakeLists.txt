@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.23)
 project(OpenGLEngine LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -17,96 +17,8 @@ find_package(OpenGL REQUIRED)
 find_package(assimp REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 
-function(_ogle_detect_wwise_sdk out_var)
-    if(DEFINED ENV{WWISESDK} AND EXISTS "$ENV{WWISESDK}/include/AK/AkPlatforms.h")
-        set(${out_var} "$ENV{WWISESDK}" PARENT_SCOPE)
-        return()
-    endif()
-    if(DEFINED ENV{WWISEROOT} AND EXISTS "$ENV{WWISEROOT}/SDK/include/AK/AkPlatforms.h")
-        set(${out_var} "$ENV{WWISEROOT}/SDK" PARENT_SCOPE)
-        return()
-    endif()
-    if(DEFINED ENV{WWISE_SDK_DIR} AND EXISTS "$ENV{WWISE_SDK_DIR}/include/AK/AkPlatforms.h")
-        set(${out_var} "$ENV{WWISE_SDK_DIR}" PARENT_SCOPE)
-        return()
-    endif()
+include(cmake/WwiseSetup.cmake)
 
-    set(_known_installs_json "")
-    if(WIN32)
-        set(_known_installs_json "$ENV{APPDATA}/WwiseLauncher/Json/knownInstalls.json")
-    elseif(APPLE)
-        set(_known_installs_json "$ENV{HOME}/Library/Application Support/WwiseLauncher/Json/knownInstalls.json")
-    else()
-        set(_known_installs_json "$ENV{HOME}/.config/WwiseLauncher/Json/knownInstalls.json")
-    endif()
-
-    if(EXISTS "${_known_installs_json}")
-        file(READ "${_known_installs_json}" _known_installs_contents)
-        string(REGEX MATCHALL "\"[^\"]*\"" _known_install_entries "${_known_installs_contents}")
-        set(_best "")
-        foreach(_entry ${_known_install_entries})
-            string(REGEX REPLACE "^\"|\"$" "" _install_path "${_entry}")
-            string(REPLACE "\\\\" "/" _install_path "${_install_path}")
-            if(EXISTS "${_install_path}/SDK/include/AK/AkPlatforms.h")
-                set(_best "${_install_path}/SDK")
-            endif()
-        endforeach()
-        if(_best)
-            set(${out_var} "${_best}" PARENT_SCOPE)
-            return()
-        endif()
-    endif()
-
-    set(${out_var} "" PARENT_SCOPE)
-endfunction()
-
-_ogle_detect_wwise_sdk(WWISE_SDK_DIR_AUTODETECTED)
-
-set(WWISE_SDK_DIR "${WWISE_SDK_DIR_AUTODETECTED}" CACHE PATH "Path to Wwise SDK root (auto-detected if available)")
-
-set(OPENGLENGINE_ENABLE_WWISE_DEFAULT OFF)
-if(WWISE_SDK_DIR_AUTODETECTED)
-    set(OPENGLENGINE_ENABLE_WWISE_DEFAULT ON)
-endif()
-option(OPENGLENGINE_ENABLE_WWISE "Enable Wwise integration" ${OPENGLENGINE_ENABLE_WWISE_DEFAULT})
-
-if(NOT WWISE_SDK_DIR AND DEFINED ENV{WWISE_SDK_DIR})
-    set(WWISE_SDK_DIR "$ENV{WWISE_SDK_DIR}")
-endif()
-
-set(WWISE_SDK_ROOT "")
-if(WWISE_SDK_DIR)
-    if(EXISTS "${WWISE_SDK_DIR}/include/AK/AkPlatforms.h")
-        set(WWISE_SDK_ROOT "${WWISE_SDK_DIR}")
-    elseif(EXISTS "${WWISE_SDK_DIR}/SDK/include/AK/AkPlatforms.h")
-        set(WWISE_SDK_ROOT "${WWISE_SDK_DIR}/SDK")
-    endif()
-endif()
-
-if(OPENGLENGINE_ENABLE_WWISE AND WWISE_SDK_ROOT)
-    message(STATUS "Wwise SDK found: ${WWISE_SDK_ROOT}")
-elseif(OPENGLENGINE_ENABLE_WWISE)
-    message(WARNING "OPENGLENGINE_ENABLE_WWISE is ON but no valid Wwise SDK was found (set WWISE_SDK_DIR or the WWISESDK env var)")
-endif()
-
-function(_ogle_detect_wwise_project out_var)
-    if(DEFINED ENV{WWISE_PROJECT_DIR} AND EXISTS "$ENV{WWISE_PROJECT_DIR}")
-        set(${out_var} "$ENV{WWISE_PROJECT_DIR}" PARENT_SCOPE)
-        return()
-    endif()
-    if(DEFINED ENV{WWISEROOT})
-        set(_guess "$ENV{WWISEROOT}/../Projects/${PROJECT_NAME}")
-        if(EXISTS "${_guess}")
-            set(${out_var} "${_guess}" PARENT_SCOPE)
-            return()
-        endif()
-    endif()
-    set(${out_var} "" PARENT_SCOPE)
-endfunction()
-
-_ogle_detect_wwise_project(WWISE_PROJECT_DIR_AUTODETECTED)
-set(WWISE_PROJECT_DIR "${WWISE_PROJECT_DIR_AUTODETECTED}" CACHE PATH
-    "Path to the Wwise project folder that contains GeneratedSoundBanks/ (auto-detected if available)")
 
 # --- GLAD (bundled) ---
 add_library(glad STATIC
@@ -137,6 +49,8 @@ set(ENGINE_SOURCES
     OpenGLEngine/Engine/source/Resource/ModelCache.cpp
     OpenGLEngine/Engine/source/Resource/SceneSerializer.cpp
     OpenGLEngine/Engine/source/Physics/Physics.cpp
+    OpenGLEngine/Engine/source/Platform/HighResolutionTimer.cpp
+    OpenGLEngine/Engine/source/Platform/ProcessLauncher.cpp
     OpenGLEngine/Engine/source/Editor/AssetLibrary.cpp
     OpenGLEngine/Engine/source/Editor/EditorCommands.cpp
     OpenGLEngine/Engine/source/Save/SaveService.cpp
@@ -147,7 +61,6 @@ file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/OpenGLEngine/Game/*.cpp"
 )
 
-# Game entry points define standalone game executables and must stay out of the editor build
 set(GAME_MAIN_SOURCES "")
 foreach(_source ${GAME_SOURCES})
     get_filename_component(_name "${_source}" NAME)
@@ -155,15 +68,18 @@ foreach(_source ${GAME_SOURCES})
         list(APPEND GAME_MAIN_SOURCES "${_source}")
     endif()
 endforeach()
-list(REMOVE_ITEM GAME_SOURCES ${GAME_MAIN_SOURCES})
+if(GAME_MAIN_SOURCES)
+    list(REMOVE_ITEM GAME_SOURCES ${GAME_MAIN_SOURCES})
+endif()
 
-file(GLOB GAME_ENTRIES CONFIGURE_DEPENDS LIST_DIRECTORIES true
+file(GLOB _gameEntries CONFIGURE_DEPENDS LIST_DIRECTORIES true
     "${CMAKE_SOURCE_DIR}/OpenGLEngine/Game/*"
 )
-set(GAME_INCLUDE_DIRS "")
-foreach(_entry ${GAME_ENTRIES})
+
+set(GAME_DIRS "")
+foreach(_entry ${_gameEntries})
     if(IS_DIRECTORY "${_entry}")
-        list(APPEND GAME_INCLUDE_DIRS "${_entry}")
+        list(APPEND GAME_DIRS "${_entry}")
     endif()
 endforeach()
 
@@ -172,12 +88,19 @@ add_library(OpenGLEngineCore STATIC ${ENGINE_SOURCES})
 target_include_directories(OpenGLEngineCore PUBLIC
     OpenGLEngine/Engine/include
     OpenGLEngine/Engine
-    OpenGLEngine/Game
-    ${GAME_INCLUDE_DIRS}
 )
 
 add_executable(OpenGLEngine ${GAME_SOURCES})
 target_link_libraries(OpenGLEngine PRIVATE OpenGLEngineCore)
+target_include_directories(OpenGLEngine PRIVATE
+    OpenGLEngine/Game
+    ${GAME_DIRS}
+)
+
+if(OPENGLENGINE_ENABLE_WWISE AND WWISE_SDK_ROOT AND NOT WIN32)
+    message(WARNING "Wwise integration currently supports Windows only, building without audio")
+    set(OPENGLENGINE_ENABLE_WWISE OFF)
+endif()
 
 if(OPENGLENGINE_ENABLE_WWISE AND WWISE_SDK_ROOT)
     target_include_directories(OpenGLEngineCore PUBLIC
@@ -194,7 +117,6 @@ if(OPENGLENGINE_ENABLE_WWISE AND WWISE_SDK_ROOT)
         ${WWISE_SDK_ROOT}/samples/SoundEngine/Common/AkGeneratedSoundBanksResolver.cpp
     )
 
-    set(WWISE_PLATFORM_DIR "")
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
         set(WWISE_PLATFORM_DIR "x64_vc170")
     else()
@@ -252,31 +174,41 @@ target_link_libraries(OpenGLEngineCore PUBLIC
     imgui::imgui
 )
 
+if(WIN32)
+    target_link_libraries(OpenGLEngineCore PUBLIC winmm)
+endif()
+
 target_compile_definitions(OpenGLEngineCore PUBLIC GL_SILENCE_DEPRECATION)
 target_compile_definitions(OpenGLEngineCore PUBLIC OPENGLENGINE_SOURCE_ASSETS="${CMAKE_SOURCE_DIR}/OpenGLEngine/Assets")
 
-# Copies engine assets plus the assets of every game folder next to the given executable
-function(ogle_copy_assets target)
-    add_custom_command(TARGET ${target} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/OpenGLEngine/Assets
-            $<TARGET_FILE_DIR:${target}>/Assets
-    )
+set(ASSET_COPY_COMMANDS
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/OpenGLEngine/Assets
+        ${CMAKE_BINARY_DIR}/Assets
+)
 
-    foreach(_assetDir ${ARGN})
-        if(EXISTS "${_assetDir}/Assets")
-            add_custom_command(TARGET ${target} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_directory
-                    "${_assetDir}/Assets"
-                    $<TARGET_FILE_DIR:${target}>/Assets
-            )
-        endif()
-    endforeach()
-endfunction()
+set(GAME_REGISTRY_ENTRIES "")
 
-ogle_copy_assets(OpenGLEngine ${GAME_ENTRIES})
+foreach(_gameDir ${GAME_DIRS})
+    get_filename_component(_dirName "${_gameDir}" NAME)
+    string(MAKE_C_IDENTIFIER "${_dirName}" _gameId)
+    string(APPEND GAME_REGISTRY_ENTRIES "    {\"${_gameId}\", \"${_gameDir}/Assets\"},\n")
 
-# Every game folder providing GameMain.cpp becomes a standalone game executable
+    if(EXISTS "${_gameDir}/Assets")
+        list(APPEND ASSET_COPY_COMMANDS
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${_gameDir}/Assets"
+                ${CMAKE_BINARY_DIR}/Assets
+        )
+    endif()
+endforeach()
+
+add_custom_target(OpenGLEngineAssets ALL ${ASSET_COPY_COMMANDS}
+    COMMENT "Copying engine and game assets"
+)
+
+add_dependencies(OpenGLEngine OpenGLEngineAssets)
+
 foreach(_gameMain ${GAME_MAIN_SOURCES})
     get_filename_component(_gameDir "${_gameMain}" DIRECTORY)
     get_filename_component(_gameName "${_gameDir}" NAME)
@@ -287,8 +219,19 @@ foreach(_gameMain ${GAME_MAIN_SOURCES})
     add_executable(${_gameTarget} ${_gameSources})
     target_link_libraries(${_gameTarget} PRIVATE OpenGLEngineCore)
     target_include_directories(${_gameTarget} PRIVATE "${_gameDir}")
+    target_compile_definitions(${_gameTarget} PRIVATE
+        OPENGLENGINE_GAME_NAME="${_gameTarget}"
+        OPENGLENGINE_GAME_ASSETS="${_gameDir}/Assets"
+    )
 
-    ogle_copy_assets(${_gameTarget} "${_gameDir}")
+    add_dependencies(${_gameTarget} OpenGLEngineAssets)
 
     message(STATUS "Game executable: ${_gameTarget} (${_gameName})")
 endforeach()
+
+configure_file(
+    "${CMAKE_SOURCE_DIR}/cmake/GameRegistry.h.in"
+    "${CMAKE_BINARY_DIR}/generated/GameRegistry.h"
+    @ONLY
+)
+target_include_directories(OpenGLEngineCore PUBLIC "${CMAKE_BINARY_DIR}/generated")

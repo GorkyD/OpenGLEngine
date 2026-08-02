@@ -12,6 +12,7 @@
 #include "Ecs/Core/EcsSystems.h"
 #include "Ecs/Systems/EditorHistory.h"
 #include "Ecs/Systems/EditorSelection.h"
+#include "Platform/HighResolutionTimer.h"
 #include "Save/SaveService.h"
 #include "Scene/IScene.h"
 
@@ -56,13 +57,35 @@ public:
     }
 
     using SceneFactory = std::function<std::unique_ptr<IScene>()>;
-    void RegisterScene(const std::string& name, SceneFactory factory)
+
+    struct SceneEntry
     {
-        sceneRegistry.emplace_back(name, std::move(factory));
+        std::string name;
+        SceneFactory factory;
+
+        std::string ownerName;
+        std::string sourceAssetsPath;
+    };
+
+    void RegisterScene(const std::string& name, SceneFactory factory, const std::string& ownerName = "", const std::string& sourceAssetsPath = "")
+    {
+        sceneRegistry.push_back({name, std::move(factory), ownerName, sourceAssetsPath});
     }
-    const std::vector<std::pair<std::string, SceneFactory>>& GetSceneRegistry() const
+
+    const std::vector<SceneEntry>& GetSceneRegistry() const
     {
         return sceneRegistry;
+    }
+
+    const SceneEntry* FindSceneEntry(const std::string& name) const
+    {
+        for (const auto& entry : sceneRegistry)
+        {
+            if (entry.name == name)
+                return &entry;
+        }
+
+        return nullptr;
     }
     IScene* GetActiveScene() const
     {
@@ -149,6 +172,7 @@ public:
 
 private:
     void OnUpdateInternal();
+    void WaitForFrameDeadline(const std::chrono::high_resolution_clock::time_point& frameStart) const;
     void ThrottleWhenUnfocused() const;
     void CreateStandardShaders();
     void CreateStandardSystems();
@@ -159,6 +183,8 @@ protected:
     virtual void OnUpdate(float deltaTime) {}
     virtual void OnQuit();
 
+    HighResolutionTimer highResolutionTimer;
+
     EcsWorld world;
 
     std::unique_ptr<EcsSystems> systems;
@@ -168,7 +194,7 @@ protected:
     std::unique_ptr<IScene> pendingScene;
     std::unique_ptr<IScene> activeScene;
 
-    std::vector<std::pair<std::string, SceneFactory>> sceneRegistry;
+    std::vector<SceneEntry> sceneRegistry;
     std::string activeSceneName;
 
     std::shared_ptr<InputSystem> inputSystem;
@@ -191,10 +217,13 @@ protected:
     unsigned int sceneStructureVersion = 0;
     bool editorPanelOpen = true;
 
-    static constexpr int unfocusedFrameDelayMs = 30;
+    static constexpr int unfocusedFrameDelayMs = 67;
+    static constexpr int spinMarginMs = 2;
 
 public:
-    bool vsyncEnabled = true;
+    bool vsyncEnabled = false;
+    bool frameCapEnabled = true;
+    int frameCap = 240;
 
 private:
 

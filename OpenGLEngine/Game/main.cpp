@@ -1,4 +1,5 @@
 #include "Engine/Engine.h"
+#include "GameRegistry.h"
 #include "FpsScene.h"
 #include "Scene/DemoScene.h"
 #include "ZigZagScene.h"
@@ -23,15 +24,16 @@ int main(int argc, char** argv)
         }
 
         Engine engine(play ? EngineMode::Play : EngineMode::Editor);
-        engine.RegisterScene("Fps", [] { return std::make_unique<FpsScene>(); });
-        engine.RegisterScene("Demo", [] { return std::make_unique<DemoScene>(); });
-        engine.RegisterScene("ZigZag", [] { return std::make_unique<ZigZagScene>(); });
 
-        for (const auto& [name, factory] : engine.GetSceneRegistry())
+        engine.RegisterScene("Fps", [] { return std::make_unique<FpsScene>(); }, "Fps", FindGameAssetsPath("Fps"));
+        engine.RegisterScene("ZigZag", [] { return std::make_unique<ZigZagScene>(); }, "ZigZag_OpenGL", FindGameAssetsPath("ZigZag_OpenGL"));
+        engine.RegisterScene("Demo", [] { return std::make_unique<DemoScene>(); });
+
+        for (const auto& entry : engine.GetSceneRegistry())
         {
-            if (name == startScene)
+            if (entry.name == startScene)
             {
-                engine.LoadScene(factory(), name);
+                engine.LoadScene(entry.factory(), entry.name);
                 break;
             }
         }
