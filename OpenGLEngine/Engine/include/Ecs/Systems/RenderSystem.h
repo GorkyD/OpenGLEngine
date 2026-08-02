@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Ecs/Components/AnimatorComponent.h"
 #include "Ecs/Components/MeshComponent.h"
 #include "Ecs/Components/ShaderComponent.h"
 #include "Ecs/Components/MaterialComponent.h"
@@ -9,6 +10,8 @@
 #include "Ecs/Components/FogComponent.h"
 #include "Ecs/Components/OutlineComponent.h"
 #include "Ecs/Components/TransformComponent.h"
+#include "Ecs/Components/VisibilityComponent.h"
+#include "Ecs/Components/WorldTransformComponent.h"
 #include "Ecs/Core/IEcsSystem.h"
 #include "Render/RenderEngine.h"
 #include "Render/ShaderProgram.h"
@@ -27,6 +30,25 @@
 
 class RenderSystem : public IEcsSystem
 {
+    struct BatchKey
+    {
+        VertexArrayObject* vao = nullptr;
+        unsigned int diffuseTextureId = 0;
+
+        bool operator==(const BatchKey& other) const
+        {
+            return vao == other.vao && diffuseTextureId == other.diffuseTextureId;
+        }
+    };
+
+    struct BatchKeyHash
+    {
+        size_t operator()(const BatchKey& key) const
+        {
+            return std::hash<const void*>()(key.vao) ^ (std::hash<unsigned int>()(key.diffuseTextureId) << 1);
+        }
+    };
+
 public:
     static constexpr int MaxLights = 32;
 
@@ -39,10 +61,27 @@ public:
     {
         elapsedTime += deltaTime;
 
+        lastUploadedPose = nullptr;
+        lastPoseShader = nullptr;
+
         auto& meshes = world.GetPool<MeshComponent>();
         auto& shaders = world.GetPool<ShaderComponent>();
         auto& materials = world.GetPool<MaterialComponent>();
         auto& transforms = world.GetPool<TransformComponent>();
+        auto& worldTransforms = world.GetPool<WorldTransformComponent>();
+
+        auto& visibilities = world.GetPool<VisibilityComponent>();
+
+        auto isVisible = [&](Entity entity) { return !visibilities.Has(entity) || visibilities.Get(entity).visibleInFrustum; };
+
+        auto modelMatrixOf = [&](Entity entity) -> Matrix4
+        {
+            if (worldTransforms.Has(entity))
+                return worldTransforms.Get(entity).matrix;
+            if (transforms.Has(entity))
+                return transforms.Get(entity).GetModelMatrix();
+            return Matrix4();
+        };
 
         AmbientLightComponent ambient;
         for (auto& [entityId, ambientLightComponent] : world.GetPool<AmbientLightComponent>())
@@ -101,12 +140,10 @@ public:
             if (!shaders.Has(entity))
                 return;
 
-            if (!mesh.visible)
+            if (!mesh.visible || !isVisible(entity))
                 return;
 
-            Matrix4 worldMatrix;
-            if (transforms.Has(entity))
-                worldMatrix = transforms.Get(entity).GetModelMatrix();
+            Matrix4 worldMatrix = modelMatrixOf(entity);
 
             uniformBuffer->SetSubData(&worldMatrix, 0, sizeof(Matrix4));
 
@@ -174,7 +211,20 @@ public:
             glUniform4f(shader->GetUniformLocation("diffuseColor"), color.x, color.y, color.z, color.w);
             glUniform1i(shader->GetUniformLocation("hasTexture"), hasTexture);
 
-            if (shaderComp.shaderType == ShaderRenderType::Lit)
+            if (shaderComp.shaderType == ShaderRenderType::Skinned && world.HasComponent<AnimatorComponent>(entity))
+            {
+                auto& animState = world.GetComponent<AnimatorComponent>(entity).state;
+                if (animState && !animState->boneMatrices.empty() && (animState.get() != lastUploadedPose || shader != lastPoseShader))
+                {
+                    glUniformMatrix4fv(shader->GetUniformLocation("boneMatrices[0]"), static_cast<int>(animState->boneMatrices.size()), GL_FALSE,
+                                        &animState->boneMatrices[0].matrix[0][0]);
+
+                    lastUploadedPose = animState.get();
+                    lastPoseShader = shader;
+                }
+            }
+
+            if (shaderComp.shaderType == ShaderRenderType::Lit || shaderComp.shaderType == ShaderRenderType::Skinned)
             {
                 glUniform1i(shader->GetUniformLocation("normalTexture"), 1);
                 glUniform1i(shader->GetUniformLocation("hasNormalMap"), hasNormalMap);
@@ -203,7 +253,7 @@ public:
 
                 float normalMatrix[9];
                 worldMatrix.GetNormalMatrix(normalMatrix);
-                glUniformMatrix3fv(shader->GetUniformLocation("normalMatrix"), 1, GL_TRUE, normalMatrix);
+                glUniformMatrix3fv(shader->GetUniformLocation("normalMatrix"), 1, GL_FALSE, normalMatrix);
 
                 glUniform3f(shader->GetUniformLocation("emissiveColor"), emissiveColor.x, emissiveColor.y, emissiveColor.z);
                 glUniform1f(shader->GetUniformLocation("emissiveIntensity"), emissiveIntensity);
@@ -239,40 +289,47 @@ public:
 
         auto typeOf = [&](Entity entity) -> ShaderRenderType { return shaders.Has(entity) ? shaders.Get(entity).shaderType : ShaderRenderType::Unlit; };
 
-        std::unordered_map<VertexArrayObject*, std::vector<Entity>> batchGroups;
+        // Clear previous frame batches completely to avoid unbounded growth of the map
+        batchGroups.clear();
+
         for (auto& [entityId, meshComponent] : meshes)
         {
-            if (!meshComponent.visible)
+            if (!meshComponent.visible || !isVisible(entityId))
                 continue;
             if (typeOf(entityId) != ShaderRenderType::Lit)
                 continue;
             if (world.HasComponent<OutlineComponent>(entityId))
                 continue;
+
+            unsigned int diffuseTextureId = 0;
             if (materials.Has(entityId))
             {
                 auto& mat = materials.Get(entityId);
-                if (mat.diffuseTexture || mat.normalTexture || mat.roughnessTexture || mat.metallicTexture || mat.aoTexture)
+                if (mat.normalTexture || mat.roughnessTexture || mat.metallicTexture || mat.aoTexture)
                     continue;
+                if (mat.diffuseTexture)
+                    diffuseTextureId = mat.diffuseTexture->GetId();
             }
-            batchGroups[meshComponent.vao.get()].push_back(entityId);
+
+            batchGroups[{meshComponent.vao.get(), diffuseTextureId}].push_back(entityId);
         }
 
-        std::unordered_set<Entity> batchedEntities;
+        batchedEntities.clear();
 
-        for (auto& [vaoPtr, entityList] : batchGroups)
+        for (auto& [key, entityList] : batchGroups)
         {
             if (entityList.size() < 2)
                 continue;
 
-            std::vector<InstanceData> instances;
+            VertexArrayObject* vaoPtr = key.vao;
+
+            instances.clear();
             instances.reserve(entityList.size());
             for (auto entity : entityList)
             {
                 InstanceData instance = {};
 
-                Matrix4 worldMatrix;
-                if (transforms.Has(entity))
-                    worldMatrix = transforms.Get(entity).GetModelMatrix();
+                const Matrix4 worldMatrix = modelMatrixOf(entity);
                 std::memcpy(instance.world, worldMatrix.matrix, sizeof(float) * 16);
 
                 if (materials.Has(entity))
@@ -286,6 +343,8 @@ public:
                     instance.emissiveColorIntensity[1] = mat.emissiveColor.y;
                     instance.emissiveColorIntensity[2] = mat.emissiveColor.z;
                     instance.emissiveColorIntensity[3] = mat.emissiveIntensity;
+                    instance.materialParams[0] = mat.roughness;
+                    instance.materialParams[1] = mat.metallic;
                 }
                 else
                 {
@@ -297,6 +356,8 @@ public:
                     instance.emissiveColorIntensity[1] = 0;
                     instance.emissiveColorIntensity[2] = 0;
                     instance.emissiveColorIntensity[3] = 0;
+                    instance.materialParams[0] = 1.0f;
+                    instance.materialParams[1] = 0.0f;
                 }
 
                 instances.push_back(instance);
@@ -322,6 +383,11 @@ public:
             glUniform3f(litInstancedShader->GetUniformLocation("fogColor"), fog.color.x, fog.color.y, fog.color.z);
             glUniform1f(litInstancedShader->GetUniformLocation("fogStart"), fog.start);
             glUniform1f(litInstancedShader->GetUniformLocation("fogEnd"), fog.end);
+
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, key.diffuseTextureId);
+            glUniform1i(litInstancedShader->GetUniformLocation("diffuseTexture"), 0);
+            glUniform1i(litInstancedShader->GetUniformLocation("hasTexture"), key.diffuseTextureId != 0 ? 1 : 0);
 
             vaoPtr->UploadInstanceData(instances.data(), static_cast<unsigned int>(instances.size()));
             renderEngine->SetVertexArrayObject(meshes.Get(entityList[0]).vao);
@@ -361,7 +427,7 @@ public:
                 if (!meshes.Has(entity) || !transforms.Has(entity) || !meshes.Get(entity).visible)
                     continue;
 
-                Matrix4 worldMatrix = transforms.Get(entity).GetModelMatrix();
+                Matrix4 worldMatrix = modelMatrixOf(entity);
                 uniformBuffer->SetSubData(&worldMatrix, 0, sizeof(Matrix4));
 
                 renderEngine->SetShaderProgram(outlineShader);
@@ -381,6 +447,13 @@ private:
     UniformBufferPtr uniformBuffer;
     ShaderProgramPtr outlineShader;
     ShaderProgramPtr litInstancedShader;
+
+    const AnimatorState* lastUploadedPose = nullptr;
+    const ShaderProgram* lastPoseShader = nullptr;
+
+    std::unordered_map<BatchKey, std::vector<Entity>, BatchKeyHash> batchGroups;
+    std::unordered_set<Entity> batchedEntities;
+    std::vector<InstanceData> instances;
 
     float elapsedTime = 0.0f;
 };

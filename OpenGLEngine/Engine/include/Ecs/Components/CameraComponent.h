@@ -1,9 +1,13 @@
 #pragma once
 
+#include "Math/Matrix4.h"
 #include "Math/Vector3.h"
 
 struct CameraComponent
 {
+    Matrix4 view;
+    Matrix4 projection;
+
     Vector3 forward = {0, 0, 1};
     Vector3 right = {1, 0, 0};
     Vector3 up = {0, 1, 0};

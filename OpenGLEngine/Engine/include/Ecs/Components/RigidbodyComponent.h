@@ -9,6 +9,9 @@ struct RigidbodyComponent
     Vector3 velocity = {0, 0, 0};
     Vector3 force = {0, 0, 0};
 
+    bool useGravity = true;
+    bool grounded = false;
+
     void AddForce(const Vector3& additiveForce)
     {
         force += additiveForce;

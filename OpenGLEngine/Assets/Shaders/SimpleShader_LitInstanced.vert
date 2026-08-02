@@ -17,6 +17,7 @@ layout(location = 5) in vec4 instWorld2;
 layout(location = 6) in vec4 instWorld3;
 layout(location = 7) in vec4 instDiffuseColor;
 layout(location = 8) in vec4 instEmissiveColorIntensity;
+layout(location = 9) in vec4 instMaterialParams;
 
 out vec2 fragTexCoord;
 out vec3 fragNormal;
@@ -24,6 +25,8 @@ out vec3 fragWorldPos;
 out vec4 fragDiffuseColor;
 out vec3 fragEmissiveColor;
 out float fragEmissiveIntensity;
+out float fragRoughness;
+out float fragMetallic;
 
 void main()
 {
@@ -40,4 +43,6 @@ void main()
     fragDiffuseColor = instDiffuseColor;
     fragEmissiveColor = instEmissiveColorIntensity.xyz;
     fragEmissiveIntensity = instEmissiveColorIntensity.w;
+    fragRoughness = instMaterialParams.x;
+    fragMetallic = instMaterialParams.y;
 }

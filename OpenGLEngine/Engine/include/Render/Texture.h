@@ -8,6 +8,7 @@ class Texture
 {
 public:
     static TexturePtr LoadFromFile(const std::string& path);
+    static TexturePtr LoadFromMemory(const unsigned char* data, int size);
     static TexturePtr LoadCubemap(const std::array<std::string, 6>& facePaths);
     static TexturePtr CreateFromPixels(const unsigned char* pixels, int width, int height, int channels);
 

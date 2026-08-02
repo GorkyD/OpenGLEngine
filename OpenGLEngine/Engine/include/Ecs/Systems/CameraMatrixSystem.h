@@ -47,6 +47,9 @@ public:
                 projection.SetPerspectiveLeftHanded(cam.fovY, aspect, cam.nearPlane, cam.farPlane);
             }
 
+            cam.view = view;
+            cam.projection = projection;
+
             UniformData data = {Matrix4(), view, projection};
             uniformBuffer->SetData(&data);
             renderEngine->SetUniformBuffer(uniformBuffer, 0);

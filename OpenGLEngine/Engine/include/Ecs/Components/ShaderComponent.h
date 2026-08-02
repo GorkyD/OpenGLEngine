@@ -6,6 +6,7 @@ enum class ShaderRenderType
 {
     Unlit,
     Lit,
+    Skinned,
     Fire,
     Shadow
 };

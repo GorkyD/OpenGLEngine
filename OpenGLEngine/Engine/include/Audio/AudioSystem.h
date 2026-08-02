@@ -30,6 +30,13 @@ public:
     void SetListenerPosition(float x, float y, float z);
 
     void PlayEvent(const char* eventName, AudioObjectId gameObject);
+    void StopAll();
+
+    void SetMuted(bool value);
+    bool IsMuted() const
+    {
+        return muted;
+    }
 
     void SetRTPCValue(const char* rtpcName, float value);
     void SetFireVolume(float volume0to100);
@@ -51,4 +58,5 @@ private:
     bool commInitialized = false;
 #endif
     bool initialized = false;
+    bool muted = false;
 };

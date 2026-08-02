@@ -1,14 +1,41 @@
 #include "Engine/Engine.h"
+#include "FpsScene.h"
 #include "Scene/DemoScene.h"
+#include "ZigZagScene.h"
 #include <iostream>
 #include <memory>
+#include <string>
 
-int main()
+int main(int argc, char** argv)
 {
     try
     {
-        Engine engine;
-        engine.LoadScene(std::make_unique<DemoScene>());
+        std::string startScene = "Fps";
+        bool play = false;
+
+        for (int i = 1; i < argc; i++)
+        {
+            const std::string arg = argv[i];
+            if (arg == "--play")
+                play = true;
+            else if (arg.rfind("--scene=", 0) == 0)
+                startScene = arg.substr(8);
+        }
+
+        Engine engine(play ? EngineMode::Play : EngineMode::Editor);
+        engine.RegisterScene("Fps", [] { return std::make_unique<FpsScene>(); });
+        engine.RegisterScene("Demo", [] { return std::make_unique<DemoScene>(); });
+        engine.RegisterScene("ZigZag", [] { return std::make_unique<ZigZagScene>(); });
+
+        for (const auto& [name, factory] : engine.GetSceneRegistry())
+        {
+            if (name == startScene)
+            {
+                engine.LoadScene(factory(), name);
+                break;
+            }
+        }
+
         engine.Run();
     }
     catch (const std::exception& ex)

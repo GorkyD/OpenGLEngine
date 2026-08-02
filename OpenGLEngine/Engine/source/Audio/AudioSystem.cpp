@@ -179,15 +179,35 @@ void AudioSystem::SetListenerPosition(float x, float y, float z)
     SetPosition(ListenerId, x, y, z);
 }
 
+void AudioSystem::SetMuted(bool value)
+{
+    if (muted == value)
+        return;
+
+    muted = value;
+
+    if (muted)
+        StopAll();
+}
+
 void AudioSystem::PlayEvent(const char* eventName, AudioObjectId gameObject)
 {
 #if OPENGLENGINE_USE_WWISE
-    if (!initialized)
+    if (!initialized || muted)
         return;
     AK::SoundEngine::PostEvent(eventName, gameObject);
 #else
     (void)eventName;
     (void)gameObject;
+#endif
+}
+
+void AudioSystem::StopAll()
+{
+#if OPENGLENGINE_USE_WWISE
+    if (!initialized)
+        return;
+    AK::SoundEngine::StopAll();
 #endif
 }
 

@@ -121,6 +121,8 @@ enum class Key
     LAlt,
     RAlt,
 
+    F1,
+
     Count
 };
 

@@ -1,6 +1,7 @@
 #include "Render/ShaderProgram.h"
 #include <fstream>
 #include <sstream>
+#include <string_view>
 #include <vector>
 #include <glad/glad.h>
 
@@ -31,12 +32,12 @@ void ShaderProgram::SetUniformBufferSlot(const char* name, unsigned int slot)
 
 int ShaderProgram::GetUniformLocation(const char* name)
 {
-    const auto it = uniformLocationCache.find(name);
+    const auto it = uniformLocationCache.find(std::string_view(name));
     if (it != uniformLocationCache.end())
         return it->second;
 
     const int location = glGetUniformLocation(programId, name);
-    uniformLocationCache[name] = location;
+    uniformLocationCache.emplace(name, location);
     return location;
 }
 

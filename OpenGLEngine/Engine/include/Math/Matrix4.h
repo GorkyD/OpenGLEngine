@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstring>
+#include "Quaternion.h"
 #include "Vector3.h"
 
 class Matrix4
@@ -78,6 +79,23 @@ public:
         m.matrix[2][2] = t * axis.z * axis.z + c;
 
         return m;
+    }
+
+    static Matrix4 Compose(const Vector3& translation, const Quaternion& rotation, const Vector3& scale)
+    {
+        Matrix4 s;
+        s.SetScale(scale);
+
+        Matrix4 t;
+        t.SetTranslation(translation);
+
+        return s * rotation.ToMatrix4() * t;
+    }
+
+    Vector3 TransformPoint(const Vector3& v) const
+    {
+        return {v.x * matrix[0][0] + v.y * matrix[1][0] + v.z * matrix[2][0] + matrix[3][0], v.x * matrix[0][1] + v.y * matrix[1][1] + v.z * matrix[2][1] + matrix[3][1],
+                v.x * matrix[0][2] + v.y * matrix[1][2] + v.z * matrix[2][2] + matrix[3][2]};
     }
 
     Matrix4 operator*(const Matrix4& otherMatrix) const
@@ -171,5 +189,55 @@ public:
         outMatrix[8] = (a00 * a11 - a01 * a10) * invDet;
     }
 
+    Matrix4 Inverse() const
+    {
+        const float* m = &matrix[0][0];
+        float inv[16];
+
+        inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
+        inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
+        inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
+        inv[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] - m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
+        inv[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] - m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
+        inv[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] + m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
+        inv[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] - m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
+        inv[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] + m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
+        inv[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14] - m[5] * m[2] * m[15] + m[5] * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6];
+        inv[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14] + m[4] * m[2] * m[15] - m[4] * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6];
+        inv[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13] - m[4] * m[1] * m[15] + m[4] * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5];
+        inv[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13] + m[4] * m[1] * m[14] - m[4] * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5];
+        inv[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] - m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6];
+        inv[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] + m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6];
+        inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
+        inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
+
+        const float det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+        const float invDet = (det != 0.0f) ? 1.0f / det : 0.0f;
+
+        Matrix4 out;
+        float* outData = &out.matrix[0][0];
+        for (int i = 0; i < 16; i++)
+            outData[i] = inv[i] * invDet;
+        return out;
+    }
+
     float matrix[4][4] = {};
 };
+
+inline Matrix4 Quaternion::ToMatrix4() const
+{
+    Matrix4 m;
+    m.matrix[0][0] = 1 - 2 * (y * y + z * z);
+    m.matrix[0][1] = 2 * (x * y + w * z);
+    m.matrix[0][2] = 2 * (x * z - w * y);
+
+    m.matrix[1][0] = 2 * (x * y - w * z);
+    m.matrix[1][1] = 1 - 2 * (x * x + z * z);
+    m.matrix[1][2] = 2 * (y * z + w * x);
+
+    m.matrix[2][0] = 2 * (x * z + w * y);
+    m.matrix[2][1] = 2 * (y * z - w * x);
+    m.matrix[2][2] = 1 - 2 * (x * x + y * y);
+
+    return m;
+}

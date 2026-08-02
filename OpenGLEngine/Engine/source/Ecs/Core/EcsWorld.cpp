@@ -1,4 +1,5 @@
 #include "Ecs/Core/EcsWorld.h"
+#include <algorithm>
 
 Entity EcsWorld::CreateEntity()
 {
@@ -14,17 +15,31 @@ void EcsWorld::DestroyEntity(Entity entity)
 
 void EcsWorld::ProcessDeferred()
 {
+    if (toDestroy.empty())
+        return;
+
     for (auto e : toDestroy)
     {
-        for (auto& pair : pools)
+        for (auto& pool : pools)
         {
-            auto& key = pair.first;
-            const auto& pool = pair.second;
-            pool->Remove(e);
+            if (pool)
+                pool->Remove(e);
         }
 
         alive.erase(std::remove(alive.begin(), alive.end(), e), alive.end());
     }
 
+    toDestroy.clear();
+}
+
+void EcsWorld::Clear()
+{
+    for (auto& pool : pools)
+    {
+        if (pool)
+            pool->Clear();
+    }
+
+    alive.clear();
     toDestroy.clear();
 }

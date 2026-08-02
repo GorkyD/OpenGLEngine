@@ -102,6 +102,10 @@ void VertexArrayObject::UploadInstanceData(const InstanceData* data, unsigned in
         glEnableVertexAttribArray(8);
         glVertexAttribPointer(8, 4, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(static_cast<uintptr_t>(80)));
         glVertexAttribDivisor(8, 1);
+
+        glEnableVertexAttribArray(9);
+        glVertexAttribPointer(9, 4, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(static_cast<uintptr_t>(96)));
+        glVertexAttribDivisor(9, 1);
     }
     else
     {

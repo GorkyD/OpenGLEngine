@@ -21,17 +21,15 @@ void RenderEngine::Clear(const Vector4& color)
 
 void RenderEngine::SetFaceCulling(const CullingType& type)
 {
-    auto cullType = GL_BACK;
-
-    if (type == CullingType::FrontFace)
-        cullType = GL_FRONT;
-    else if (type == CullingType::BackFace)
-        cullType = GL_BACK;
-    else if (type == CullingType::Both)
-        cullType = GL_FRONT_AND_BACK;
+    if (type == CullingType::Both)
+    {
+        glDisable(GL_CULL_FACE);
+        glEnable(GL_DEPTH_TEST);
+        return;
+    }
 
     glEnable(GL_CULL_FACE);
-    glCullFace(cullType);
+    glCullFace(type == CullingType::FrontFace ? GL_FRONT : GL_BACK);
     glEnable(GL_DEPTH_TEST);
 }
 
@@ -65,6 +63,11 @@ void RenderEngine::SetShaderProgram(const ShaderProgramPtr& program)
 void RenderEngine::SetUniformBuffer(const UniformBufferPtr& buffer, unsigned int slot)
 {
     glBindBufferBase(GL_UNIFORM_BUFFER, slot, buffer->GetId());
+}
+
+void RenderEngine::DrawLines(unsigned int vertexCount, unsigned int offset)
+{
+    glDrawArrays(GL_LINES, offset, vertexCount);
 }
 
 void RenderEngine::DrawTriangles(const TriangleType& type, unsigned int vertexCount, unsigned int offset)

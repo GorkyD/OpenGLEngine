@@ -15,6 +15,7 @@ endif()
 find_package(glfw3 3.3 REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(assimp REQUIRED)
+find_package(imgui CONFIG REQUIRED)
 
 function(_ogle_detect_wwise_sdk out_var)
     if(DEFINED ENV{WWISESDK} AND EXISTS "$ENV{WWISESDK}/include/AK/AkPlatforms.h")
@@ -130,8 +131,14 @@ set(ENGINE_SOURCES
     OpenGLEngine/Engine/source/Ecs/Core/EcsSystems.cpp
     OpenGLEngine/Engine/source/Ecs/Core/EcsWorld.cpp
     OpenGLEngine/Engine/source/Resource/ModelLoader.cpp
+    OpenGLEngine/Engine/source/Resource/SkinnedModelLoader.cpp
     OpenGLEngine/Engine/source/Resource/MeshFactory.cpp
     OpenGLEngine/Engine/source/Resource/EntityFactory.cpp
+    OpenGLEngine/Engine/source/Resource/ModelCache.cpp
+    OpenGLEngine/Engine/source/Resource/SceneSerializer.cpp
+    OpenGLEngine/Engine/source/Physics/Physics.cpp
+    OpenGLEngine/Engine/source/Editor/AssetLibrary.cpp
+    OpenGLEngine/Engine/source/Editor/EditorCommands.cpp
     OpenGLEngine/Engine/source/Save/SaveService.cpp
     OpenGLEngine/Engine/source/Scene/DemoScene.cpp
 )
@@ -139,6 +146,16 @@ set(ENGINE_SOURCES
 file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/OpenGLEngine/Game/*.cpp"
 )
+
+# Game entry points define standalone game executables and must stay out of the editor build
+set(GAME_MAIN_SOURCES "")
+foreach(_source ${GAME_SOURCES})
+    get_filename_component(_name "${_source}" NAME)
+    if(_name STREQUAL "GameMain.cpp")
+        list(APPEND GAME_MAIN_SOURCES "${_source}")
+    endif()
+endforeach()
+list(REMOVE_ITEM GAME_SOURCES ${GAME_MAIN_SOURCES})
 
 file(GLOB GAME_ENTRIES CONFIGURE_DEPENDS LIST_DIRECTORIES true
     "${CMAKE_SOURCE_DIR}/OpenGLEngine/Game/*"
@@ -150,24 +167,27 @@ foreach(_entry ${GAME_ENTRIES})
     endif()
 endforeach()
 
-add_executable(OpenGLEngine ${ENGINE_SOURCES} ${GAME_SOURCES})
+add_library(OpenGLEngineCore STATIC ${ENGINE_SOURCES})
 
-target_include_directories(OpenGLEngine PRIVATE
+target_include_directories(OpenGLEngineCore PUBLIC
     OpenGLEngine/Engine/include
     OpenGLEngine/Engine
     OpenGLEngine/Game
     ${GAME_INCLUDE_DIRS}
 )
 
+add_executable(OpenGLEngine ${GAME_SOURCES})
+target_link_libraries(OpenGLEngine PRIVATE OpenGLEngineCore)
+
 if(OPENGLENGINE_ENABLE_WWISE AND WWISE_SDK_ROOT)
-    target_include_directories(OpenGLEngine PRIVATE
+    target_include_directories(OpenGLEngineCore PUBLIC
         ${WWISE_SDK_ROOT}
         ${WWISE_SDK_ROOT}/include
         ${WWISE_SDK_ROOT}/samples/SoundEngine/Common
         ${WWISE_SDK_ROOT}/samples/SoundEngine/Win32
     )
-    target_compile_definitions(OpenGLEngine PRIVATE OPENGLENGINE_USE_WWISE=1 UNICODE _UNICODE)
-    target_sources(OpenGLEngine PRIVATE
+    target_compile_definitions(OpenGLEngineCore PUBLIC OPENGLENGINE_USE_WWISE=1 UNICODE _UNICODE)
+    target_sources(OpenGLEngineCore PRIVATE
         ${WWISE_SDK_ROOT}/samples/SoundEngine/Win32/AkDefaultIOHookDeferred.cpp
         ${WWISE_SDK_ROOT}/samples/SoundEngine/Common/AkFileLocationBase.cpp
         ${WWISE_SDK_ROOT}/samples/SoundEngine/Common/AkMultipleFileLocation.cpp
@@ -191,8 +211,8 @@ if(OPENGLENGINE_ENABLE_WWISE AND WWISE_SDK_ROOT)
         message(FATAL_ERROR "Wwise libs not found: ${WWISE_LIB_DIR}")
     endif()
 
-    target_link_directories(OpenGLEngine PRIVATE ${WWISE_LIB_DIR})
-    target_link_libraries(OpenGLEngine PRIVATE
+    target_link_directories(OpenGLEngineCore PUBLIC ${WWISE_LIB_DIR})
+    target_link_libraries(OpenGLEngineCore PUBLIC
         AkSoundEngine
         AkMemoryMgr
         AkStreamMgr
@@ -200,7 +220,7 @@ if(OPENGLENGINE_ENABLE_WWISE AND WWISE_SDK_ROOT)
         CommunicationCentral
     )
     if(WIN32)
-        target_link_libraries(OpenGLEngine PRIVATE ws2_32 winmm)
+        target_link_libraries(OpenGLEngineCore PUBLIC ws2_32 winmm)
     endif()
 
     if(WWISE_PROJECT_DIR)
@@ -221,31 +241,54 @@ if(OPENGLENGINE_ENABLE_WWISE AND WWISE_SDK_ROOT)
         )
     endif()
 else()
-    target_compile_definitions(OpenGLEngine PRIVATE OPENGLENGINE_USE_WWISE=0)
+    target_compile_definitions(OpenGLEngineCore PUBLIC OPENGLENGINE_USE_WWISE=0)
 endif()
 
-target_link_libraries(OpenGLEngine PRIVATE
+target_link_libraries(OpenGLEngineCore PUBLIC
     glad
     glfw
     OpenGL::GL
     assimp::assimp
+    imgui::imgui
 )
 
-target_compile_definitions(OpenGLEngine PRIVATE GL_SILENCE_DEPRECATION)
+target_compile_definitions(OpenGLEngineCore PUBLIC GL_SILENCE_DEPRECATION)
+target_compile_definitions(OpenGLEngineCore PUBLIC OPENGLENGINE_SOURCE_ASSETS="${CMAKE_SOURCE_DIR}/OpenGLEngine/Assets")
 
-# Copy assets to build directory
-add_custom_command(TARGET OpenGLEngine POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/OpenGLEngine/Assets
-        $<TARGET_FILE_DIR:OpenGLEngine>/Assets
-)
+# Copies engine assets plus the assets of every game folder next to the given executable
+function(ogle_copy_assets target)
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/OpenGLEngine/Assets
+            $<TARGET_FILE_DIR:${target}>/Assets
+    )
 
-foreach(_entry ${GAME_ENTRIES})
-    if(IS_DIRECTORY "${_entry}" AND EXISTS "${_entry}/Assets")
-        add_custom_command(TARGET OpenGLEngine POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-                "${_entry}/Assets"
-                $<TARGET_FILE_DIR:OpenGLEngine>/Assets
-        )
-    endif()
+    foreach(_assetDir ${ARGN})
+        if(EXISTS "${_assetDir}/Assets")
+            add_custom_command(TARGET ${target} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    "${_assetDir}/Assets"
+                    $<TARGET_FILE_DIR:${target}>/Assets
+            )
+        endif()
+    endforeach()
+endfunction()
+
+ogle_copy_assets(OpenGLEngine ${GAME_ENTRIES})
+
+# Every game folder providing GameMain.cpp becomes a standalone game executable
+foreach(_gameMain ${GAME_MAIN_SOURCES})
+    get_filename_component(_gameDir "${_gameMain}" DIRECTORY)
+    get_filename_component(_gameName "${_gameDir}" NAME)
+    string(MAKE_C_IDENTIFIER "${_gameName}" _gameTarget)
+
+    file(GLOB_RECURSE _gameSources CONFIGURE_DEPENDS "${_gameDir}/*.cpp")
+
+    add_executable(${_gameTarget} ${_gameSources})
+    target_link_libraries(${_gameTarget} PRIVATE OpenGLEngineCore)
+    target_include_directories(${_gameTarget} PRIVATE "${_gameDir}")
+
+    ogle_copy_assets(${_gameTarget} "${_gameDir}")
+
+    message(STATUS "Game executable: ${_gameTarget} (${_gameName})")
 endforeach()

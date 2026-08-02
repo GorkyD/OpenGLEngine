@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Extension/Extension.h"
+#include <map>
 #include <string>
-#include <unordered_map>
 
 class ShaderProgram
 {
@@ -23,5 +23,5 @@ private:
 
     int programId = 0;
     int attachedShaders[2] = {};
-    std::unordered_map<std::string, int> uniformLocationCache;
+    std::map<std::string, int, std::less<>> uniformLocationCache;
 };

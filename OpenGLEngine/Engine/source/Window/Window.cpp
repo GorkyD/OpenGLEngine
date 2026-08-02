@@ -3,7 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <cassert>
 
-Window::Window()
+Window::Window(bool windowed, const char* title)
 {
     int ok = glfwInit();
     assert(ok);
@@ -18,15 +18,27 @@ Window::Window()
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = monitor ? glfwGetVideoMode(monitor) : nullptr;
 
-    if (mode)
+    if (windowed)
+    {
+        glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+
+        const int width = mode ? static_cast<int>(mode->width * 0.75f) : 1280;
+        const int height = mode ? static_cast<int>(mode->height * 0.75f) : 720;
+
+        window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+        if (window && mode)
+            glfwSetWindowPos(window, (mode->width - width) / 2, (mode->height - height) / 2);
+    }
+    else if (mode)
     {
         glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
-        window = glfwCreateWindow(mode->width, mode->height, "OpenGLEngine", nullptr, nullptr);
+        window = glfwCreateWindow(mode->width, mode->height, title, nullptr, nullptr);
         glfwSetWindowPos(window, 0, 0);
     }
     else
     {
-        window = glfwCreateWindow(1024, 768, "OpenGLEngine", nullptr, nullptr);
+        window = glfwCreateWindow(1024, 768, title, nullptr, nullptr);
     }
     assert(window);
 
@@ -69,4 +81,14 @@ bool Window::ShouldClose() const
 void Window::PollEvents()
 {
     glfwPollEvents();
+}
+
+bool Window::IsFocused() const
+{
+    return glfwGetWindowAttrib(window, GLFW_FOCUSED) != 0;
+}
+
+void Window::SetCursorLocked(bool locked)
+{
+    glfwSetInputMode(window, GLFW_CURSOR, locked ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 }

@@ -1,5 +1,6 @@
 #include "Input/InputSystem.h"
 #include <GLFW/glfw3.h>
+#include <imgui_impl_glfw.h>
 
 InputSystem::InputSystem(GLFWwindow* window)
 {
@@ -14,6 +15,8 @@ InputSystem::~InputSystem() {}
 
 void InputSystem::KeyCallback(GLFWwindow* w, int key, int scancode, int action, int mods)
 {
+    ImGui_ImplGlfw_KeyCallback(w, key, scancode, action, mods);
+
     if (action == GLFW_REPEAT)
         return;
 
@@ -29,6 +32,8 @@ void InputSystem::KeyCallback(GLFWwindow* w, int key, int scancode, int action, 
 
 void InputSystem::MouseButtonCallback(GLFWwindow* w, int button, int action, int mods)
 {
+    ImGui_ImplGlfw_MouseButtonCallback(w, button, action, mods);
+
     auto* self = static_cast<InputSystem*>(glfwGetWindowUserPointer(w));
     const bool pressed = (action == GLFW_PRESS);
 
@@ -40,6 +45,8 @@ void InputSystem::MouseButtonCallback(GLFWwindow* w, int button, int action, int
 
 void InputSystem::CursorPosCallback(GLFWwindow* w, double xPos, double yPos)
 {
+    ImGui_ImplGlfw_CursorPosCallback(w, xPos, yPos);
+
     auto* self = static_cast<InputSystem*>(glfwGetWindowUserPointer(w));
 
     if (self->firstMouse)
@@ -175,6 +182,9 @@ Key InputSystem::TranslateKey(int glfwKey)
         return Key::LAlt;
     case GLFW_KEY_RIGHT_ALT:
         return Key::RAlt;
+
+    case GLFW_KEY_F1:
+        return Key::F1;
 
     default:
         return Key::Unknown;

@@ -7,7 +7,7 @@ struct GLFWwindow;
 class Window
 {
 public:
-    Window();
+    Window(bool windowed = false, const char* title = "OpenGLEngine");
     ~Window();
 
     Rect GetInnerSize() const;
@@ -17,6 +17,9 @@ public:
     bool ShouldClose() const;
 
     void PollEvents();
+
+    void SetCursorLocked(bool locked);
+    bool IsFocused() const;
 
     GLFWwindow* GetGLFWWindow() const
     {

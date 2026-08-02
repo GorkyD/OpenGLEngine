@@ -4,9 +4,19 @@
 #include "stb/stb_image.h"
 
 #include <glad/glad.h>
+#include <unordered_map>
+
+static std::unordered_map<std::string, std::weak_ptr<Texture>> textureCache;
 
 TexturePtr Texture::LoadFromFile(const std::string& path)
 {
+    const auto cached = textureCache.find(path);
+    if (cached != textureCache.end())
+    {
+        if (TexturePtr existing = cached->second.lock())
+            return existing;
+    }
+
     stbi_set_flip_vertically_on_load(true);
 
     int w, h, ch;
@@ -47,7 +57,33 @@ TexturePtr Texture::LoadFromFile(const std::string& path)
     texture->height = h;
     texture->channels = ch;
 
+    textureCache[path] = texture;
+
     OGL_INFO("Texture | Loaded: " << path << " (" << w << "x" << h << ", " << ch << "ch)")
+    return texture;
+}
+
+TexturePtr Texture::LoadFromMemory(const unsigned char* data, int size)
+{
+    if (!data || size <= 0)
+        return nullptr;
+
+    stbi_set_flip_vertically_on_load(true);
+
+    int w, h, ch;
+    unsigned char* pixels = stbi_load_from_memory(data, size, &w, &h, &ch, 4);
+    if (!pixels)
+    {
+        OGL_WARNING("Texture | Failed to decode embedded texture")
+        return nullptr;
+    }
+
+    TexturePtr texture = CreateFromPixels(pixels, w, h, 4);
+    stbi_image_free(pixels);
+
+    if (texture)
+        OGL_INFO("Texture | Loaded embedded (" << w << "x" << h << ", " << ch << "ch source)")
+
     return texture;
 }
 

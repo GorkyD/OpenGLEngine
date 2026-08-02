@@ -6,6 +6,11 @@ in vec3 fragWorldPos;
 in vec4 fragDiffuseColor;
 in vec3 fragEmissiveColor;
 in float fragEmissiveIntensity;
+in float fragRoughness;
+in float fragMetallic;
+
+uniform sampler2D diffuseTexture;
+uniform int hasTexture;
 
 uniform vec3 viewPos;
 uniform vec3 ambientColor;
@@ -61,11 +66,12 @@ void main()
     vec3 norm = normalize(fragNormal);
 
     vec3 albedo = fragDiffuseColor.rgb;
+    if (hasTexture != 0)
+        albedo *= texture(diffuseTexture, fragTexCoord).rgb;
 
-    float roughness = 1.0;
-    float metallic = 0.0;
+    float roughness = clamp(fragRoughness, 0.045, 1.0);
+    float metallic = clamp(fragMetallic, 0.0, 1.0);
     float ao = 1.0;
-    roughness = clamp(roughness, 0.045, 1.0);
 
     vec3 viewDir = normalize(viewPos - fragWorldPos);
     vec3 f0 = mix(vec3(0.04), albedo, metallic);

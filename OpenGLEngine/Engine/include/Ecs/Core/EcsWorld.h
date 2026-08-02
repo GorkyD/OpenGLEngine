@@ -2,8 +2,7 @@
 
 #include "ComponentPool.h"
 #include "Entity.h"
-#include <unordered_map>
-#include <typeindex>
+#include <cstddef>
 #include <memory>
 #include <vector>
 
@@ -14,13 +13,19 @@ public:
 
     void DestroyEntity(Entity entity);
     void ProcessDeferred();
+    void Clear();
 
     template <typename T> ComponentPool<T>& GetPool()
     {
-        auto key = std::type_index(typeid(T));
-        if (pools.find(key) == pools.end())
-            pools[key] = std::make_unique<ComponentPool<T>>();
-        return *static_cast<ComponentPool<T>*>(pools[key].get());
+        const size_t typeId = ComponentTypeId<T>();
+
+        if (typeId >= pools.size())
+            pools.resize(typeId + 1);
+
+        if (!pools[typeId])
+            pools[typeId] = std::make_unique<ComponentPool<T>>();
+
+        return *static_cast<ComponentPool<T>*>(pools[typeId].get());
     }
 
     template <typename T> T& AddComponent(Entity entity)
@@ -39,8 +44,20 @@ public:
     }
 
 private:
+    static size_t NextComponentTypeId()
+    {
+        static size_t counter = 0;
+        return counter++;
+    }
+
+    template <typename T> static size_t ComponentTypeId()
+    {
+        static const size_t id = NextComponentTypeId();
+        return id;
+    }
+
     Entity nextEntity = 0;
-    std::unordered_map<std::type_index, std::unique_ptr<IComponentPool>> pools;
+    std::vector<std::unique_ptr<IComponentPool>> pools;
     std::vector<Entity> alive;
     std::vector<Entity> toDestroy;
 };

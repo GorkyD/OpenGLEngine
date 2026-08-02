@@ -9,6 +9,7 @@ public:
     virtual ~IComponentPool() = default;
     virtual void Remove(Entity entity) = 0;
     virtual bool Has(Entity entity) const = 0;
+    virtual void Clear() = 0;
 };
 
 template <typename T> class ComponentPool : public IComponentPool
@@ -32,6 +33,15 @@ public:
     void Remove(Entity entity) override
     {
         data.erase(entity);
+    }
+    void Clear() override
+    {
+        data.clear();
+    }
+
+    size_t Size() const
+    {
+        return data.size();
     }
 
     auto begin()

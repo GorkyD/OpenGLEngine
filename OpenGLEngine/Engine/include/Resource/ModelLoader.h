@@ -15,6 +15,7 @@ struct MeshVertex
 
 struct MeshData
 {
+    std::string name;
     std::vector<MeshVertex> vertices;
     std::vector<unsigned int> indices;
     int materialIndex = -1;
@@ -24,6 +25,10 @@ struct MaterialData
 {
     std::string diffuseTexturePath;
     Vector4 diffuseColor = {1, 1, 1, 1};
+
+    std::vector<unsigned char> embeddedTexture;
+    int embeddedWidth = 0;
+    int embeddedHeight = 0;
 };
 
 struct ModelData
