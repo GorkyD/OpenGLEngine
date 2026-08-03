@@ -46,6 +46,14 @@ struct PlacedLight
     Vector3 position = {0, 0, 0};
     float intensity = 1.0f;
     float range = 10.0f;
+
+    bool castShadows = false;
+    float shadowOrthoSize = 25.0f;
+    float shadowDistance = 40.0f;
+    float shadowBias = 0.0025f;
+    float shadowAmbientOcclusion = 0.4f;
+    float shadowFocusDistance = 0.0f;
+    float shadowNormalBias = 0.05f;
 };
 
 struct PlacedAmbient

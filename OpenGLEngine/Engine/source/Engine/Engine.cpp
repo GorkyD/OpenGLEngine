@@ -25,13 +25,13 @@
 #include "Ecs/Systems/EditorSystem.h"
 #include "Ecs/Systems/FpsCounterSystem.h"
 #include "Ecs/Systems/HitFlashSystem.h"
-#include "Ecs/Systems/HudSystem.h"
 #include "Ecs/Systems/HoverSystem.h"
 #include "Ecs/Systems/ParticleSystem.h"
 #include "Ecs/Systems/ProjectileSystem.h"
 #include "Ecs/Systems/PendulumSystem.h"
 #include "Ecs/Systems/RenderSystem.h"
 #include "Ecs/Systems/RotatorSystem.h"
+#include "Ecs/Systems/ShadowMapSystem.h"
 #include "Ecs/Systems/SimplePhysicSystem.h"
 #include "Ecs/Systems/SkyboxSystem.h"
 #include "Ecs/Systems/TransformHierarchySystem.h"
@@ -52,42 +52,73 @@ Engine::Engine(EngineMode startMode) : mode(startMode)
     saveService = std::make_unique<SaveService>("save.txt");
 }
 
-Engine::~Engine() {}
+Engine::~Engine()
+{
+}
 
 void Engine::CreateStandardShaders()
 {
     uniformBuffer = renderEngine->CreateUniformBuffer({sizeof(UniformData)});
 
-    shaders.unlit = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Unlit.vert", "Assets/Shaders/SimpleShader_Unlit.frag"});
+    shaders.unlit = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_Unlit.vert", "Assets/Shaders/SimpleShader_Unlit.frag"
+    });
     shaders.unlit->SetUniformBufferSlot("UniformData", 0);
 
-    shaders.lit = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Lit.vert", "Assets/Shaders/SimpleShader_Lit.frag"});
+    shaders.lit = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_Lit.vert", "Assets/Shaders/SimpleShader_Lit.frag"
+    });
     shaders.lit->SetUniformBufferSlot("UniformData", 0);
 
-    shaders.litInstanced = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_LitInstanced.vert", "Assets/Shaders/SimpleShader_LitInstanced.frag"});
+    shaders.litInstanced = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_LitInstanced.vert", "Assets/Shaders/SimpleShader_LitInstanced.frag"
+    });
     shaders.litInstanced->SetUniformBufferSlot("UniformData", 0);
 
-    shaders.skinned = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Skinned.vert", "Assets/Shaders/SimpleShader_Lit.frag"});
+    shaders.skinned = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_Skinned.vert", "Assets/Shaders/SimpleShader_Lit.frag"
+    });
     shaders.skinned->SetUniformBufferSlot("UniformData", 0);
 
-    shaders.skybox = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Skybox.vert", "Assets/Shaders/SimpleShader_Skybox.frag"});
+    shaders.skybox = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_Skybox.vert", "Assets/Shaders/SimpleShader_Skybox.frag"
+    });
     shaders.skybox->SetUniformBufferSlot("UniformData", 0);
 
-    shaders.fire = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Fire.vert", "Assets/Shaders/SimpleShader_Fire.frag"});
+    shaders.fire = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_Fire.vert", "Assets/Shaders/SimpleShader_Fire.frag"
+    });
     shaders.fire->SetUniformBufferSlot("UniformData", 0);
 
-    shaders.particle = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Particle.vert", "Assets/Shaders/SimpleShader_Particle.frag"});
+    shaders.particle = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_Particle.vert", "Assets/Shaders/SimpleShader_Particle.frag"
+    });
     shaders.particle->SetUniformBufferSlot("UniformData", 0);
 
-    shaders.text = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Text.vert", "Assets/Shaders/SimpleShader_Text.frag"});
+    shaders.text = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_Text.vert", "Assets/Shaders/SimpleShader_Text.frag"
+    });
 
-    shaders.outline = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Outline.vert", "Assets/Shaders/SimpleShader_Outline.frag"});
+    shaders.outline = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_Outline.vert", "Assets/Shaders/SimpleShader_Outline.frag"
+    });
     shaders.outline->SetUniformBufferSlot("UniformData", 0);
 
-    shaders.line = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Line.vert", "Assets/Shaders/SimpleShader_Line.frag"});
+    shaders.line = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_Line.vert", "Assets/Shaders/SimpleShader_Line.frag"
+    });
     shaders.line->SetUniformBufferSlot("UniformData", 0);
 
-    shaders.hud = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_Hud.vert", "Assets/Shaders/SimpleShader_Hud.frag"});
+    shaders.hud = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_Hud.vert", "Assets/Shaders/SimpleShader_Hud.frag"
+    });
+
+    shaders.shadowDepth = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_ShadowDepth.vert", "Assets/Shaders/SimpleShader_ShadowDepth.frag"
+    });
+    shaders.shadowDepthSkinned = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_ShadowDepthSkinned.vert", "Assets/Shaders/SimpleShader_ShadowDepth.frag"
+    });
 }
 
 void Engine::SetMode(EngineMode newMode)
@@ -127,7 +158,8 @@ void Engine::ApplyCursorMode(bool panelOpen)
 {
     editorPanelOpen = panelOpen;
 
-    const bool wantsLock = mode == EngineMode::Play && !editorPanelOpen && activeScene && activeScene->WantsCursorLocked();
+    const bool wantsLock = mode == EngineMode::Play && !editorPanelOpen && activeScene && activeScene->
+        WantsCursorLocked();
     window->SetCursorLocked(wantsLock);
 }
 
@@ -183,7 +215,13 @@ void Engine::CreateStandardSystems()
     cullingSystem = culling.get();
     systems->Add(std::move(culling));
 
-    systems->Add(std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer, shaders.outline, shaders.litInstanced));
+    auto shadowMap = std::make_unique<ShadowMapSystem>(renderEngine.get(), window.get(), shaders.shadowDepth,
+                                                       shaders.shadowDepthSkinned);
+    shadowMapSystem = shadowMap.get();
+    systems->Add(std::move(shadowMap));
+
+    systems->Add(std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer, shaders.outline,
+                                                shaders.litInstanced, shadowMapSystem));
     systems->Add(std::make_unique<ParticleSystem>(renderEngine.get(), shaders.particle, uniformBuffer));
     systems->Add(std::make_unique<RotatorSystem>(), true);
     systems->Add(std::make_unique<PendulumSystem>(), true);
@@ -197,7 +235,6 @@ void Engine::CreateStandardSystems()
 
     systems->Add(std::make_unique<FpsCounterSystem>(window.get()));
     systems->Add(std::make_unique<UITextSystem>(renderEngine.get(), shaders.text, window.get()));
-    systems->Add(std::make_unique<HudSystem>(renderEngine.get(), shaders.hud, window.get()), true);
 
     if (editing)
         systems->Add(std::make_unique<EditorSystem>(inputSystem.get(), window.get(), this));
@@ -277,8 +314,8 @@ void Engine::OnUpdateInternal()
         const auto perfStart = std::chrono::high_resolution_clock::now();
         systems->Update(deltaTime, IsGameplayEnabled());
         const auto perfMid = std::chrono::high_resolution_clock::now();
-        const double systemsMs = std::chrono::duration_cast<std::chrono::microseconds>(perfMid - perfStart).count() / 1000.0;
-        OGL_INFO("Perf | systems->Update: " << systemsMs << " ms");
+        const double systemsMs = std::chrono::duration_cast<std::chrono::microseconds>(perfMid - perfStart).count() /
+            1000.0;
 
         if (activeScene)
         {
@@ -292,8 +329,8 @@ void Engine::OnUpdateInternal()
         inputSystem->Update();
 
         const auto perfEnd = std::chrono::high_resolution_clock::now();
-        const double frameAfterSceneMs = std::chrono::duration_cast<std::chrono::microseconds>(perfEnd - perfMid).count() / 1000.0;
-        OGL_INFO("Perf | scene+input: " << frameAfterSceneMs << " ms");
+        const double frameAfterSceneMs = std::chrono::duration_cast<std::chrono::microseconds>(perfEnd - perfMid).
+            count() / 1000.0;
     }
 
     ImGui::Render();

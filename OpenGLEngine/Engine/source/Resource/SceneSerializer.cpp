@@ -152,7 +152,8 @@ static void WriteScene(EcsWorld& world, std::ostream& file, int& outObjects, int
     {
         file << "light " << static_cast<int>(light.type) << ' ' << light.color.x << ' ' << light.color.y << ' ' << light.color.z << ' ' << light.direction.x << ' '
              << light.direction.y << ' ' << light.direction.z << ' ' << light.position.x << ' ' << light.position.y << ' ' << light.position.z << ' ' << light.intensity << ' '
-             << light.range << '\n';
+             << light.range << ' ' << (light.castShadows ? 1 : 0) << ' ' << light.shadowOrthoSize << ' ' << light.shadowDistance << ' ' << light.shadowBias << ' '
+             << light.shadowAmbientOcclusion << ' ' << light.shadowFocusDistance << ' ' << light.shadowNormalBias << '\n';
         outLights++;
     }
 
@@ -294,6 +295,29 @@ SceneData SceneSerializer::ReadFile(const std::string& sceneName, const std::str
             PlacedLight light;
             stream >> light.type >> light.color.x >> light.color.y >> light.color.z >> light.direction.x >> light.direction.y >> light.direction.z >> light.position.x >>
                 light.position.y >> light.position.z >> light.intensity >> light.range;
+
+            int castShadowsFlag = 0;
+            if (stream >> castShadowsFlag >> light.shadowOrthoSize >> light.shadowDistance >> light.shadowBias)
+            {
+                light.castShadows = castShadowsFlag != 0;
+
+                float ambientOcclusion = 0.0f;
+                if (stream >> ambientOcclusion)
+                {
+                    light.shadowAmbientOcclusion = ambientOcclusion;
+
+                    float focusDistance = 0.0f;
+                    if (stream >> focusDistance)
+                    {
+                        light.shadowFocusDistance = focusDistance;
+
+                        float normalBias = 0.0f;
+                        if (stream >> normalBias)
+                            light.shadowNormalBias = normalBias;
+                    }
+                }
+            }
+
             data.lights.push_back(light);
         }
         else if (token == "ambient")
@@ -348,6 +372,13 @@ bool SceneSerializer::Load(Engine& engine, const std::string& sceneName)
         light.position = placedLight.position;
         light.intensity = placedLight.intensity;
         light.range = placedLight.range;
+        light.castShadows = placedLight.castShadows;
+        light.shadowOrthoSize = placedLight.shadowOrthoSize;
+        light.shadowDistance = placedLight.shadowDistance;
+        light.shadowBias = placedLight.shadowBias;
+        light.shadowAmbientOcclusion = placedLight.shadowAmbientOcclusion;
+        light.shadowFocusDistance = placedLight.shadowFocusDistance;
+        light.shadowNormalBias = placedLight.shadowNormalBias;
     }
 
     for (const auto& placedAmbient : data.ambients)

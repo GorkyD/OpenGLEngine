@@ -13,6 +13,7 @@
 #include "Ecs/Components/VisibilityComponent.h"
 #include "Ecs/Components/WorldTransformComponent.h"
 #include "Ecs/Core/IEcsSystem.h"
+#include "Ecs/Systems/ShadowMapSystem.h"
 #include "Render/RenderEngine.h"
 #include "Render/ShaderProgram.h"
 #include "Render/UniformBuffer.h"
@@ -52,8 +53,8 @@ class RenderSystem : public IEcsSystem
 public:
     static constexpr int MaxLights = 32;
 
-    RenderSystem(RenderEngine* re, const UniformBufferPtr& ub, const ShaderProgramPtr& outlineShader, const ShaderProgramPtr& litInstancedShader) :
-        renderEngine(re), uniformBuffer(ub), outlineShader(outlineShader), litInstancedShader(litInstancedShader)
+    RenderSystem(RenderEngine* re, const UniformBufferPtr& ub, const ShaderProgramPtr& outlineShader, const ShaderProgramPtr& litInstancedShader, ShadowMapSystem* shadowMapSystem) :
+        renderEngine(re), uniformBuffer(ub), outlineShader(outlineShader), litInstancedShader(litInstancedShader), shadowMapSystem(shadowMapSystem)
     {
     }
 
@@ -114,6 +115,9 @@ public:
         float lightPosition[MaxLights * 3] = {};
         float lightRange[MaxLights] = {};
 
+        const bool shadowsAvailable = shadowMapSystem && shadowMapSystem->IsActive();
+        int shadowLightIndex = -1;
+
         for (auto& [entityId, lightComponent] : world.GetPool<LightComponent>())
         {
             if (numLights >= MaxLights)
@@ -132,8 +136,18 @@ public:
             lightPosition[numLights * 3 + 1] = light.position.y;
             lightPosition[numLights * 3 + 2] = light.position.z;
             lightRange[numLights] = light.range;
+
+            if (shadowsAvailable && shadowLightIndex < 0 && light.type == LightType::Directional && light.castShadows)
+                shadowLightIndex = numLights;
+
             numLights++;
         }
+
+        const Matrix4 lightSpaceMatrix = shadowsAvailable ? shadowMapSystem->GetLightSpaceMatrix() : Matrix4();
+        const float shadowBias = shadowsAvailable ? shadowMapSystem->GetShadowBias() : 0.0025f;
+        const float shadowAmbientOcclusion = shadowsAvailable ? shadowMapSystem->GetShadowAmbientOcclusion() : 1.0f;
+        const float shadowNormalBias = shadowsAvailable ? shadowMapSystem->GetShadowNormalBias() : 0.05f;
+        const unsigned int shadowDepthTextureId = shadowMapSystem ? shadowMapSystem->GetDepthTextureId() : 0;
 
         auto drawEntity = [&](Entity entity, MeshComponent& mesh)
         {
@@ -261,6 +275,15 @@ public:
                 glUniform3f(shader->GetUniformLocation("fogColor"), fog.color.x, fog.color.y, fog.color.z);
                 glUniform1f(shader->GetUniformLocation("fogStart"), fog.start);
                 glUniform1f(shader->GetUniformLocation("fogEnd"), fog.end);
+
+                glActiveTexture(GL_TEXTURE0 + 5);
+                glBindTexture(GL_TEXTURE_2D, shadowDepthTextureId);
+                glUniform1i(shader->GetUniformLocation("shadowMap"), 5);
+                glUniform1i(shader->GetUniformLocation("shadowLightIndex"), shadowLightIndex);
+                glUniform1f(shader->GetUniformLocation("shadowBias"), shadowBias);
+                glUniform1f(shader->GetUniformLocation("shadowAmbientOcclusion"), shadowAmbientOcclusion);
+                glUniform1f(shader->GetUniformLocation("shadowNormalBias"), shadowNormalBias);
+                glUniformMatrix4fv(shader->GetUniformLocation("lightSpaceMatrix"), 1, GL_FALSE, &lightSpaceMatrix.matrix[0][0]);
             }
 
             const bool isFire = shaderComp.shaderType == ShaderRenderType::Fire;
@@ -388,6 +411,15 @@ public:
             glUniform1i(litInstancedShader->GetUniformLocation("diffuseTexture"), 0);
             glUniform1i(litInstancedShader->GetUniformLocation("hasTexture"), key.diffuseTextureId != 0 ? 1 : 0);
 
+            glActiveTexture(GL_TEXTURE0 + 5);
+            glBindTexture(GL_TEXTURE_2D, shadowDepthTextureId);
+            glUniform1i(litInstancedShader->GetUniformLocation("shadowMap"), 5);
+            glUniform1i(litInstancedShader->GetUniformLocation("shadowLightIndex"), shadowLightIndex);
+            glUniform1f(litInstancedShader->GetUniformLocation("shadowBias"), shadowBias);
+            glUniform1f(litInstancedShader->GetUniformLocation("shadowAmbientOcclusion"), shadowAmbientOcclusion);
+            glUniform1f(litInstancedShader->GetUniformLocation("shadowNormalBias"), shadowNormalBias);
+            glUniformMatrix4fv(litInstancedShader->GetUniformLocation("lightSpaceMatrix"), 1, GL_FALSE, &lightSpaceMatrix.matrix[0][0]);
+
             vaoPtr->UploadInstanceData(instances.data(), static_cast<unsigned int>(instances.size()));
             renderEngine->SetVertexArrayObject(meshes.Get(entityList[0]).vao);
             renderEngine->DrawIndexedTrianglesInstanced(List, meshes.Get(entityList[0]).indexCount, static_cast<unsigned int>(instances.size()));
@@ -446,6 +478,7 @@ private:
     UniformBufferPtr uniformBuffer;
     ShaderProgramPtr outlineShader;
     ShaderProgramPtr litInstancedShader;
+    ShadowMapSystem* shadowMapSystem;
 
     const AnimatorState* lastUploadedPose = nullptr;
     const ShaderProgram* lastPoseShader = nullptr;

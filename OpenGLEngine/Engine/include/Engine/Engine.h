@@ -38,6 +38,8 @@ struct StandardShaders
     ShaderProgramPtr outline;
     ShaderProgramPtr line;
     ShaderProgramPtr hud;
+    ShaderProgramPtr shadowDepth;
+    ShaderProgramPtr shadowDepthSkinned;
 };
 
 class Engine
@@ -118,6 +120,10 @@ public:
     class CullingSystem* GetCullingSystem() const
     {
         return cullingSystem;
+    }
+    class ShadowMapSystem* GetShadowMapSystem() const
+    {
+        return shadowMapSystem;
     }
     EditorSelection& GetSelection()
     {
@@ -212,6 +218,7 @@ protected:
     class EditorGizmoSystem* editorGizmoSystem = nullptr;
     class EditorPickSystem* editorPickSystem = nullptr;
     class CullingSystem* cullingSystem = nullptr;
+    class ShadowMapSystem* shadowMapSystem = nullptr;
     EditorSelection selection;
     EditorHistory history;
     unsigned int sceneStructureVersion = 0;

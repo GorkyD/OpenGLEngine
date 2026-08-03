@@ -37,6 +37,7 @@ set(ENGINE_SOURCES
     OpenGLEngine/Engine/source/Render/VertexArrayObject.cpp
     OpenGLEngine/Engine/source/Render/UniformBuffer.cpp
     OpenGLEngine/Engine/source/Render/Texture.cpp
+    OpenGLEngine/Engine/source/Render/ShadowMap.cpp
     OpenGLEngine/Engine/source/Render/Font.cpp
     OpenGLEngine/Engine/source/Window/Window.cpp
     OpenGLEngine/Engine/source/Input/InputSystem.cpp

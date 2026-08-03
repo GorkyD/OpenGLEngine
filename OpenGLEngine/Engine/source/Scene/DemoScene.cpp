@@ -64,6 +64,9 @@ void DemoScene::OnLoad(Engine& engine)
     moon.color = {1.0f, 0.85f, 0.4f};
     moon.intensity = 0.7f;
     moon.direction = {0.4f, 1.0f, -0.2f};
+    moon.castShadows = true;
+    moon.shadowOrthoSize = 30.0f;
+    moon.shadowDistance = 40.0f;
 
     cameraEntity = world.CreateEntity();
     auto& camTransform = world.AddComponent<TransformComponent>(cameraEntity);

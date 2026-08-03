@@ -38,6 +38,17 @@ private:
         ImGui::SliderFloat("Intensity", &light.intensity, 0.0f, 5.0f);
         ImGui::DragFloat("Range", &light.range, 0.1f, 0.0f, 100.0f);
 
+        ImGui::Checkbox("Cast Shadows", &light.castShadows);
+        if (light.castShadows)
+        {
+            ImGui::DragFloat("Shadow Ortho Size", &light.shadowOrthoSize, 0.5f, 1.0f, 200.0f);
+            ImGui::DragFloat("Shadow Distance", &light.shadowDistance, 0.5f, 1.0f, 500.0f);
+            ImGui::DragFloat("Shadow Focus Distance", &light.shadowFocusDistance, 0.5f, 0.0f, 200.0f);
+            ImGui::DragFloat("Shadow Bias", &light.shadowBias, 0.0001f, 0.0f, 0.02f, "%.4f");
+            ImGui::DragFloat("Shadow Normal Bias", &light.shadowNormalBias, 0.001f, 0.0f, 1.0f, "%.3f");
+            ImGui::SliderFloat("Shadow Ambient Occlusion", &light.shadowAmbientOcclusion, 0.0f, 1.0f);
+        }
+
         ImGui::TreePop();
     }
 

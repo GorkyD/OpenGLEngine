@@ -31,6 +31,13 @@ uniform vec3 lightDirection[MAX_LIGHTS];
 uniform vec3 lightPosition[MAX_LIGHTS];
 uniform float lightRange[MAX_LIGHTS];
 
+uniform sampler2D shadowMap;
+uniform mat4 lightSpaceMatrix;
+uniform int shadowLightIndex;
+uniform float shadowBias;
+uniform float shadowAmbientOcclusion;
+uniform float shadowNormalBias;
+
 out vec4 outColor;
 
 float DistributionGGX(vec3 n, vec3 h, float roughness)
@@ -61,6 +68,33 @@ vec3 FresnelSchlick(float cosTheta, vec3 f0)
     return f0 + (1.0 - f0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
+float ShadowFactor(vec3 worldPos, vec3 normal, float nDotL)
+{
+    float normalOffset = shadowNormalBias * (1.0 - nDotL) + shadowNormalBias * 0.1;
+    vec3 offsetWorldPos = worldPos + normal * normalOffset;
+
+    vec4 posLightSpace = lightSpaceMatrix * vec4(offsetWorldPos, 1.0);
+    vec3 proj = posLightSpace.xyz / posLightSpace.w;
+    proj = proj * 0.5 + 0.5;
+
+    if (proj.z > 1.0)
+        return 1.0;
+
+    float bias = max(shadowBias * (1.0 - nDotL), shadowBias * 0.2);
+    vec2 texelSize = 0.6 / vec2(textureSize(shadowMap, 0));
+
+    float shadow = 0.0;
+    for (int x = -1; x <= 1; x++)
+    {
+        for (int y = -1; y <= 1; y++)
+        {
+            float pcfDepth = texture(shadowMap, proj.xy + vec2(x, y) * texelSize).r;
+            shadow += (proj.z - bias > pcfDepth) ? 0.0 : 1.0;
+        }
+    }
+    return shadow / 9.0;
+}
+
 void main()
 {
     vec3 norm = normalize(fragNormal);
@@ -77,6 +111,7 @@ void main()
     vec3 f0 = mix(vec3(0.04), albedo, metallic);
 
     vec3 lightingOut = vec3(0.0);
+    float sunShadowFactor = 1.0;
 
     for (int i = 0; i < numLights; i++)
     {
@@ -103,10 +138,17 @@ void main()
         vec3 kD = (vec3(1.0) - fresnel) * (1.0 - metallic);
         float nDotL = max(dot(norm, lightDir), 0.0);
 
-        lightingOut += (kD * albedo / PI + specular) * radiance * nDotL;
+        float shadowFactor = 1.0;
+        if (i == shadowLightIndex)
+        {
+            shadowFactor = ShadowFactor(fragWorldPos, norm, nDotL);
+            sunShadowFactor = shadowFactor;
+        }
+
+        lightingOut += (kD * albedo / PI + specular) * radiance * nDotL * shadowFactor;
     }
 
-    vec3 ambient = ambientColor * ambientIntensity * albedo * ao;
+    vec3 ambient = ambientColor * ambientIntensity * albedo * ao * mix(shadowAmbientOcclusion, 1.0, sunShadowFactor);
     vec3 emissive = fragEmissiveColor * fragEmissiveIntensity;
     vec3 finalColor = ambient + lightingOut + emissive;
 
