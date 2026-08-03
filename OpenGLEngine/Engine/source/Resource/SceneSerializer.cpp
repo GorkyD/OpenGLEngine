@@ -14,6 +14,7 @@
 #include "Ecs/Components/GroupComponent.h"
 #include "Ecs/Components/LightComponent.h"
 #include "Ecs/Components/PrefabComponent.h"
+#include "Ecs/Components/ShaderComponent.h"
 #include "Ecs/Components/TransformComponent.h"
 #include "Ecs/Components/TransformOffsetComponent.h"
 #include "Ecs/Core/EcsWorld.h"
@@ -153,7 +154,8 @@ static void WriteScene(EcsWorld& world, std::ostream& file, int& outObjects, int
         file << "light " << static_cast<int>(light.type) << ' ' << light.color.x << ' ' << light.color.y << ' ' << light.color.z << ' ' << light.direction.x << ' '
              << light.direction.y << ' ' << light.direction.z << ' ' << light.position.x << ' ' << light.position.y << ' ' << light.position.z << ' ' << light.intensity << ' '
              << light.range << ' ' << (light.castShadows ? 1 : 0) << ' ' << light.shadowOrthoSize << ' ' << light.shadowDistance << ' ' << light.shadowBias << ' '
-             << light.shadowAmbientOcclusion << ' ' << light.shadowFocusDistance << ' ' << light.shadowNormalBias << '\n';
+             << light.shadowAmbientOcclusion << ' ' << light.shadowFocusDistance << ' ' << light.shadowNormalBias << ' ' << light.innerConeAngleDeg << ' '
+             << light.outerConeAngleDeg << '\n';
         outLights++;
     }
 
@@ -313,7 +315,17 @@ SceneData SceneSerializer::ReadFile(const std::string& sceneName, const std::str
 
                         float normalBias = 0.0f;
                         if (stream >> normalBias)
+                        {
                             light.shadowNormalBias = normalBias;
+
+                            float innerConeAngle = 0.0f;
+                            float outerConeAngle = 0.0f;
+                            if (stream >> innerConeAngle >> outerConeAngle)
+                            {
+                                light.innerConeAngleDeg = innerConeAngle;
+                                light.outerConeAngleDeg = outerConeAngle;
+                            }
+                        }
                     }
                 }
             }
@@ -379,6 +391,8 @@ bool SceneSerializer::Load(Engine& engine, const std::string& sceneName)
         light.shadowAmbientOcclusion = placedLight.shadowAmbientOcclusion;
         light.shadowFocusDistance = placedLight.shadowFocusDistance;
         light.shadowNormalBias = placedLight.shadowNormalBias;
+        light.innerConeAngleDeg = placedLight.innerConeAngleDeg;
+        light.outerConeAngleDeg = placedLight.outerConeAngleDeg;
     }
 
     for (const auto& placedAmbient : data.ambients)
@@ -413,6 +427,9 @@ bool SceneSerializer::Load(Engine& engine, const std::string& sceneName)
             world.AddComponent<PrefabComponent>(entity).assetPath = object.assetPath;
             world.AddComponent<GroupComponent>(entity).name = groupName;
             world.AddComponent<HitFlashComponent>(entity);
+
+            if (world.HasComponent<ShaderComponent>(entity))
+                world.GetComponent<ShaderComponent>(entity).shaderType = ShaderRenderType::Lit;
 
             auto& offset = world.AddComponent<TransformOffsetComponent>(entity);
             offset.rotationDegrees = object.rotationDegrees;

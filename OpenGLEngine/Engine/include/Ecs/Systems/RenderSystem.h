@@ -24,6 +24,7 @@
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
 #include <glad/glad.h>
+#include <cmath>
 #include <cstring>
 #include <unordered_map>
 #include <unordered_set>
@@ -114,6 +115,8 @@ public:
         float lightDirection[MaxLights * 3] = {};
         float lightPosition[MaxLights * 3] = {};
         float lightRange[MaxLights] = {};
+        float lightInnerCos[MaxLights] = {};
+        float lightOuterCos[MaxLights] = {};
 
         const bool shadowsAvailable = shadowMapSystem && shadowMapSystem->IsActive();
         int shadowLightIndex = -1;
@@ -136,6 +139,8 @@ public:
             lightPosition[numLights * 3 + 1] = light.position.y;
             lightPosition[numLights * 3 + 2] = light.position.z;
             lightRange[numLights] = light.range;
+            lightInnerCos[numLights] = std::cos(light.innerConeAngleDeg * 0.0174532925f);
+            lightOuterCos[numLights] = std::cos(light.outerConeAngleDeg * 0.0174532925f);
 
             if (shadowsAvailable && shadowLightIndex < 0 && light.type == LightType::Directional && light.castShadows)
                 shadowLightIndex = numLights;
@@ -263,6 +268,8 @@ public:
                     glUniform3fv(shader->GetUniformLocation("lightDirection"), numLights, lightDirection);
                     glUniform3fv(shader->GetUniformLocation("lightPosition"), numLights, lightPosition);
                     glUniform1fv(shader->GetUniformLocation("lightRange"), numLights, lightRange);
+                    glUniform1fv(shader->GetUniformLocation("lightInnerCos"), numLights, lightInnerCos);
+                    glUniform1fv(shader->GetUniformLocation("lightOuterCos"), numLights, lightOuterCos);
                 }
 
                 float normalMatrix[9];
@@ -317,6 +324,8 @@ public:
         for (auto& [entityId, meshComponent] : meshes)
         {
             if (!meshComponent.visible || !isVisible(entityId))
+                continue;
+            if (meshComponent.renderQueue != RenderQueue::Default)
                 continue;
             if (typeOf(entityId) != ShaderRenderType::Lit)
                 continue;
@@ -400,6 +409,8 @@ public:
                 glUniform3fv(litInstancedShader->GetUniformLocation("lightDirection"), numLights, lightDirection);
                 glUniform3fv(litInstancedShader->GetUniformLocation("lightPosition"), numLights, lightPosition);
                 glUniform1fv(litInstancedShader->GetUniformLocation("lightRange"), numLights, lightRange);
+                glUniform1fv(litInstancedShader->GetUniformLocation("lightInnerCos"), numLights, lightInnerCos);
+                glUniform1fv(litInstancedShader->GetUniformLocation("lightOuterCos"), numLights, lightOuterCos);
             }
 
             glUniform3f(litInstancedShader->GetUniformLocation("fogColor"), fog.color.x, fog.color.y, fog.color.z);
@@ -430,6 +441,8 @@ public:
 
         for (auto& [entityId, meshComponent] : meshes)
         {
+            if (meshComponent.renderQueue != RenderQueue::Default)
+                continue;
             const auto type = typeOf(entityId);
             if (type == ShaderRenderType::Fire || type == ShaderRenderType::Shadow)
                 continue;
@@ -440,13 +453,13 @@ public:
 
         for (auto& [entityId, meshComponent] : meshes)
         {
-            if (typeOf(entityId) == ShaderRenderType::Fire)
+            if (meshComponent.renderQueue == RenderQueue::Default && typeOf(entityId) == ShaderRenderType::Fire)
                 drawEntity(entityId, meshComponent);
         }
 
         for (auto& [entityId, meshComponent] : meshes)
         {
-            if (typeOf(entityId) == ShaderRenderType::Shadow)
+            if (meshComponent.renderQueue == RenderQueue::Default && typeOf(entityId) == ShaderRenderType::Shadow)
                 drawEntity(entityId, meshComponent);
         }
 
@@ -469,6 +482,31 @@ public:
                 renderEngine->SetVertexArrayObject(meshes.Get(entity).vao);
                 renderEngine->DrawIndexedTriangles(List, meshes.Get(entity).indexCount);
                 glCullFace(GL_BACK);
+            }
+        }
+
+        bool hasOverlay = false;
+        for (auto& [entityId, meshComponent] : meshes)
+        {
+            if (meshComponent.renderQueue == RenderQueue::Overlay && meshComponent.visible && isVisible(entityId))
+            {
+                hasOverlay = true;
+                break;
+            }
+        }
+
+        if (hasOverlay)
+        {
+            glClear(GL_DEPTH_BUFFER_BIT);
+
+            for (auto& [entityId, meshComponent] : meshes)
+            {
+                if (meshComponent.renderQueue != RenderQueue::Overlay)
+                    continue;
+                const auto type = typeOf(entityId);
+                if (type == ShaderRenderType::Fire || type == ShaderRenderType::Shadow)
+                    continue;
+                drawEntity(entityId, meshComponent);
             }
         }
     }

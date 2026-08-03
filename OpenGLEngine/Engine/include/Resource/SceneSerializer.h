@@ -54,6 +54,9 @@ struct PlacedLight
     float shadowAmbientOcclusion = 0.4f;
     float shadowFocusDistance = 0.0f;
     float shadowNormalBias = 0.05f;
+
+    float innerConeAngleDeg = 20.0f;
+    float outerConeAngleDeg = 30.0f;
 };
 
 struct PlacedAmbient

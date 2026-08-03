@@ -29,7 +29,7 @@ private:
             return;
 
         int type = static_cast<int>(light.type);
-        if (ImGui::Combo("Type", &type, "Directional\0Point\0"))
+        if (ImGui::Combo("Type", &type, "Directional\0Point\0Spot\0"))
             light.type = static_cast<LightType>(type);
 
         ImGui::ColorEdit3("Color", &light.color.x);
@@ -37,6 +37,14 @@ private:
         ImGui::DragFloat3("Position", &light.position.x, 0.01f);
         ImGui::SliderFloat("Intensity", &light.intensity, 0.0f, 5.0f);
         ImGui::DragFloat("Range", &light.range, 0.1f, 0.0f, 100.0f);
+
+        if (light.type == LightType::Spot)
+        {
+            ImGui::DragFloat("Inner Cone Angle", &light.innerConeAngleDeg, 0.5f, 0.0f, 89.0f);
+            ImGui::DragFloat("Outer Cone Angle", &light.outerConeAngleDeg, 0.5f, 0.0f, 89.0f);
+            if (light.outerConeAngleDeg < light.innerConeAngleDeg)
+                light.outerConeAngleDeg = light.innerConeAngleDeg;
+        }
 
         ImGui::Checkbox("Cast Shadows", &light.castShadows);
         if (light.castShadows)

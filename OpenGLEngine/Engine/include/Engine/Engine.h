@@ -125,6 +125,10 @@ public:
     {
         return shadowMapSystem;
     }
+    class FpsCounterSystem* GetFpsCounterSystem() const
+    {
+        return fpsCounterSystem;
+    }
     EditorSelection& GetSelection()
     {
         return selection;
@@ -219,6 +223,7 @@ protected:
     class EditorPickSystem* editorPickSystem = nullptr;
     class CullingSystem* cullingSystem = nullptr;
     class ShadowMapSystem* shadowMapSystem = nullptr;
+    class FpsCounterSystem* fpsCounterSystem = nullptr;
     EditorSelection selection;
     EditorHistory history;
     unsigned int sceneStructureVersion = 0;

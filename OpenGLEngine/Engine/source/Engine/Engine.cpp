@@ -233,7 +233,9 @@ void Engine::CreateStandardSystems()
         systems->Add(std::move(gizmos));
     }
 
-    systems->Add(std::make_unique<FpsCounterSystem>(window.get()));
+    auto fpsCounter = std::make_unique<FpsCounterSystem>(window.get());
+    fpsCounterSystem = fpsCounter.get();
+    systems->Add(std::move(fpsCounter));
     systems->Add(std::make_unique<UITextSystem>(renderEngine.get(), shaders.text, window.get()));
 
     if (editing)

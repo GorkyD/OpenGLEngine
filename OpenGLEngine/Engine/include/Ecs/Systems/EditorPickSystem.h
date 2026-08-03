@@ -6,8 +6,10 @@
 #include "Ecs/Components/AABB.h"
 #include "Ecs/Components/CameraComponent.h"
 #include "Ecs/Components/GroupComponent.h"
+#include "Ecs/Components/ParentComponent.h"
 #include "Ecs/Components/TransformComponent.h"
 #include "Ecs/Components/TransformOffsetComponent.h"
+#include "Ecs/Components/WorldTransformComponent.h"
 #include "Ecs/Core/IEcsSystem.h"
 #include "Ecs/Systems/EditorHistory.h"
 #include "Ecs/Systems/EditorSelection.h"
@@ -57,11 +59,22 @@ public:
     }
 
 private:
+    static Vector3 EntityWorldPosition(EcsWorld& world, Entity entity)
+    {
+        if (world.HasComponent<WorldTransformComponent>(entity))
+        {
+            const auto& m = world.GetComponent<WorldTransformComponent>(entity).matrix;
+            return {m.matrix[3][0], m.matrix[3][1], m.matrix[3][2]};
+        }
+
+        return world.GetComponent<TransformComponent>(entity).position;
+    }
+
     void OnMousePressed(EcsWorld& world, const Vector3& rayOrigin, const Vector3& rayDirection)
     {
         if (selection->HasSelection() && world.HasComponent<TransformComponent>(selection->entity))
         {
-            const Vector3 origin = world.GetComponent<TransformComponent>(selection->entity).position;
+            const Vector3 origin = EntityWorldPosition(world, selection->entity);
             const GizmoAxis axis = PickHandle(origin, rayOrigin, rayDirection);
             if (axis != GizmoAxis::None)
             {
@@ -205,10 +218,25 @@ private:
     }
 
 
-    void MoveSelection(EcsWorld& world, const Vector3& newPosition)
+    void MoveSelection(EcsWorld& world, const Vector3& newWorldPosition)
     {
-        const Vector3 delta = newPosition - world.GetComponent<TransformComponent>(selection->entity).position;
-        ApplyToGroup(world, [&](Entity entity) { world.GetComponent<TransformComponent>(entity).position += delta; });
+        const Vector3 worldDelta = newWorldPosition - EntityWorldPosition(world, selection->entity);
+        ApplyToGroup(world, [&](Entity entity) { world.GetComponent<TransformComponent>(entity).position += WorldDeltaToLocal(world, entity, worldDelta); });
+    }
+
+    // Converts a world-space movement into the delta an entity's own (parent-relative) local
+    // position needs, so dragging a child of a scaled/rotated parent still moves it correctly
+    // in world space instead of being crushed or skewed by the parent's transform.
+    static Vector3 WorldDeltaToLocal(EcsWorld& world, Entity entity, const Vector3& worldDelta)
+    {
+        if (!world.HasComponent<ParentComponent>(entity))
+            return worldDelta;
+
+        const Entity parent = world.GetComponent<ParentComponent>(entity).parent;
+        if (parent == INVALID_ENTITY || !world.HasComponent<WorldTransformComponent>(parent))
+            return worldDelta;
+
+        return world.GetComponent<WorldTransformComponent>(parent).matrix.Inverse().TransformDirection(worldDelta);
     }
 
     Entity PickEntity(EcsWorld& world, const Vector3& rayOrigin, const Vector3& rayDirection)

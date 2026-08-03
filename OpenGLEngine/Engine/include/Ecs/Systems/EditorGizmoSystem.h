@@ -6,6 +6,7 @@
 #include "Ecs/Components/ColliderComponent.h"
 #include "Ecs/Components/MeshComponent.h"
 #include "Ecs/Components/TransformComponent.h"
+#include "Ecs/Components/WorldTransformComponent.h"
 #include "Ecs/Core/IEcsSystem.h"
 #include "Ecs/Systems/EditorSelection.h"
 #include "Math/Matrix4.h"
@@ -71,6 +72,17 @@ public:
     }
 
 private:
+    static Vector3 EntityWorldPosition(EcsWorld& world, Entity entity)
+    {
+        if (world.HasComponent<WorldTransformComponent>(entity))
+        {
+            const auto& m = world.GetComponent<WorldTransformComponent>(entity).matrix;
+            return {m.matrix[3][0], m.matrix[3][1], m.matrix[3][2]};
+        }
+
+        return world.GetComponent<TransformComponent>(entity).position;
+    }
+
     void DrawSelection(EcsWorld& world)
     {
         if (!selection || !selection->HasSelection() || !world.HasComponent<TransformComponent>(selection->entity))
@@ -107,12 +119,19 @@ private:
             return;
 
         Matrix4 handleMatrix;
-        handleMatrix.SetTranslation(world.GetComponent<TransformComponent>(entity).position);
+        handleMatrix.SetTranslation(EntityWorldPosition(world, entity));
         uniformBuffer->SetSubData(&handleMatrix, 0, sizeof(Matrix4));
 
         glDisable(GL_DEPTH_TEST);
         renderEngine->SetVertexArrayObject(handleVao);
         renderEngine->DrawLines(handleVertexCount);
+
+        if (!rotating && moveArrowVao)
+        {
+            renderEngine->SetVertexArrayObject(moveArrowVao);
+            renderEngine->DrawTriangles(TriangleType::List, moveArrowVertexCount, 0);
+        }
+
         glEnable(GL_DEPTH_TEST);
     }
 
@@ -167,6 +186,8 @@ private:
         moveHandleVertexCount = static_cast<unsigned int>(vertices.size());
         moveHandleVao = CreateLineVao(vertices);
 
+        BuildMoveArrowheads(length);
+
         const Vector3 highlight = {1.0f, 0.85f, 0.2f};
         const Vector3 corners[8] = {{-0.5f, -0.5f, -0.5f}, {0.5f, -0.5f, -0.5f}, {0.5f, 0.5f, -0.5f}, {-0.5f, 0.5f, -0.5f},
                                     {-0.5f, -0.5f, 0.5f},  {0.5f, -0.5f, 0.5f},  {0.5f, 0.5f, 0.5f},  {-0.5f, 0.5f, 0.5f}};
@@ -179,6 +200,55 @@ private:
 
         selectionCubeVertexCount = static_cast<unsigned int>(selectionVertices.size());
         selectionCubeVao = CreateLineVao(selectionVertices);
+    }
+
+    void BuildMoveArrowheads(float axisLength)
+    {
+        constexpr int segments = 10;
+        constexpr float coneHeight = 0.35f;
+        constexpr float coneRadius = 0.12f;
+        constexpr float twoPi = 6.28318531f;
+
+        const Vector3 colors[3] = {{1.0f, 0.25f, 0.25f}, {0.25f, 1.0f, 0.25f}, {0.35f, 0.55f, 1.0f}};
+
+        std::vector<GizmoVertex> vertices;
+        vertices.reserve(3 * segments * 3);
+
+        for (int axis = 0; axis < 3; axis++)
+        {
+            const Vector3 axisDir = AxisUnitVector(axis);
+            const Vector3 base = axisDir * axisLength;
+            const Vector3 apex = axisDir * (axisLength + coneHeight);
+
+            const Vector3 reference = axis == 1 ? Vector3(1.0f, 0.0f, 0.0f) : Vector3(0.0f, 1.0f, 0.0f);
+            const Vector3 u = Vector3::Normalize(Vector3::Cross(axisDir, reference));
+            const Vector3 v = Vector3::Cross(axisDir, u);
+
+            for (int i = 0; i < segments; i++)
+            {
+                const float a0 = (twoPi * i) / segments;
+                const float a1 = (twoPi * (i + 1)) / segments;
+
+                const Vector3 p0 = base + (u * std::cos(a0) + v * std::sin(a0)) * coneRadius;
+                const Vector3 p1 = base + (u * std::cos(a1) + v * std::sin(a1)) * coneRadius;
+
+                vertices.push_back({apex, colors[axis]});
+                vertices.push_back({p0, colors[axis]});
+                vertices.push_back({p1, colors[axis]});
+            }
+        }
+
+        moveArrowVertexCount = static_cast<unsigned int>(vertices.size());
+        moveArrowVao = CreateLineVao(vertices);
+    }
+
+    static Vector3 AxisUnitVector(int axis)
+    {
+        if (axis == 0)
+            return {1.0f, 0.0f, 0.0f};
+        if (axis == 1)
+            return {0.0f, 1.0f, 0.0f};
+        return {0.0f, 0.0f, 1.0f};
     }
 
     void DrawCollisionBounds(EcsWorld& world)
@@ -274,6 +344,7 @@ private:
     VertexArrayObjectPtr axisVao;
     VertexArrayObjectPtr wireCubeVao;
     VertexArrayObjectPtr moveHandleVao;
+    VertexArrayObjectPtr moveArrowVao;
     VertexArrayObjectPtr rotationRingVao;
     VertexArrayObjectPtr selectionCubeVao;
 
@@ -281,6 +352,7 @@ private:
     unsigned int axisVertexCount = 0;
     unsigned int wireCubeVertexCount = 0;
     unsigned int moveHandleVertexCount = 0;
+    unsigned int moveArrowVertexCount = 0;
     unsigned int rotationRingVertexCount = 0;
     unsigned int selectionCubeVertexCount = 0;
 };

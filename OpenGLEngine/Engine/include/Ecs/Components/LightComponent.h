@@ -5,7 +5,8 @@
 enum class LightType
 {
     Directional,
-    Point
+    Point,
+    Spot
 };
 
 struct LightComponent
@@ -18,6 +19,9 @@ struct LightComponent
 
     float intensity = 0.8f;
     float range = 10.0f;
+
+    float innerConeAngleDeg = 20.0f;
+    float outerConeAngleDeg = 30.0f;
 
     bool castShadows = false;
     float shadowOrthoSize = 25.0f;

@@ -98,6 +98,12 @@ public:
                 v.x * matrix[0][2] + v.y * matrix[1][2] + v.z * matrix[2][2] + matrix[3][2]};
     }
 
+    Vector3 TransformDirection(const Vector3& v) const
+    {
+        return {v.x * matrix[0][0] + v.y * matrix[1][0] + v.z * matrix[2][0], v.x * matrix[0][1] + v.y * matrix[1][1] + v.z * matrix[2][1],
+                v.x * matrix[0][2] + v.y * matrix[1][2] + v.z * matrix[2][2]};
+    }
+
     Matrix4 operator*(const Matrix4& otherMatrix) const
     {
         Matrix4 out;

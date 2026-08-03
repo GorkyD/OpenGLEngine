@@ -97,7 +97,7 @@ public:
 
         for (auto& [entityId, mesh] : meshes)
         {
-            if (!mesh.visible || !shaders.Has(entityId))
+            if (!mesh.visible || !mesh.castsShadow || !shaders.Has(entityId))
                 continue;
 
             const auto& shaderComp = shaders.Get(entityId);

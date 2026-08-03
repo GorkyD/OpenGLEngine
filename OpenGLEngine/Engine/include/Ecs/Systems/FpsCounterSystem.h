@@ -12,6 +12,8 @@ class FpsCounterSystem : public IEcsSystem
 public:
     explicit FpsCounterSystem(Window* window) : window(window) {}
 
+    Vector4 color = {0.05f, 0.05f, 0.05f, 1.0f};
+
     void Init(EcsWorld& world) override
     {
         auto font = Font::LoadFromFile("Assets/Fonts/JetBrainsMono-Regular.ttf", 22.0f);
@@ -23,7 +25,7 @@ public:
         auto& text = world.AddComponent<TextComponent>(entity);
         text.font = font;
         text.text = "FPS: --";
-        text.color = {0.05f, 0.05f, 0.05f, 1.0f};
+        text.color = color;
         text.scale = 1.0f;
 
         UpdatePosition(text);
@@ -35,6 +37,7 @@ public:
             return;
 
         auto& text = world.GetComponent<TextComponent>(entity);
+        text.color = color;
 
         accumulatedTime += deltaTime;
         frameCount++;
