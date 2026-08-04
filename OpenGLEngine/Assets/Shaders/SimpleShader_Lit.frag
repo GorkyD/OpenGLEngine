@@ -29,6 +29,8 @@ uniform float emissiveIntensity;
 uniform vec3 fogColor;
 uniform float fogStart;
 uniform float fogEnd;
+uniform float fogGlowExponent;
+uniform float fogGlowStrength;
 
 #define MAX_LIGHTS 32
 #define PI 3.14159265359
@@ -42,6 +44,8 @@ uniform vec3 lightPosition[MAX_LIGHTS];
 uniform float lightRange[MAX_LIGHTS];
 uniform float lightInnerCos[MAX_LIGHTS];
 uniform float lightOuterCos[MAX_LIGHTS];
+
+uniform int bypassSpotCone;
 
 uniform sampler2D shadowMap;
 uniform mat4 lightSpaceMatrix;
@@ -139,7 +143,7 @@ void main()
         float rangeAttenuation = clamp(1.0 - dist / max(lightRange[i], 0.0001), 0.0, 1.0);
         float attenuation = isDirectional ? 1.0 : rangeAttenuation;
 
-        if (type == 2)
+        if (type == 2 && bypassSpotCone == 0)
         {
             vec3 spotDir = normalize(lightDirection[i]);
             float cosAngle = dot(-pointDir, spotDir);
@@ -173,7 +177,16 @@ void main()
 
     float dist = length(viewPos - fragWorldPos);
     float fogFactor = clamp((fogEnd - dist) / max(fogEnd - fogStart, 0.0001), 0.0, 1.0);
-    finalColor = mix(fogColor, finalColor, fogFactor);
+
+    vec3 fogTint = fogColor;
+    if (shadowLightIndex >= 0)
+    {
+        vec3 glowDir = normalize(lightDirection[shadowLightIndex]);
+        float glow = pow(max(dot(-viewDir, glowDir), 0.0), fogGlowExponent) * fogGlowStrength;
+        fogTint = mix(fogColor, lightColor[shadowLightIndex] * lightIntensity[shadowLightIndex], clamp(glow, 0.0, 1.0));
+    }
+
+    finalColor = mix(fogTint, finalColor, fogFactor);
 
     outColor = vec4(finalColor, 1.0);
 }

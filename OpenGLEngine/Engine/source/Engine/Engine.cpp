@@ -10,6 +10,8 @@
 #include "Engine/Engine.h"
 #include "Platform/ProcessLauncher.h"
 #include "Math/Vector4.h"
+#include "Ecs/Components/PostProcessComponent.h"
+#include "Render/PostProcessPipeline.h"
 #include "Render/RenderEngine.h"
 #include "Render/UniformData.h"
 #include "Resource/SceneSerializer.h"
@@ -33,6 +35,7 @@
 #include "Ecs/Systems/RotatorSystem.h"
 #include "Ecs/Systems/ShadowMapSystem.h"
 #include "Ecs/Systems/SimplePhysicSystem.h"
+#include "Ecs/Systems/ProceduralSkySystem.h"
 #include "Ecs/Systems/SkyboxSystem.h"
 #include "Ecs/Systems/TransformHierarchySystem.h"
 #include "Ecs/Systems/UITextSystem.h"
@@ -85,6 +88,11 @@ void Engine::CreateStandardShaders()
     });
     shaders.skybox->SetUniformBufferSlot("UniformData", 0);
 
+    shaders.skyProcedural = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_Skybox.vert", "Assets/Shaders/SimpleShader_ProceduralSky.frag"
+    });
+    shaders.skyProcedural->SetUniformBufferSlot("UniformData", 0);
+
     shaders.fire = renderEngine->CreateShaderProgram({
         "Assets/Shaders/SimpleShader_Fire.vert", "Assets/Shaders/SimpleShader_Fire.frag"
     });
@@ -119,6 +127,12 @@ void Engine::CreateStandardShaders()
     shaders.shadowDepthSkinned = renderEngine->CreateShaderProgram({
         "Assets/Shaders/SimpleShader_ShadowDepthSkinned.vert", "Assets/Shaders/SimpleShader_ShadowDepth.frag"
     });
+
+    shaders.postProcess = renderEngine->CreateShaderProgram({
+        "Assets/Shaders/SimpleShader_PostProcess.vert", "Assets/Shaders/SimpleShader_PostProcess.frag"
+    });
+
+    postProcessPipeline = std::make_unique<PostProcessPipeline>(renderEngine.get(), shaders.postProcess);
 }
 
 void Engine::SetMode(EngineMode newMode)
@@ -206,6 +220,7 @@ void Engine::CreateStandardSystems()
 
     systems->Add(std::make_unique<CameraMatrixSystem>(renderEngine.get(), uniformBuffer, window.get()));
     systems->Add(std::make_unique<SkyboxSystem>(renderEngine.get()));
+    systems->Add(std::make_unique<ProceduralSkySystem>(renderEngine.get()));
     systems->Add(std::make_unique<HoverSystem>(inputSystem.get(), window.get()), true);
     systems->Add(std::make_unique<AnimatorSystem>());
     systems->Add(std::make_unique<TransformHierarchySystem>());
@@ -291,7 +306,11 @@ void Engine::OnUpdateInternal()
     const auto frameStart = std::chrono::high_resolution_clock::now();
 
     window->PollEvents();
-    renderEngine->SetViewPort(window->GetInnerSize());
+    const Rect windowSize = window->GetInnerSize();
+    renderEngine->SetViewPort(windowSize);
+
+    if (postProcessEnabled && postProcessPipeline)
+        postProcessPipeline->BeginScene(windowSize.width, windowSize.height);
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -333,6 +352,18 @@ void Engine::OnUpdateInternal()
         const auto perfEnd = std::chrono::high_resolution_clock::now();
         const double frameAfterSceneMs = std::chrono::duration_cast<std::chrono::microseconds>(perfEnd - perfMid).
             count() / 1000.0;
+    }
+
+    if (postProcessEnabled && postProcessPipeline)
+    {
+        PostProcessComponent post;
+        for (auto& pair : world.GetPool<PostProcessComponent>())
+        {
+            post = pair.second;
+            break;
+        }
+
+        postProcessPipeline->Resolve(post.exposure, post.vignetteStrength, post.vignetteRadius, post.vignetteSoftness);
     }
 
     ImGui::Render();

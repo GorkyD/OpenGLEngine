@@ -259,6 +259,8 @@ public:
                 glUniform3f(shader->GetUniformLocation("ambientColor"), ambient.color.x, ambient.color.y, ambient.color.z);
                 glUniform1f(shader->GetUniformLocation("ambientIntensity"), ambient.intensity);
 
+                glUniform1i(shader->GetUniformLocation("bypassSpotCone"), mesh.renderQueue == RenderQueue::Overlay ? 1 : 0);
+
                 glUniform1i(shader->GetUniformLocation("numLights"), numLights);
                 if (numLights > 0)
                 {
@@ -282,6 +284,8 @@ public:
                 glUniform3f(shader->GetUniformLocation("fogColor"), fog.color.x, fog.color.y, fog.color.z);
                 glUniform1f(shader->GetUniformLocation("fogStart"), fog.start);
                 glUniform1f(shader->GetUniformLocation("fogEnd"), fog.end);
+                glUniform1f(shader->GetUniformLocation("fogGlowExponent"), fog.glowExponent);
+                glUniform1f(shader->GetUniformLocation("fogGlowStrength"), fog.glowStrength);
 
                 glActiveTexture(GL_TEXTURE0 + 5);
                 glBindTexture(GL_TEXTURE_2D, shadowDepthTextureId);
@@ -416,6 +420,8 @@ public:
             glUniform3f(litInstancedShader->GetUniformLocation("fogColor"), fog.color.x, fog.color.y, fog.color.z);
             glUniform1f(litInstancedShader->GetUniformLocation("fogStart"), fog.start);
             glUniform1f(litInstancedShader->GetUniformLocation("fogEnd"), fog.end);
+            glUniform1f(litInstancedShader->GetUniformLocation("fogGlowExponent"), fog.glowExponent);
+            glUniform1f(litInstancedShader->GetUniformLocation("fogGlowStrength"), fog.glowStrength);
 
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, key.diffuseTextureId);

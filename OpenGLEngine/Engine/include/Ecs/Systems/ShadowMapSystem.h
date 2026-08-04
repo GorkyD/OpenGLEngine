@@ -21,7 +21,7 @@
 class ShadowMapSystem : public IEcsSystem
 {
 public:
-    ShadowMapSystem(RenderEngine* re, Window* window, ShaderProgramPtr depthShader, ShaderProgramPtr depthSkinnedShader, int resolution = 4096) :
+    ShadowMapSystem(RenderEngine* re, Window* window, ShaderProgramPtr depthShader, ShaderProgramPtr depthSkinnedShader, int resolution = 8192) :
         renderEngine(re), window(window), depthShader(std::move(depthShader)), depthSkinnedShader(std::move(depthSkinnedShader)), shadowMap(resolution)
     {
     }
@@ -77,6 +77,9 @@ public:
 
         const Rect restoreViewport = window->GetInnerSize();
 
+        GLint previousFramebuffer = 0;
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &previousFramebuffer);
+
         shadowMap.BeginWrite();
         renderEngine->SetFaceCulling(CullingType::Both);
         renderEngine->SetWindingOrder(ClockWise);
@@ -127,6 +130,7 @@ public:
         }
 
         shadowMap.EndWrite();
+        glBindFramebuffer(GL_FRAMEBUFFER, previousFramebuffer);
         renderEngine->SetViewPort(restoreViewport);
 
         active = true;

@@ -11,4 +11,7 @@ struct FogComponent
 
     float horizonSpread = 0.12f;
     float horizonIntensity = 0.8f;
+
+    float glowExponent = 24.0f;
+    float glowStrength = 0.6f;
 };

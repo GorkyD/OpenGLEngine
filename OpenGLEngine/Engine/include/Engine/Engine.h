@@ -32,6 +32,7 @@ struct StandardShaders
     ShaderProgramPtr litInstanced;
     ShaderProgramPtr skinned;
     ShaderProgramPtr skybox;
+    ShaderProgramPtr skyProcedural;
     ShaderProgramPtr fire;
     ShaderProgramPtr particle;
     ShaderProgramPtr text;
@@ -40,6 +41,7 @@ struct StandardShaders
     ShaderProgramPtr hud;
     ShaderProgramPtr shadowDepth;
     ShaderProgramPtr shadowDepthSkinned;
+    ShaderProgramPtr postProcess;
 };
 
 class Engine
@@ -210,6 +212,8 @@ protected:
     std::shared_ptr<InputSystem> inputSystem;
     std::shared_ptr<AudioSystem> audioSystem;
     std::unique_ptr<SaveService> saveService;
+    std::unique_ptr<class PostProcessPipeline> postProcessPipeline;
+    bool postProcessEnabled = true;
 
     StandardShaders shaders;
     UniformBufferPtr uniformBuffer;

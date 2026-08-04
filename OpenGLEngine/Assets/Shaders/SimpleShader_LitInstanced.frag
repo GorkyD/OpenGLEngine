@@ -19,6 +19,8 @@ uniform float ambientIntensity;
 uniform vec3 fogColor;
 uniform float fogStart;
 uniform float fogEnd;
+uniform float fogGlowExponent;
+uniform float fogGlowStrength;
 
 #define MAX_LIGHTS 32
 #define PI 3.14159265359
@@ -140,7 +142,16 @@ void main()
 
     float dist = length(viewPos - fragWorldPos);
     float fogFactor = clamp((fogEnd - dist) / max(fogEnd - fogStart, 0.0001), 0.0, 1.0);
-    finalColor = mix(fogColor, finalColor, fogFactor);
+
+    vec3 fogTint = fogColor;
+    if (shadowLightIndex >= 0)
+    {
+        vec3 glowDir = normalize(lightDirection[shadowLightIndex]);
+        float glow = pow(max(dot(-viewDir, glowDir), 0.0), fogGlowExponent) * fogGlowStrength;
+        fogTint = mix(fogColor, lightColor[shadowLightIndex] * lightIntensity[shadowLightIndex], clamp(glow, 0.0, 1.0));
+    }
+
+    finalColor = mix(fogTint, finalColor, fogFactor);
 
     outColor = vec4(finalColor, 1.0);
 }

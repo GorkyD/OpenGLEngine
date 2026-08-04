@@ -224,9 +224,6 @@ private:
         ApplyToGroup(world, [&](Entity entity) { world.GetComponent<TransformComponent>(entity).position += WorldDeltaToLocal(world, entity, worldDelta); });
     }
 
-    // Converts a world-space movement into the delta an entity's own (parent-relative) local
-    // position needs, so dragging a child of a scaled/rotated parent still moves it correctly
-    // in world space instead of being crushed or skewed by the parent's transform.
     static Vector3 WorldDeltaToLocal(EcsWorld& world, Entity entity, const Vector3& worldDelta)
     {
         if (!world.HasComponent<ParentComponent>(entity))
