@@ -47,6 +47,7 @@ set(ENGINE_SOURCES
     OpenGLEngine/Engine/source/Resource/ModelLoader.cpp
     OpenGLEngine/Engine/source/Resource/SkinnedModelLoader.cpp
     OpenGLEngine/Engine/source/Resource/MeshFactory.cpp
+    OpenGLEngine/Engine/source/Resource/TerrainGenerator.cpp
     OpenGLEngine/Engine/source/Resource/EntityFactory.cpp
     OpenGLEngine/Engine/source/Resource/ModelCache.cpp
     OpenGLEngine/Engine/source/Resource/SceneSerializer.cpp

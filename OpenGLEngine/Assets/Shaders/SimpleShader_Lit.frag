@@ -32,6 +32,11 @@ uniform float fogEnd;
 uniform float fogGlowExponent;
 uniform float fogGlowStrength;
 
+uniform int fogRadialEnabled;
+uniform vec3 fogRadialOrigin;
+uniform float fogRadialStart;
+uniform float fogRadialEnd;
+
 #define MAX_LIGHTS 32
 #define PI 3.14159265359
 
@@ -116,6 +121,10 @@ void main()
 
     vec4 sampledColor = texture(diffuseTexture, fragTexCoord);
     vec4 texColor = mix(vec4(1.0), sampledColor, float(hasTexture));
+
+    if (texColor.a * diffuseColor.a < 0.5)
+        discard;
+
     vec3 albedo = texColor.rgb * diffuseColor.rgb;
 
     float roughness = mix(roughnessScalar, texture(roughnessTexture, fragTexCoord).r, float(hasRoughnessMap));
@@ -177,6 +186,13 @@ void main()
 
     float dist = length(viewPos - fragWorldPos);
     float fogFactor = clamp((fogEnd - dist) / max(fogEnd - fogStart, 0.0001), 0.0, 1.0);
+
+    if (fogRadialEnabled != 0)
+    {
+        float radialDist = length(fragWorldPos.xz - fogRadialOrigin.xz);
+        float radialFactor = clamp((fogRadialEnd - radialDist) / max(fogRadialEnd - fogRadialStart, 0.0001), 0.0, 1.0);
+        fogFactor = min(fogFactor, radialFactor);
+    }
 
     vec3 fogTint = fogColor;
     if (shadowLightIndex >= 0)

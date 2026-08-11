@@ -286,6 +286,10 @@ public:
                 glUniform1f(shader->GetUniformLocation("fogEnd"), fog.end);
                 glUniform1f(shader->GetUniformLocation("fogGlowExponent"), fog.glowExponent);
                 glUniform1f(shader->GetUniformLocation("fogGlowStrength"), fog.glowStrength);
+                glUniform1i(shader->GetUniformLocation("fogRadialEnabled"), fog.radialEnabled ? 1 : 0);
+                glUniform3f(shader->GetUniformLocation("fogRadialOrigin"), fog.radialOrigin.x, fog.radialOrigin.y, fog.radialOrigin.z);
+                glUniform1f(shader->GetUniformLocation("fogRadialStart"), fog.radialStart);
+                glUniform1f(shader->GetUniformLocation("fogRadialEnd"), fog.radialEnd);
 
                 glActiveTexture(GL_TEXTURE0 + 5);
                 glBindTexture(GL_TEXTURE_2D, shadowDepthTextureId);
@@ -422,6 +426,10 @@ public:
             glUniform1f(litInstancedShader->GetUniformLocation("fogEnd"), fog.end);
             glUniform1f(litInstancedShader->GetUniformLocation("fogGlowExponent"), fog.glowExponent);
             glUniform1f(litInstancedShader->GetUniformLocation("fogGlowStrength"), fog.glowStrength);
+            glUniform1i(litInstancedShader->GetUniformLocation("fogRadialEnabled"), fog.radialEnabled ? 1 : 0);
+            glUniform3f(litInstancedShader->GetUniformLocation("fogRadialOrigin"), fog.radialOrigin.x, fog.radialOrigin.y, fog.radialOrigin.z);
+            glUniform1f(litInstancedShader->GetUniformLocation("fogRadialStart"), fog.radialStart);
+            glUniform1f(litInstancedShader->GetUniformLocation("fogRadialEnd"), fog.radialEnd);
 
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, key.diffuseTextureId);

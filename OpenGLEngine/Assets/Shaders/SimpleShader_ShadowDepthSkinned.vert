@@ -3,12 +3,15 @@
 #define MAX_BONES 100
 
 layout(location = 0) in vec3 position;
+layout(location = 1) in vec2 texcoord;
 layout(location = 3) in vec4 boneIds;
 layout(location = 4) in vec4 boneWeights;
 
 uniform mat4 world;
 uniform mat4 lightSpaceMatrix;
 uniform mat4 boneMatrices[MAX_BONES];
+
+out vec2 fragTexCoord;
 
 void main()
 {
@@ -24,4 +27,5 @@ void main()
     }
 
     gl_Position = lightSpaceMatrix * world * skinnedPosition;
+    fragTexCoord = texcoord;
 }

@@ -14,4 +14,9 @@ struct FogComponent
 
     float glowExponent = 24.0f;
     float glowStrength = 0.6f;
+
+    bool radialEnabled = false;
+    Vector3 radialOrigin = {0.0f, 0.0f, 0.0f};
+    float radialStart = 40.0f;
+    float radialEnd = 70.0f;
 };

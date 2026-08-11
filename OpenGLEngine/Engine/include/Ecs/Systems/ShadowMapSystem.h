@@ -5,6 +5,7 @@
 #include "Ecs/Components/AnimatorComponent.h"
 #include "Ecs/Components/CameraComponent.h"
 #include "Ecs/Components/LightComponent.h"
+#include "Ecs/Components/MaterialComponent.h"
 #include "Ecs/Components/MeshComponent.h"
 #include "Ecs/Components/ShaderComponent.h"
 #include "Ecs/Components/TransformComponent.h"
@@ -12,9 +13,11 @@
 #include "Ecs/Core/IEcsSystem.h"
 #include "Math/Matrix4.h"
 #include "Math/Vector3.h"
+#include "Math/Vector4.h"
 #include "Render/RenderEngine.h"
 #include "Render/ShaderProgram.h"
 #include "Render/ShadowMap.h"
+#include "Render/Texture.h"
 #include "Render/VertexArrayObject.h"
 #include "Window/Window.h"
 
@@ -88,6 +91,7 @@ public:
         auto& shaders = world.GetPool<ShaderComponent>();
         auto& transforms = world.GetPool<TransformComponent>();
         auto& worldTransforms = world.GetPool<WorldTransformComponent>();
+        auto& materials = world.GetPool<MaterialComponent>();
 
         auto modelMatrixOf = [&](Entity entity) -> Matrix4
         {
@@ -114,6 +118,23 @@ public:
             const Matrix4 worldMatrix = modelMatrixOf(entityId);
             glUniformMatrix4fv(shader->GetUniformLocation("world"), 1, GL_FALSE, &worldMatrix.matrix[0][0]);
             glUniformMatrix4fv(shader->GetUniformLocation("lightSpaceMatrix"), 1, GL_FALSE, &lightSpaceMatrix.matrix[0][0]);
+
+            Vector4 diffuseColor = {1.0f, 1.0f, 1.0f, 1.0f};
+            int hasTexture = 0;
+            if (materials.Has(entityId))
+            {
+                auto& mat = materials.Get(entityId);
+                diffuseColor = mat.diffuseColor;
+                if (mat.diffuseTexture)
+                {
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, mat.diffuseTexture->GetId());
+                    hasTexture = 1;
+                }
+            }
+            glUniform1i(shader->GetUniformLocation("diffuseTexture"), 0);
+            glUniform1i(shader->GetUniformLocation("hasTexture"), hasTexture);
+            glUniform4f(shader->GetUniformLocation("diffuseColor"), diffuseColor.x, diffuseColor.y, diffuseColor.z, diffuseColor.w);
 
             if (isSkinned && world.HasComponent<AnimatorComponent>(entityId))
             {
