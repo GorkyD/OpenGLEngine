@@ -6,6 +6,10 @@
 #include "FpsScene.h"
 #define OPENGLENGINE_HAS_FPS 1
 #endif
+#if __has_include("LadScene.h")
+#include "LadScene.h"
+#define OPENGLENGINE_HAS_LAD 1
+#endif
 #if __has_include("ZigZagScene.h")
 #include "ZigZagScene.h"
 #define OPENGLENGINE_HAS_ZIGZAG 1
@@ -48,6 +52,9 @@ int main(int argc, char** argv)
 #if OPENGLENGINE_HAS_FPS
         engine.RegisterScene("Fps", [] { return std::make_unique<FpsScene>(); }, "Fps", FindGameAssetsPath("Fps"));
         engine.RegisterScene("Campfire", [] { return std::make_unique<CampfireScene>(); }, "Fps", FindGameAssetsPath("Fps"));
+#endif
+#if OPENGLENGINE_HAS_LAD
+        engine.RegisterScene("Lad", [] { return std::make_unique<LadScene>(); }, "Lad", FindGameAssetsPath("Lad"));
 #endif
 #if OPENGLENGINE_HAS_ZIGZAG
         engine.RegisterScene("ZigZag", [] { return std::make_unique<ZigZagScene>(); }, "ZigZag_OpenGL", FindGameAssetsPath("ZigZag_OpenGL"));
