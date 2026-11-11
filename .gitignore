@@ -69,3 +69,6 @@ OpenGLEngine/Assets/Wwise/*.txt
 run_stdout.log
 run_out.log
 run_err.log
+
+/OpenGLEngine/Game/*/
+!/OpenGLEngine/Game/Demo/
