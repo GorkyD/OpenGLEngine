@@ -12,40 +12,36 @@ in float fragMetallic;
 uniform sampler2D diffuseTexture;
 uniform int hasTexture;
 
-uniform vec3 viewPos;
-uniform vec3 ambientColor;
-uniform float ambientIntensity;
-
-uniform vec3 fogColor;
-uniform float fogStart;
-uniform float fogEnd;
-uniform float fogGlowExponent;
-uniform float fogGlowStrength;
-
-uniform int fogRadialEnabled;
-uniform vec3 fogRadialOrigin;
-uniform float fogRadialStart;
-uniform float fogRadialEnd;
-
 #define MAX_LIGHTS 32
 #define PI 3.14159265359
 
-uniform int numLights;
-uniform int lightType[MAX_LIGHTS];
-uniform vec3 lightColor[MAX_LIGHTS];
-uniform float lightIntensity[MAX_LIGHTS];
-uniform vec3 lightDirection[MAX_LIGHTS];
-uniform vec3 lightPosition[MAX_LIGHTS];
-uniform float lightRange[MAX_LIGHTS];
-uniform float lightInnerCos[MAX_LIGHTS];
-uniform float lightOuterCos[MAX_LIGHTS];
+layout(std140) uniform FrameData
+{
+    mat4 lightSpaceMatrix;
+    vec4 lightColorIntensity[MAX_LIGHTS];
+    vec4 lightPositionRange[MAX_LIGHTS];
+    vec4 lightDirectionType[MAX_LIGHTS];
+    vec4 lightCone[MAX_LIGHTS];
+    vec3 viewPos;
+    float ambientIntensity;
+    vec3 ambientColor;
+    float fogStart;
+    vec3 fogColor;
+    float fogEnd;
+    vec3 fogRadialOrigin;
+    float fogRadialStart;
+    float fogRadialEnd;
+    float fogGlowExponent;
+    float fogGlowStrength;
+    int fogRadialEnabled;
+    int numLights;
+    int shadowLightIndex;
+    float shadowBias;
+    float shadowAmbientOcclusion;
+    float shadowNormalBias;
+};
 
 uniform sampler2D shadowMap;
-uniform mat4 lightSpaceMatrix;
-uniform int shadowLightIndex;
-uniform float shadowBias;
-uniform float shadowAmbientOcclusion;
-uniform float shadowNormalBias;
 
 out vec4 outColor;
 
@@ -85,9 +81,11 @@ void main()
 {
     vec3 norm = normalize(fragNormal);
 
-    vec3 albedo = fragDiffuseColor.rgb;
-    if (hasTexture != 0)
-        albedo *= texture(diffuseTexture, fragTexCoord).rgb;
+    vec4 texColor = hasTexture != 0 ? texture(diffuseTexture, fragTexCoord) : vec4(1.0);
+    if (texColor.a * fragDiffuseColor.a < 0.5)
+        discard;
+
+    vec3 albedo = fragDiffuseColor.rgb * texColor.rgb;
 
     float roughness = clamp(fragRoughness, 0.045, 1.0);
     float metallic = clamp(fragMetallic, 0.0, 1.0);
@@ -101,27 +99,27 @@ void main()
 
     for (int i = 0; i < numLights; i++)
     {
-        int type = lightType[i];
+        int type = int(lightDirectionType[i].w);
         bool isDirectional = (type == 0);
 
-        vec3 toLight = lightPosition[i] - fragWorldPos;
+        vec3 toLight = lightPositionRange[i].xyz - fragWorldPos;
         float dist = length(toLight);
         vec3 pointDir = toLight / max(dist, 0.0001);
-        vec3 dirLightDir = normalize(lightDirection[i]);
+        vec3 dirLightDir = normalize(lightDirectionType[i].xyz);
         vec3 lightDir = isDirectional ? dirLightDir : pointDir;
 
-        float rangeAttenuation = clamp(1.0 - dist / max(lightRange[i], 0.0001), 0.0, 1.0);
+        float rangeAttenuation = clamp(1.0 - dist / max(lightPositionRange[i].w, 0.0001), 0.0, 1.0);
         float attenuation = isDirectional ? 1.0 : rangeAttenuation;
 
         if (type == 2)
         {
-            vec3 spotDir = normalize(lightDirection[i]);
+            vec3 spotDir = normalize(lightDirectionType[i].xyz);
             float cosAngle = dot(-pointDir, spotDir);
-            float spotFactor = clamp((cosAngle - lightOuterCos[i]) / max(lightInnerCos[i] - lightOuterCos[i], 0.0001), 0.0, 1.0);
+            float spotFactor = clamp((cosAngle - lightCone[i].y) / max(lightCone[i].x - lightCone[i].y, 0.0001), 0.0, 1.0);
             attenuation *= spotFactor;
         }
 
-        vec3 radiance = lightColor[i] * lightIntensity[i] * attenuation;
+        vec3 radiance = lightColorIntensity[i].rgb * lightColorIntensity[i].w * attenuation;
 
         vec3 halfVec = normalize(viewDir + lightDir);
         vec3 fresnel = FresnelSchlick(max(dot(halfVec, viewDir), 0.0), f0);
@@ -158,9 +156,9 @@ void main()
     vec3 fogTint = fogColor;
     if (shadowLightIndex >= 0)
     {
-        vec3 glowDir = normalize(lightDirection[shadowLightIndex]);
+        vec3 glowDir = normalize(lightDirectionType[shadowLightIndex].xyz);
         float glow = pow(max(dot(-viewDir, glowDir), 0.0), fogGlowExponent) * fogGlowStrength;
-        fogTint = mix(fogColor, lightColor[shadowLightIndex] * lightIntensity[shadowLightIndex], clamp(glow, 0.0, 1.0));
+        fogTint = mix(fogColor, lightColorIntensity[shadowLightIndex].rgb * lightColorIntensity[shadowLightIndex].w, clamp(glow, 0.0, 1.0));
     }
 
     finalColor = mix(fogTint, finalColor, fogFactor);

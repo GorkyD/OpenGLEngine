@@ -1,17 +1,21 @@
 #include "Editor/EditorCommands.h"
 #include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
 #include "Ecs/Components/AABB.h"
 #include "Ecs/Components/CameraComponent.h"
+#include "Ecs/Components/EditorIdComponent.h"
 #include "Ecs/Components/GroupComponent.h"
 #include "Ecs/Components/HitFlashComponent.h"
 #include "Ecs/Components/LightComponent.h"
-#include "Ecs/Components/MaterialComponent.h"
+#include "Ecs/Components/MeshComponent.h"
 #include "Ecs/Components/ParentComponent.h"
 #include "Ecs/Components/PrefabComponent.h"
 #include "Ecs/Components/TransformComponent.h"
 #include "Ecs/Components/TransformOffsetComponent.h"
 #include "Ecs/Core/EcsWorld.h"
 #include "Engine/Engine.h"
+#include "Extension/Extension.h"
 #include "Resource/EntityFactory.h"
 #include "Resource/SceneSerializer.h"
 
@@ -36,6 +40,23 @@ std::vector<Entity> EditorCommands::CollectGroup(EcsWorld& world, Entity entity)
     return entities;
 }
 
+std::vector<Entity> EditorCommands::CollectSelectedGroups(Engine& engine, EcsWorld& world)
+{
+    std::vector<Entity> result;
+    std::unordered_set<Entity> seen;
+
+    for (const auto selected : engine.GetSelection().All())
+    {
+        for (const auto entity : CollectGroup(world, selected))
+        {
+            if (seen.insert(entity).second)
+                result.push_back(entity);
+        }
+    }
+
+    return result;
+}
+
 static void ConfigurePlacedEntity(EcsWorld& world, Entity entity, const std::string& assetPath, const std::string& groupName)
 {
     world.AddComponent<PrefabComponent>(entity).assetPath = assetPath;
@@ -44,17 +65,137 @@ static void ConfigurePlacedEntity(EcsWorld& world, Entity entity, const std::str
     world.AddComponent<HitFlashComponent>(entity);
 }
 
-Entity EditorCommands::SpawnAsset(Engine& engine, EcsWorld& world, const std::string& assetPath)
+static Vector3 SpawnPointInFrontOfCamera(EcsWorld& world)
 {
-    Vector3 spawnPosition = {0, 0, 0};
     for (auto& [entity, camera] : world.GetPool<CameraComponent>())
     {
         if (!camera.isActive || !world.HasComponent<TransformComponent>(entity))
             continue;
 
-        spawnPosition = world.GetComponent<TransformComponent>(entity).position + camera.forward * 5.0f;
-        break;
+        return world.GetComponent<TransformComponent>(entity).position + camera.forward * 5.0f;
     }
+
+    return {0, 0, 0};
+}
+
+void EditorCommands::DestroyObjects(Engine& engine, EcsWorld& world, ObjectLifecycle& lifecycle)
+{
+    std::unordered_set<Entity> destroyed;
+
+    for (auto& record : lifecycle.records)
+    {
+        for (auto& state : record.states)
+        {
+            const Entity entity = EditorState::Resolve(world, state.id);
+            if (entity == INVALID_ENTITY)
+                continue;
+
+            state = EditorState::Capture(world, entity, StateAll);
+            destroyed.insert(entity);
+        }
+    }
+
+    lifecycle.children.clear();
+    for (auto& [child, parent] : world.GetPool<ParentComponent>())
+    {
+        if (destroyed.count(child) || !destroyed.count(parent.parent))
+            continue;
+
+        lifecycle.children.push_back({EditorState::IdOf(world, child), EditorState::IdOf(world, parent.parent), parent.attachBone});
+    }
+
+    auto& selection = engine.GetSelection();
+    for (const auto entity : destroyed)
+    {
+        if (selection.Contains(entity))
+            selection.Clear();
+
+        world.GetPool<EditorIdComponent>().Remove(entity);
+        world.DestroyEntity(entity);
+    }
+
+    engine.BumpSceneStructureVersion();
+}
+
+std::vector<Entity> EditorCommands::RespawnObjects(Engine& engine, EcsWorld& world, const ObjectLifecycle& lifecycle)
+{
+    std::vector<Entity> roots;
+
+    for (const auto& record : lifecycle.records)
+    {
+        if (record.states.empty())
+            continue;
+
+        if (record.assetPath.empty())
+        {
+            const Entity entity = world.CreateEntity();
+            EditorState::AssignId(world, entity, record.states.front().id);
+            roots.push_back(entity);
+            continue;
+        }
+
+        std::vector<Entity> created;
+        if (EntityFactory::CreateModelEntity(world, engine.GetRenderEngine(), record.assetPath, engine.GetShaders().lit, &created) == 0)
+        {
+            OGL_WARNING("EditorCommands | Cannot respawn " << record.assetPath)
+            continue;
+        }
+
+        const std::string groupName = record.states.front().group.present ? record.states.front().group.value.name : SceneSerializer::MakeUniqueGroupName(world, record.assetPath);
+
+        for (size_t i = 0; i < created.size(); i++)
+        {
+            ConfigurePlacedEntity(world, created[i], record.assetPath, groupName);
+            if (i < record.states.size())
+                EditorState::AssignId(world, created[i], record.states[i].id);
+        }
+
+        roots.push_back(created.front());
+    }
+
+    for (const auto& record : lifecycle.records)
+        EditorState::Restore(world, record.states);
+
+    for (const auto& link : lifecycle.children)
+    {
+        const Entity child = EditorState::Resolve(world, link.childId);
+        if (child == INVALID_ENTITY)
+            continue;
+
+        auto& parent = world.AddComponent<ParentComponent>(child);
+        parent.parent = EditorState::Resolve(world, link.parentId);
+        parent.attachBone = link.attachBone;
+    }
+
+    engine.BumpSceneStructureVersion();
+    return roots;
+}
+
+void EditorCommands::PushLifecycle(Engine& engine, const std::string& label, std::shared_ptr<ObjectLifecycle> lifecycle, bool createdByAction)
+{
+    EditorAction action;
+    action.label = label;
+
+    auto destroy = [lifecycle](Engine& e, EcsWorld& w) { DestroyObjects(e, w, *lifecycle); };
+    auto respawn = [lifecycle](Engine& e, EcsWorld& w) { RespawnObjects(e, w, *lifecycle); };
+
+    if (createdByAction)
+    {
+        action.undo = destroy;
+        action.redo = respawn;
+    }
+    else
+    {
+        action.undo = respawn;
+        action.redo = destroy;
+    }
+
+    engine.GetHistory().Push(std::move(action));
+}
+
+Entity EditorCommands::SpawnAsset(Engine& engine, EcsWorld& world, const std::string& assetPath)
+{
+    const Vector3 spawnPosition = SpawnPointInFrontOfCamera(world);
 
     std::vector<Entity> created;
     if (EntityFactory::CreateModelEntity(world, engine.GetRenderEngine(), assetPath, engine.GetShaders().lit, &created) == 0)
@@ -68,70 +209,76 @@ Entity EditorCommands::SpawnAsset(Engine& engine, EcsWorld& world, const std::st
         world.GetComponent<TransformComponent>(entity).position = spawnPosition;
     }
 
-    EditorAction action;
-    action.type = EditorAction::Type::Spawn;
-    action.entities = created;
-
-    SpawnedObject spawned;
-    spawned.assetPath = assetPath;
-    spawned.position = spawnPosition;
-    action.objects.push_back(spawned);
-
-    engine.GetHistory().Push(std::move(action));
+    auto lifecycle = std::make_shared<ObjectLifecycle>();
+    lifecycle->records.push_back({assetPath, EditorState::Capture(world, created, StateAll)});
+    PushLifecycle(engine, "Spawn " + groupName, lifecycle, true);
     engine.BumpSceneStructureVersion();
 
-    return created.empty() ? INVALID_ENTITY : created.front();
+    return created.front();
 }
 
 void EditorCommands::DuplicateSelection(Engine& engine, EcsWorld& world)
 {
     auto& selection = engine.GetSelection();
-    if (!selection.HasSelection() || !world.HasComponent<PrefabComponent>(selection.entity))
+    if (!selection.HasSelection())
         return;
 
-    const Entity source = selection.entity;
-    const std::string assetPath = world.GetComponent<PrefabComponent>(source).assetPath;
-    const auto sourceTransform = world.GetComponent<TransformComponent>(source);
+    auto lifecycle = std::make_shared<ObjectLifecycle>();
+    std::unordered_map<uint64_t, uint64_t> remap;
+    std::unordered_set<Entity> seen;
+    std::unordered_set<std::string> reservedNames;
 
-    std::vector<Entity> created;
-    if (EntityFactory::CreateModelEntity(world, engine.GetRenderEngine(), assetPath, engine.GetShaders().lit, &created) == 0)
-        return;
-
-    const std::string groupName = SceneSerializer::MakeUniqueGroupName(world, assetPath);
-    const Vector3 offsetPosition = sourceTransform.position + Vector3(1.0f, 0.0f, 0.0f);
-
-    for (const auto entity : created)
+    for (const auto selected : selection.All())
     {
-        ConfigurePlacedEntity(world, entity, assetPath, groupName);
+        if (seen.count(selected) || !world.HasComponent<PrefabComponent>(selected))
+            continue;
 
-        auto& offset = world.GetComponent<TransformOffsetComponent>(entity);
-        if (world.HasComponent<TransformOffsetComponent>(source))
-            offset.rotationDegrees = world.GetComponent<TransformOffsetComponent>(source).rotationDegrees;
+        const std::vector<Entity> group = CollectGroup(world, selected);
+        seen.insert(group.begin(), group.end());
 
-        auto& transform = world.GetComponent<TransformComponent>(entity);
-        transform.position = offsetPosition;
-        transform.scale = sourceTransform.scale;
-        transform.rotation = offset.GetRotationMatrix();
+        ObjectRecord record;
+        record.assetPath = world.GetComponent<PrefabComponent>(selected).assetPath;
+        record.states = EditorState::Capture(world, group, StateAll);
 
-        if (world.HasComponent<MaterialComponent>(source) && world.HasComponent<MaterialComponent>(entity))
-            world.GetComponent<MaterialComponent>(entity) = world.GetComponent<MaterialComponent>(source);
+        for (auto& state : record.states)
+            remap[state.id] = EditorState::NewId();
+
+        lifecycle->records.push_back(std::move(record));
     }
 
-    EditorAction action;
-    action.type = EditorAction::Type::Spawn;
-    action.entities = created;
+    if (lifecycle->records.empty())
+        return;
 
-    SpawnedObject spawned;
-    spawned.assetPath = assetPath;
-    spawned.position = offsetPosition;
-    spawned.scale = sourceTransform.scale;
-    action.objects.push_back(spawned);
+    for (auto& record : lifecycle->records)
+    {
+        std::string groupName = SceneSerializer::MakeUniqueGroupName(world, record.assetPath);
+        while (reservedNames.count(groupName))
+            groupName += "+";
+        reservedNames.insert(groupName);
 
-    engine.GetHistory().Push(std::move(action));
-    engine.BumpSceneStructureVersion();
+        for (auto& state : record.states)
+        {
+            const bool parentInCopy = state.hasParent && remap.count(state.parentId);
 
-    selection.additional.clear();
-    selection.entity = created.front();
+            state.id = remap[state.id];
+            if (parentInCopy)
+                state.parentId = remap[state.parentId];
+            if (state.group.present)
+                state.group.value.name = groupName;
+            if (state.transform.present && !parentInCopy)
+                state.transform.value.position += Vector3(1.0f, 0.0f, 0.0f);
+        }
+    }
+
+    const std::vector<Entity> roots = RespawnObjects(engine, world, *lifecycle);
+    if (roots.empty())
+        return;
+
+    PushLifecycle(engine, "Duplicate", lifecycle, true);
+
+    selection.Clear();
+    for (const auto root : roots)
+        selection.Toggle(root);
 }
 
 void EditorCommands::DeleteSelection(Engine& engine, EcsWorld& world)
@@ -140,33 +287,37 @@ void EditorCommands::DeleteSelection(Engine& engine, EcsWorld& world)
     if (!selection.HasSelection())
         return;
 
-    const std::vector<Entity> toDelete = CollectGroup(world, selection.entity);
+    auto lifecycle = std::make_shared<ObjectLifecycle>();
+    std::unordered_set<Entity> seen;
 
-    EditorAction action;
-    action.type = EditorAction::Type::Delete;
-    action.entities = toDelete;
-
-    for (const auto entity : toDelete)
+    for (const auto selected : selection.All())
     {
-        if (!world.HasComponent<PrefabComponent>(entity))
+        if (seen.count(selected))
             continue;
 
-        SpawnedObject object;
-        object.assetPath = world.GetComponent<PrefabComponent>(entity).assetPath;
-        object.position = world.GetComponent<TransformComponent>(entity).position;
-        object.scale = world.GetComponent<TransformComponent>(entity).scale;
-        if (world.HasComponent<TransformOffsetComponent>(entity))
-            object.rotationDegrees = world.GetComponent<TransformOffsetComponent>(entity).rotationDegrees;
+        const std::vector<Entity> group = CollectGroup(world, selected);
+        seen.insert(group.begin(), group.end());
 
-        action.objects.push_back(object);
-        break;
+        ObjectRecord record;
+        if (world.HasComponent<PrefabComponent>(selected))
+            record.assetPath = world.GetComponent<PrefabComponent>(selected).assetPath;
+        else if (world.HasComponent<MeshComponent>(selected))
+        {
+            OGL_WARNING("EditorCommands | Skipping delete of scene-generated object (entity " << selected << "), it cannot be restored")
+            continue;
+        }
+
+        for (const auto entity : group)
+            record.states.push_back(EditorState::Capture(world, entity, StateAll));
+
+        lifecycle->records.push_back(std::move(record));
     }
 
-    for (const auto entity : toDelete)
-        world.DestroyEntity(entity);
+    if (lifecycle->records.empty())
+        return;
 
-    engine.GetHistory().Push(std::move(action));
-    engine.BumpSceneStructureVersion();
+    DestroyObjects(engine, world, *lifecycle);
+    PushLifecycle(engine, "Delete", lifecycle, false);
     selection.Clear();
 }
 
@@ -194,248 +345,96 @@ void EditorCommands::FocusSelection(Engine& engine, EcsWorld& world)
     }
 }
 
-void EditorCommands::AddLight(EcsWorld& world)
+void EditorCommands::AddLight(Engine& engine, EcsWorld& world)
 {
     const Entity entity = world.CreateEntity();
     auto& light = world.AddComponent<LightComponent>(entity);
     light.type = LightType::Point;
     light.intensity = 1.0f;
     light.range = 15.0f;
+    light.position = SpawnPointInFrontOfCamera(world);
 
-    for (auto& [cameraEntity, camera] : world.GetPool<CameraComponent>())
-    {
-        if (!camera.isActive || !world.HasComponent<TransformComponent>(cameraEntity))
-            continue;
-
-        light.position = world.GetComponent<TransformComponent>(cameraEntity).position + camera.forward * 5.0f;
-        break;
-    }
+    auto lifecycle = std::make_shared<ObjectLifecycle>();
+    lifecycle->records.push_back({"", {EditorState::Capture(world, entity, StateAll)}});
+    PushLifecycle(engine, "Add Light", lifecycle, true);
+    engine.BumpSceneStructureVersion();
 }
 
-void EditorCommands::Rename(Engine& engine, EcsWorld& world, const std::vector<Entity>& entities, const std::string& currentName, const std::string& newName)
+EditorAction EditorCommands::MakePropertyEdit(const std::string& label, std::vector<EntityState> before, std::vector<EntityState> after)
 {
     EditorAction action;
-    action.type = EditorAction::Type::Rename;
-    action.entities = entities;
-    action.nameBefore = currentName;
-    action.nameAfter = newName;
-    engine.GetHistory().Push(std::move(action));
-    engine.BumpSceneStructureVersion();
+    action.label = label;
+    action.undo = [before = std::move(before)](Engine& e, EcsWorld& w)
+    {
+        EditorState::Restore(w, before);
+        e.BumpSceneStructureVersion();
+    };
+    action.redo = [after = std::move(after)](Engine& e, EcsWorld& w)
+    {
+        EditorState::Restore(w, after);
+        e.BumpSceneStructureVersion();
+    };
+    return action;
+}
 
-    ApplyName(world, entities, newName);
+void EditorCommands::PushPropertyEdit(Engine& engine, const std::string& label, std::vector<EntityState> before, std::vector<EntityState> after)
+{
+    if (before.empty())
+        return;
+
+    engine.GetHistory().Push(MakePropertyEdit(label, std::move(before), std::move(after)));
+}
+
+void EditorCommands::Rename(Engine& engine, EcsWorld& world, const std::vector<Entity>& entities, const std::string& newName)
+{
+    auto before = EditorState::Capture(world, entities, StateGroup);
+
+    for (const auto entity : entities)
+    {
+        if (world.HasComponent<GroupComponent>(entity))
+            world.GetComponent<GroupComponent>(entity).name = newName;
+    }
+
+    PushPropertyEdit(engine, "Rename", std::move(before), EditorState::Capture(world, entities, StateGroup));
+    engine.BumpSceneStructureVersion();
 }
 
 void EditorCommands::Reparent(Engine& engine, EcsWorld& world, const std::vector<Entity>& entities, Entity parentEntity)
 {
-    EditorAction action;
-    action.type = EditorAction::Type::Reparent;
-    action.entities = entities;
-    action.parentsBefore = CaptureParents(world, entities);
+    auto before = EditorState::Capture(world, entities, StateParent);
 
     for (const auto entity : entities)
     {
-        auto& parentComp = world.HasComponent<ParentComponent>(entity) ? world.GetComponent<ParentComponent>(entity) : world.AddComponent<ParentComponent>(entity);
+        auto& parentComp = world.AddComponent<ParentComponent>(entity);
         parentComp.parent = parentEntity;
         parentComp.attachBone.clear();
     }
 
-    action.parentsAfter = CaptureParents(world, entities);
-    engine.GetHistory().Push(std::move(action));
+    PushPropertyEdit(engine, "Reparent", std::move(before), EditorState::Capture(world, entities, StateParent));
     engine.BumpSceneStructureVersion();
-}
-
-std::vector<TransformSnapshot> EditorCommands::CaptureTransforms(EcsWorld& world, const std::vector<Entity>& entities)
-{
-    std::vector<TransformSnapshot> snapshots;
-
-    for (const auto entity : entities)
-    {
-        if (!world.HasComponent<TransformComponent>(entity))
-            continue;
-
-        TransformSnapshot snapshot;
-        snapshot.entity = entity;
-        snapshot.position = world.GetComponent<TransformComponent>(entity).position;
-        snapshot.scale = world.GetComponent<TransformComponent>(entity).scale;
-        if (world.HasComponent<TransformOffsetComponent>(entity))
-            snapshot.rotationDegrees = world.GetComponent<TransformOffsetComponent>(entity).rotationDegrees;
-
-        snapshots.push_back(snapshot);
-    }
-
-    return snapshots;
-}
-
-std::vector<ParentSnapshot> EditorCommands::CaptureParents(EcsWorld& world, const std::vector<Entity>& entities)
-{
-    std::vector<ParentSnapshot> snapshots;
-
-    for (const auto entity : entities)
-    {
-        ParentSnapshot snapshot;
-        snapshot.entity = entity;
-        if (world.HasComponent<ParentComponent>(entity))
-        {
-            snapshot.parent = world.GetComponent<ParentComponent>(entity).parent;
-            snapshot.attachBone = world.GetComponent<ParentComponent>(entity).attachBone;
-        }
-        snapshots.push_back(snapshot);
-    }
-
-    return snapshots;
-}
-
-std::vector<MaterialSnapshot> EditorCommands::CaptureMaterials(EcsWorld& world, const std::vector<Entity>& entities)
-{
-    std::vector<MaterialSnapshot> snapshots;
-
-    for (const auto entity : entities)
-    {
-        if (!world.HasComponent<MaterialComponent>(entity))
-            continue;
-
-        MaterialSnapshot snapshot;
-        snapshot.entity = entity;
-        snapshot.material = world.GetComponent<MaterialComponent>(entity);
-        snapshots.push_back(snapshot);
-    }
-
-    return snapshots;
-}
-
-void EditorCommands::ApplyTransforms(EcsWorld& world, const std::vector<TransformSnapshot>& snapshots)
-{
-    for (const auto& snapshot : snapshots)
-    {
-        if (!world.HasComponent<TransformComponent>(snapshot.entity))
-            continue;
-
-        auto& transform = world.GetComponent<TransformComponent>(snapshot.entity);
-        transform.position = snapshot.position;
-        transform.scale = snapshot.scale;
-
-        if (world.HasComponent<TransformOffsetComponent>(snapshot.entity))
-        {
-            auto& offset = world.GetComponent<TransformOffsetComponent>(snapshot.entity);
-            offset.rotationDegrees = snapshot.rotationDegrees;
-            transform.rotation = offset.GetRotationMatrix();
-        }
-    }
-}
-
-void EditorCommands::ApplyName(EcsWorld& world, const std::vector<Entity>& entities, const std::string& name)
-{
-    for (const auto entity : entities)
-    {
-        if (world.HasComponent<GroupComponent>(entity))
-            world.GetComponent<GroupComponent>(entity).name = name;
-    }
-}
-
-void EditorCommands::ApplyParents(EcsWorld& world, const std::vector<ParentSnapshot>& snapshots)
-{
-    for (const auto& snapshot : snapshots)
-    {
-        auto& parentComp =
-            world.HasComponent<ParentComponent>(snapshot.entity) ? world.GetComponent<ParentComponent>(snapshot.entity) : world.AddComponent<ParentComponent>(snapshot.entity);
-        parentComp.parent = snapshot.parent;
-        parentComp.attachBone = snapshot.attachBone;
-    }
-}
-
-void EditorCommands::ApplyMaterials(EcsWorld& world, const std::vector<MaterialSnapshot>& snapshots)
-{
-    for (const auto& snapshot : snapshots)
-    {
-        if (world.HasComponent<MaterialComponent>(snapshot.entity))
-            world.GetComponent<MaterialComponent>(snapshot.entity) = snapshot.material;
-    }
-}
-
-void EditorCommands::DestroyEntities(Engine& engine, EcsWorld& world, const std::vector<Entity>& entities)
-{
-    for (const auto entity : entities)
-        world.DestroyEntity(entity);
-
-    engine.GetSelection().Clear();
-}
-
-void EditorCommands::RespawnObjects(Engine& engine, EcsWorld& world, EditorAction& action)
-{
-    action.entities.clear();
-
-    for (const auto& object : action.objects)
-    {
-        std::vector<Entity> created;
-        if (EntityFactory::CreateModelEntity(world, engine.GetRenderEngine(), object.assetPath, engine.GetShaders().lit, &created) == 0)
-            continue;
-
-        const std::string groupName = SceneSerializer::MakeUniqueGroupName(world, object.assetPath);
-
-        for (const auto entity : created)
-        {
-            ConfigurePlacedEntity(world, entity, object.assetPath, groupName);
-
-            auto& offset = world.GetComponent<TransformOffsetComponent>(entity);
-            offset.rotationDegrees = object.rotationDegrees;
-
-            auto& transform = world.GetComponent<TransformComponent>(entity);
-            transform.position = object.position;
-            transform.scale = object.scale;
-            transform.rotation = offset.GetRotationMatrix();
-
-            action.entities.push_back(entity);
-        }
-    }
-}
-
-void EditorCommands::ApplyAction(Engine& engine, EcsWorld& world, EditorAction& action, bool undo)
-{
-    switch (action.type)
-    {
-    case EditorAction::Type::Transform:
-        ApplyTransforms(world, undo ? action.before : action.after);
-        break;
-    case EditorAction::Type::Spawn:
-        if (undo)
-            DestroyEntities(engine, world, action.entities);
-        else
-            RespawnObjects(engine, world, action);
-        break;
-    case EditorAction::Type::Delete:
-        if (undo)
-            RespawnObjects(engine, world, action);
-        else
-            DestroyEntities(engine, world, action.entities);
-        break;
-    case EditorAction::Type::Rename:
-        ApplyName(world, action.entities, undo ? action.nameBefore : action.nameAfter);
-        break;
-    case EditorAction::Type::Reparent:
-        ApplyParents(world, undo ? action.parentsBefore : action.parentsAfter);
-        break;
-    case EditorAction::Type::Material:
-        ApplyMaterials(world, undo ? action.materialsBefore : action.materialsAfter);
-        break;
-    }
 }
 
 void EditorCommands::Undo(Engine& engine, EcsWorld& world)
 {
-    EditorAction action;
-    if (!engine.GetHistory().PopUndo(action))
-        return;
-
-    ApplyAction(engine, world, action, true);
-    engine.BumpSceneStructureVersion();
+    if (engine.GetHistory().Undo(engine, world))
+        engine.BumpSceneStructureVersion();
 }
 
 void EditorCommands::Redo(Engine& engine, EcsWorld& world)
 {
-    EditorAction action;
-    if (!engine.GetHistory().PopRedo(action))
-        return;
+    if (engine.GetHistory().Redo(engine, world))
+        engine.BumpSceneStructureVersion();
+}
 
-    ApplyAction(engine, world, action, false);
-    engine.BumpSceneStructureVersion();
+bool EditorCommands::SaveScene(Engine& engine)
+{
+    const std::string& sceneName = engine.GetActiveSceneName();
+    if (sceneName.empty())
+        return false;
+
+    if (!SceneSerializer::Save(engine, sceneName))
+        return false;
+
+    engine.GetHistory().MarkSaved();
+    return true;
 }

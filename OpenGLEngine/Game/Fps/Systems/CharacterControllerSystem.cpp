@@ -86,21 +86,40 @@ void CharacterControllerSystem::Update(EcsWorld& world, const Vector3& wishDirec
         grounded = false;
     }
 
-    if (!grounded && velocity.y <= 0.0f)
-        SnapToGround(world, center);
-
+    bool hasTerrain = false;
+    float terrainY = 0.0f;
     for (auto& pair : world.GetPool<TerrainComponent>())
     {
-        const float terrainY = pair.second.GetHeightAt(center.x, center.z);
-        const float feetY = center.y - halfExtents.y;
-        if (feetY < terrainY)
-        {
-            center.y = terrainY + halfExtents.y;
-            grounded = true;
-            if (velocity.y < 0.0f)
-                velocity.y = 0.0f;
-        }
+        terrainY = pair.second.GetHeightAt(center.x, center.z);
+        hasTerrain = true;
         break;
+    }
+
+    if (velocity.y <= 0.0f)
+    {
+        const bool wasGrounded = grounded;
+        grounded = false;
+        SnapToGround(world, center);
+
+        if (!grounded && hasTerrain)
+        {
+            const float gap = (center.y - halfExtents.y) - terrainY;
+            const float snapDistance = wasGrounded ? (std::max)(groundSnapDistance, horizontalMove.Length() * 0.8f + 0.02f) : 0.0f;
+            if (gap <= snapDistance)
+            {
+                center.y = terrainY + halfExtents.y;
+                grounded = true;
+                velocity.y = 0.0f;
+            }
+        }
+    }
+
+    if (hasTerrain && center.y - halfExtents.y < terrainY)
+    {
+        center.y = terrainY + halfExtents.y;
+        grounded = true;
+        if (velocity.y < 0.0f)
+            velocity.y = 0.0f;
     }
 
     SetBoxCenter(world, center);

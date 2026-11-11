@@ -1,68 +1,18 @@
 #pragma once
 
+#include <deque>
+#include <functional>
 #include <string>
-#include <vector>
-#include "Ecs/Components/MaterialComponent.h"
-#include "Ecs/Core/Entity.h"
-#include "Math/Vector3.h"
+#include <utility>
 
-struct TransformSnapshot
-{
-    Entity entity = INVALID_ENTITY;
-    Vector3 position = {0, 0, 0};
-    Vector3 scale = {1, 1, 1};
-    Vector3 rotationDegrees = {0, 0, 0};
-};
-
-struct SpawnedObject
-{
-    std::string assetPath;
-    Vector3 position = {0, 0, 0};
-    Vector3 scale = {1, 1, 1};
-    Vector3 rotationDegrees = {0, 0, 0};
-};
-
-struct MaterialSnapshot
-{
-    Entity entity = INVALID_ENTITY;
-    MaterialComponent material;
-};
-
-struct ParentSnapshot
-{
-    Entity entity = INVALID_ENTITY;
-    Entity parent = INVALID_ENTITY;
-    std::string attachBone;
-};
+class Engine;
+class EcsWorld;
 
 struct EditorAction
 {
-    enum class Type
-    {
-        Transform,
-        Spawn,
-        Delete,
-        Rename,
-        Reparent,
-        Material
-    };
-
-    Type type = Type::Transform;
-
-    std::vector<TransformSnapshot> before;
-    std::vector<TransformSnapshot> after;
-
-    std::vector<SpawnedObject> objects;
-    std::vector<Entity> entities;
-
-    std::string nameBefore;
-    std::string nameAfter;
-
-    std::vector<ParentSnapshot> parentsBefore;
-    std::vector<ParentSnapshot> parentsAfter;
-
-    std::vector<MaterialSnapshot> materialsBefore;
-    std::vector<MaterialSnapshot> materialsAfter;
+    std::string label;
+    std::function<void(Engine&, EcsWorld&)> undo;
+    std::function<void(Engine&, EcsWorld&)> redo;
 };
 
 class EditorHistory
@@ -74,7 +24,9 @@ public:
         redoStack.clear();
 
         if (undoStack.size() > maxEntries)
-            undoStack.erase(undoStack.begin());
+            undoStack.pop_front();
+
+        changeCounter++;
     }
 
     bool CanUndo() const
@@ -86,37 +38,58 @@ public:
         return !redoStack.empty();
     }
 
-    bool PopUndo(EditorAction& outAction)
+    bool Undo(Engine& engine, EcsWorld& world)
     {
         if (undoStack.empty())
             return false;
 
-        outAction = undoStack.back();
+        EditorAction action = std::move(undoStack.back());
         undoStack.pop_back();
-        redoStack.push_back(outAction);
+        action.undo(engine, world);
+        redoStack.push_back(std::move(action));
+        changeCounter++;
         return true;
     }
 
-    bool PopRedo(EditorAction& outAction)
+    bool Redo(Engine& engine, EcsWorld& world)
     {
         if (redoStack.empty())
             return false;
 
-        outAction = redoStack.back();
+        EditorAction action = std::move(redoStack.back());
         redoStack.pop_back();
-        undoStack.push_back(outAction);
+        action.redo(engine, world);
+        undoStack.push_back(std::move(action));
+        changeCounter++;
         return true;
+    }
+
+    void MarkChanged()
+    {
+        changeCounter++;
+    }
+    void MarkSaved()
+    {
+        savedCounter = changeCounter;
+    }
+    bool IsDirty() const
+    {
+        return changeCounter != savedCounter;
     }
 
     void Clear()
     {
         undoStack.clear();
         redoStack.clear();
+        changeCounter = 0;
+        savedCounter = 0;
     }
 
 private:
     static constexpr size_t maxEntries = 64;
 
-    std::vector<EditorAction> undoStack;
-    std::vector<EditorAction> redoStack;
+    std::deque<EditorAction> undoStack;
+    std::deque<EditorAction> redoStack;
+    unsigned long long changeCounter = 0;
+    unsigned long long savedCounter = 0;
 };

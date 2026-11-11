@@ -25,6 +25,7 @@ struct CachedModel
     std::vector<CachedMesh> meshes;
     std::vector<TexturePtr> textures;
     std::vector<Vector4> diffuseColors;
+    std::vector<bool> doubleSided;
 };
 
 class ModelCache

@@ -56,6 +56,7 @@ TexturePtr Texture::LoadFromFile(const std::string& path)
     texture->width = w;
     texture->height = h;
     texture->channels = ch;
+    texture->mipmapped = true;
 
     textureCache[path] = texture;
 
@@ -168,6 +169,20 @@ TexturePtr Texture::CreateFromPixels(const unsigned char* pixels, int width, int
     texture->channels = channels;
 
     return texture;
+}
+
+void Texture::SetPointFiltering(bool point)
+{
+    if (target != GL_TEXTURE_2D)
+        return;
+
+    const GLint minFilter = point ? (mipmapped ? GL_NEAREST_MIPMAP_LINEAR : GL_NEAREST) : (mipmapped ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+    const GLint magFilter = point ? GL_NEAREST : GL_LINEAR;
+
+    glBindTexture(GL_TEXTURE_2D, id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFilter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 Texture::~Texture()

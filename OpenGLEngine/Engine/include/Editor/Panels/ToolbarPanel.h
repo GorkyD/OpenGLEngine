@@ -12,6 +12,11 @@ class ToolbarPanel
 public:
     void Draw(Engine& engine, EcsWorld& world)
     {
+        const bool dirty = engine.GetHistory().IsDirty();
+        if (ImGui::Button(dirty ? "Save*###save" : "Save###save"))
+            EditorCommands::SaveScene(engine);
+
+        ImGui::SameLine();
         if (ImGui::Button("Play"))
             engine.LaunchPlayInstance();
 
@@ -60,16 +65,6 @@ private:
         ImGui::SameLine();
         ImGui::RadioButton("Scale (R)", &mode, 2);
         selection.mode = static_cast<GizmoMode>(mode);
-
-        if (ImGui::GetIO().WantTextInput)
-            return;
-
-        if (ImGui::IsKeyPressed(ImGuiKey_W))
-            selection.mode = GizmoMode::Move;
-        if (ImGui::IsKeyPressed(ImGuiKey_E))
-            selection.mode = GizmoMode::Rotate;
-        if (ImGui::IsKeyPressed(ImGuiKey_R))
-            selection.mode = GizmoMode::Scale;
     }
 
     void DrawSnapSettings(Engine& engine)
@@ -90,27 +85,26 @@ private:
 
     void DrawCommands(Engine& engine, EcsWorld& world)
     {
-        const auto& io = ImGui::GetIO();
-
-        if (ImGui::Button("Duplicate") || (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D)))
+        if (ImGui::Button("Duplicate (Ctrl+D)"))
             EditorCommands::DuplicateSelection(engine, world);
 
         ImGui::SameLine();
-        if (ImGui::Button("Focus") || (!io.WantTextInput && ImGui::IsKeyPressed(ImGuiKey_F)))
+        if (ImGui::Button("Focus (F)"))
             EditorCommands::FocusSelection(engine, world);
 
         ImGui::SameLine();
         if (ImGui::Button("Add Light"))
-            EditorCommands::AddLight(world);
+            EditorCommands::AddLight(engine, world);
 
-        if (ImGui::Button("Undo") || (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z)))
+        ImGui::BeginDisabled(!engine.GetHistory().CanUndo());
+        if (ImGui::Button("Undo (Ctrl+Z)"))
             EditorCommands::Undo(engine, world);
+        ImGui::EndDisabled();
 
         ImGui::SameLine();
-        if (ImGui::Button("Redo") || (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y)))
+        ImGui::BeginDisabled(!engine.GetHistory().CanRedo());
+        if (ImGui::Button("Redo (Ctrl+Y)"))
             EditorCommands::Redo(engine, world);
-
-        ImGui::SameLine();
-        ImGui::Text("undo: %s  redo: %s", engine.GetHistory().CanUndo() ? "yes" : "no", engine.GetHistory().CanRedo() ? "yes" : "no");
+        ImGui::EndDisabled();
     }
 };

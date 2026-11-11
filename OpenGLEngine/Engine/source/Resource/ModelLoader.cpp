@@ -1,6 +1,8 @@
 #include "Resource/ModelLoader.h"
 #include "Extension/Extension.h"
 #include "Math/Matrix4.h"
+#include <filesystem>
+#include <vector>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -86,10 +88,38 @@ static void ProcessNode(aiNode* node, const aiScene* scene, std::vector<MeshData
         ProcessNode(node->mChildren[i], scene, meshes, nodeTransform);
 }
 
-ModelData ModelLoader::Load(const std::string& filePath)
+std::string ModelLoader::ResolveTexturePath(const std::string& modelDirectory, const std::string& rawPath)
 {
+    if (rawPath.empty() || rawPath == ".")
+        return {};
+
+    const std::string direct = modelDirectory + rawPath;
+    std::error_code ec;
+    if (std::filesystem::exists(direct, ec))
+        return direct;
+
+    const size_t slash = rawPath.find_last_of("/\\");
+    const std::string fileName = slash == std::string::npos ? rawPath : rawPath.substr(slash + 1);
+
+    for (const char* folder : {"", "Textures/", "textures/", "../Textures/", "../textures/"})
+    {
+        const std::string candidate = modelDirectory + folder + fileName;
+        if (std::filesystem::exists(candidate, ec))
+            return candidate;
+    }
+
+    OGL_WARNING("ModelLoader | Texture not found: " << rawPath)
+    return direct;
+}
+
+ModelData ModelLoader::Load(const std::string& requestPath)
+{
+    const size_t hash = requestPath.find('#');
+    const std::string filePath = hash == std::string::npos ? requestPath : requestPath.substr(0, hash);
+    const std::string nodeName = hash == std::string::npos ? std::string() : requestPath.substr(hash + 1);
+
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals | aiProcess_CalcTangentSpace);
+    const aiScene* scene = importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_CalcTangentSpace);
 
     if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !scene->mRootNode)
     {
@@ -108,6 +138,12 @@ ModelData ModelLoader::Load(const std::string& filePath)
         aiColor4D color;
         if (aiGetMaterialColor(mat, AI_MATKEY_COLOR_DIFFUSE, &color) == AI_SUCCESS)
             matData.diffuseColor = {color.r, color.g, color.b, color.a};
+
+        int twoSided = 0;
+        if (mat->Get(AI_MATKEY_TWOSIDED, twoSided) == AI_SUCCESS)
+            matData.doubleSided = twoSided != 0;
+        if (mat->GetTextureCount(aiTextureType_OPACITY) > 0)
+            matData.doubleSided = true;
 
         if (mat->GetTextureCount(aiTextureType_DIFFUSE) > 0)
         {
@@ -140,14 +176,36 @@ ModelData ModelLoader::Load(const std::string& filePath)
             }
             else
             {
-                matData.diffuseTexturePath = directory + texPath.C_Str();
+                matData.diffuseTexturePath = ResolveTexturePath(directory, texPath.C_Str());
             }
         }
 
         model.materials.push_back(matData);
     }
 
-    ProcessNode(scene->mRootNode, scene, model.meshes, Matrix4());
+    if (nodeName.empty())
+    {
+        ProcessNode(scene->mRootNode, scene, model.meshes, Matrix4());
+    }
+    else
+    {
+        aiNode* node = scene->mRootNode->FindNode(nodeName.c_str());
+        if (!node)
+        {
+            OGL_WARNING("ModelLoader | Node '" << nodeName << "' not found in " << filePath)
+            return model;
+        }
+
+        std::vector<aiNode*> ancestors;
+        for (aiNode* parent = node->mParent; parent; parent = parent->mParent)
+            ancestors.push_back(parent);
+
+        Matrix4 parentTransform;
+        for (auto it = ancestors.rbegin(); it != ancestors.rend(); ++it)
+            parentTransform = ConvertMatrix((*it)->mTransformation) * parentTransform;
+
+        ProcessNode(node, scene, model.meshes, parentTransform);
+    }
 
     OGL_INFO("ModelLoader | Loaded: " << filePath << model.meshes.size() << " meshes, " << model.materials.size() << " materials)")
 

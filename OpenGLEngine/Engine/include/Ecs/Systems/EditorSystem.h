@@ -1,7 +1,9 @@
 #pragma once
 
 #include <imgui.h>
+#include <string>
 #include "Ecs/Core/IEcsSystem.h"
+#include "Editor/EditorCommands.h"
 #include "Editor/Panels/AssetBrowserPanel.h"
 #include "Editor/Panels/CameraPanel.h"
 #include "Editor/Panels/HierarchyPanel.h"
@@ -20,12 +22,15 @@ public:
     void Run(EcsWorld& world, float deltaTime) override
     {
         UpdatePanelToggle();
+        HandleShortcuts(world);
 
-        if (!engine->IsEditorPanelOpen())
-            return;
+        if (engine->IsEditorPanelOpen())
+        {
+            DrawMainPanel(world);
+            hierarchyPanel.Draw(*engine, world);
+        }
 
-        DrawMainPanel(world);
-        hierarchyPanel.Draw(*engine, world);
+        DrawUnsavedChangesPopup();
     }
 
 private:
@@ -35,6 +40,98 @@ private:
         if (f1Down && !f1WasDown)
             engine->ApplyCursorMode(!engine->IsEditorPanelOpen());
         f1WasDown = f1Down;
+    }
+
+    void HandleShortcuts(EcsWorld& world)
+    {
+        const auto& io = ImGui::GetIO();
+        if (io.WantTextInput)
+            return;
+
+        auto& selection = engine->GetSelection();
+
+        if (io.KeyCtrl)
+        {
+            if (ImGui::IsKeyPressed(ImGuiKey_Z, false))
+            {
+                if (io.KeyShift)
+                    EditorCommands::Redo(*engine, world);
+                else
+                    EditorCommands::Undo(*engine, world);
+            }
+            if (ImGui::IsKeyPressed(ImGuiKey_Y, false))
+                EditorCommands::Redo(*engine, world);
+            if (ImGui::IsKeyPressed(ImGuiKey_D, false))
+                EditorCommands::DuplicateSelection(*engine, world);
+            if (ImGui::IsKeyPressed(ImGuiKey_S, false))
+                EditorCommands::SaveScene(*engine);
+            return;
+        }
+
+        if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
+            EditorCommands::DeleteSelection(*engine, world);
+        if (ImGui::IsKeyPressed(ImGuiKey_F, false))
+            EditorCommands::FocusSelection(*engine, world);
+
+        if (ImGui::IsKeyPressed(ImGuiKey_W, false))
+            selection.mode = GizmoMode::Move;
+        if (ImGui::IsKeyPressed(ImGuiKey_E, false))
+            selection.mode = GizmoMode::Rotate;
+        if (ImGui::IsKeyPressed(ImGuiKey_R, false))
+            selection.mode = GizmoMode::Scale;
+    }
+
+    void RequestSceneSwitch(const Engine::SceneEntry& entry)
+    {
+        if (!engine->GetHistory().IsDirty())
+        {
+            engine->LoadScene(entry.factory(), entry.name);
+            return;
+        }
+
+        pendingSceneName = entry.name;
+        openUnsavedPopup = true;
+    }
+
+    void DrawUnsavedChangesPopup()
+    {
+        if (openUnsavedPopup)
+        {
+            ImGui::OpenPopup("Unsaved changes");
+            openUnsavedPopup = false;
+        }
+
+        if (!ImGui::BeginPopupModal("Unsaved changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            return;
+
+        ImGui::Text("Scene '%s' has unsaved changes.", engine->GetActiveSceneName().c_str());
+
+        const Engine::SceneEntry* entry = engine->FindSceneEntry(pendingSceneName);
+        bool close = entry == nullptr;
+
+        if (ImGui::Button("Save and switch") && entry)
+        {
+            EditorCommands::SaveScene(*engine);
+            engine->LoadScene(entry->factory(), entry->name);
+            close = true;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Discard") && entry)
+        {
+            engine->LoadScene(entry->factory(), entry->name);
+            close = true;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel"))
+            close = true;
+
+        if (close)
+        {
+            pendingSceneName.clear();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
     }
 
     void DrawMainPanel(EcsWorld& world)
@@ -63,10 +160,10 @@ private:
             inspectorPanel.DrawTransforms(*engine, world);
 
         if (ImGui::CollapsingHeader("Lights"))
-            lightsPanel.DrawLights(world);
+            lightsPanel.DrawLights(*engine, world);
 
         if (ImGui::CollapsingHeader("Ambient Light"))
-            lightsPanel.DrawAmbient(world);
+            lightsPanel.DrawAmbient(*engine, world);
 
         ImGui::End();
     }
@@ -76,7 +173,7 @@ private:
         for (const auto& entry : engine->GetSceneRegistry())
         {
             if (ImGui::Button(entry.name.c_str()))
-                engine->LoadScene(entry.factory(), entry.name);
+                RequestSceneSwitch(entry);
 
             if (!entry.ownerName.empty())
             {
@@ -107,4 +204,6 @@ private:
     LightsPanel lightsPanel;
 
     bool f1WasDown = false;
+    std::string pendingSceneName;
+    bool openUnsavedPopup = false;
 };

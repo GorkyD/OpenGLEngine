@@ -9,6 +9,7 @@
 #include "Ecs/Components/CameraComponent.h"
 #include "Ecs/Components/FogComponent.h"
 #include "Ecs/Components/OutlineComponent.h"
+#include "Ecs/Components/PostProcessComponent.h"
 #include "Ecs/Components/TransformComponent.h"
 #include "Ecs/Components/VisibilityComponent.h"
 #include "Ecs/Components/WorldTransformComponent.h"
@@ -17,6 +18,7 @@
 #include "Render/RenderEngine.h"
 #include "Render/ShaderProgram.h"
 #include "Render/UniformBuffer.h"
+#include "Render/UniformData.h"
 #include "Render/Texture.h"
 #include "Render/InstanceData.h"
 #include "Render/VertexArrayObject.h"
@@ -24,6 +26,7 @@
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
 #include <glad/glad.h>
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <unordered_map>
@@ -36,10 +39,11 @@ class RenderSystem : public IEcsSystem
     {
         VertexArrayObject* vao = nullptr;
         unsigned int diffuseTextureId = 0;
+        bool doubleSided = false;
 
         bool operator==(const BatchKey& other) const
         {
-            return vao == other.vao && diffuseTextureId == other.diffuseTextureId;
+            return vao == other.vao && diffuseTextureId == other.diffuseTextureId && doubleSided == other.doubleSided;
         }
     };
 
@@ -47,16 +51,25 @@ class RenderSystem : public IEcsSystem
     {
         size_t operator()(const BatchKey& key) const
         {
-            return std::hash<const void*>()(key.vao) ^ (std::hash<unsigned int>()(key.diffuseTextureId) << 1);
+            return std::hash<const void*>()(key.vao) ^ (std::hash<unsigned int>()(key.diffuseTextureId) << 1) ^ (key.doubleSided ? 0x9e3779b9u : 0u);
         }
     };
 
+    struct TransparentDraw
+    {
+        Entity entity;
+        float distanceSq;
+    };
+
+    static constexpr int ShadowMapTextureUnit = 5;
+
 public:
-    static constexpr int MaxLights = 32;
+    static constexpr int MaxLights = MaxFrameLights;
 
     RenderSystem(RenderEngine* re, const UniformBufferPtr& ub, const ShaderProgramPtr& outlineShader, const ShaderProgramPtr& litInstancedShader, ShadowMapSystem* shadowMapSystem) :
         renderEngine(re), uniformBuffer(ub), outlineShader(outlineShader), litInstancedShader(litInstancedShader), shadowMapSystem(shadowMapSystem)
     {
+        frameUniformBuffer = renderEngine->CreateUniformBuffer({sizeof(FrameUniformData)});
     }
 
     void Run(EcsWorld& world, float deltaTime) override
@@ -71,7 +84,6 @@ public:
         auto& materials = world.GetPool<MaterialComponent>();
         auto& transforms = world.GetPool<TransformComponent>();
         auto& worldTransforms = world.GetPool<WorldTransformComponent>();
-
         auto& visibilities = world.GetPool<VisibilityComponent>();
 
         auto isVisible = [&](Entity entity) { return !visibilities.Has(entity) || visibilities.Get(entity).visibleInFrustum; };
@@ -85,74 +97,11 @@ public:
             return Matrix4();
         };
 
-        AmbientLightComponent ambient;
-        for (auto& [entityId, ambientLightComponent] : world.GetPool<AmbientLightComponent>())
-        {
-            ambient = ambientLightComponent;
-            break;
-        }
+        auto typeOf = [&](Entity entity) -> ShaderRenderType { return shaders.Has(entity) ? shaders.Get(entity).shaderType : ShaderRenderType::Unlit; };
 
-        FogComponent fog;
-        for (auto& [entityId, fogComponent] : world.GetPool<FogComponent>())
-        {
-            fog = fogComponent;
-            break;
-        }
+        auto isTransparent = [](ShaderRenderType type) { return type == ShaderRenderType::Fire || type == ShaderRenderType::Shadow; };
 
-        Vector3 viewPos;
-        for (auto& [entityId, cameraComponent] : world.GetPool<CameraComponent>())
-        {
-            if (!cameraComponent.isActive || !transforms.Has(entityId))
-                continue;
-            viewPos = transforms.Get(entityId).position;
-            break;
-        }
-
-        int numLights = 0;
-        int lightType[MaxLights] = {};
-        float lightColor[MaxLights * 3] = {};
-        float lightIntensity[MaxLights] = {};
-        float lightDirection[MaxLights * 3] = {};
-        float lightPosition[MaxLights * 3] = {};
-        float lightRange[MaxLights] = {};
-        float lightInnerCos[MaxLights] = {};
-        float lightOuterCos[MaxLights] = {};
-
-        const bool shadowsAvailable = shadowMapSystem && shadowMapSystem->IsActive();
-        int shadowLightIndex = -1;
-
-        for (auto& [entityId, lightComponent] : world.GetPool<LightComponent>())
-        {
-            if (numLights >= MaxLights)
-                break;
-
-            const auto& light = lightComponent;
-            lightType[numLights] = static_cast<int>(light.type);
-            lightColor[numLights * 3 + 0] = light.color.x;
-            lightColor[numLights * 3 + 1] = light.color.y;
-            lightColor[numLights * 3 + 2] = light.color.z;
-            lightIntensity[numLights] = light.intensity;
-            lightDirection[numLights * 3 + 0] = light.direction.x;
-            lightDirection[numLights * 3 + 1] = light.direction.y;
-            lightDirection[numLights * 3 + 2] = light.direction.z;
-            lightPosition[numLights * 3 + 0] = light.position.x;
-            lightPosition[numLights * 3 + 1] = light.position.y;
-            lightPosition[numLights * 3 + 2] = light.position.z;
-            lightRange[numLights] = light.range;
-            lightInnerCos[numLights] = std::cos(light.innerConeAngleDeg * 0.0174532925f);
-            lightOuterCos[numLights] = std::cos(light.outerConeAngleDeg * 0.0174532925f);
-
-            if (shadowsAvailable && shadowLightIndex < 0 && light.type == LightType::Directional && light.castShadows)
-                shadowLightIndex = numLights;
-
-            numLights++;
-        }
-
-        const Matrix4 lightSpaceMatrix = shadowsAvailable ? shadowMapSystem->GetLightSpaceMatrix() : Matrix4();
-        const float shadowBias = shadowsAvailable ? shadowMapSystem->GetShadowBias() : 0.0025f;
-        const float shadowAmbientOcclusion = shadowsAvailable ? shadowMapSystem->GetShadowAmbientOcclusion() : 1.0f;
-        const float shadowNormalBias = shadowsAvailable ? shadowMapSystem->GetShadowNormalBias() : 0.05f;
-        const unsigned int shadowDepthTextureId = shadowMapSystem ? shadowMapSystem->GetDepthTextureId() : 0;
+        const Vector3 viewPos = UploadFrameData(world);
 
         auto drawEntity = [&](Entity entity, MeshComponent& mesh)
         {
@@ -179,11 +128,16 @@ public:
             int hasRoughnessMap = 0;
             int hasMetallicMap = 0;
             int hasAoMap = 0;
-            for (int unit = 0; unit < 5; unit++)
+            bool doubleSided = false;
+
+            auto bindTexture = [](int unit, const TexturePtr& texture, int& hasFlag)
             {
+                if (!texture)
+                    return;
                 glActiveTexture(GL_TEXTURE0 + unit);
-                glBindTexture(GL_TEXTURE_2D, 0);
-            }
+                glBindTexture(GL_TEXTURE_2D, texture->GetId());
+                hasFlag = 1;
+            };
 
             if (materials.Has(entity))
             {
@@ -193,36 +147,12 @@ public:
                 emissiveIntensity = mat.emissiveIntensity;
                 roughnessScalar = mat.roughness;
                 metallicScalar = mat.metallic;
-                if (mat.diffuseTexture)
-                {
-                    glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, mat.diffuseTexture->GetId());
-                    hasTexture = 1;
-                }
-                if (mat.normalTexture)
-                {
-                    glActiveTexture(GL_TEXTURE1);
-                    glBindTexture(GL_TEXTURE_2D, mat.normalTexture->GetId());
-                    hasNormalMap = 1;
-                }
-                if (mat.roughnessTexture)
-                {
-                    glActiveTexture(GL_TEXTURE2);
-                    glBindTexture(GL_TEXTURE_2D, mat.roughnessTexture->GetId());
-                    hasRoughnessMap = 1;
-                }
-                if (mat.metallicTexture)
-                {
-                    glActiveTexture(GL_TEXTURE3);
-                    glBindTexture(GL_TEXTURE_2D, mat.metallicTexture->GetId());
-                    hasMetallicMap = 1;
-                }
-                if (mat.aoTexture)
-                {
-                    glActiveTexture(GL_TEXTURE4);
-                    glBindTexture(GL_TEXTURE_2D, mat.aoTexture->GetId());
-                    hasAoMap = 1;
-                }
+                doubleSided = mat.doubleSided;
+                bindTexture(0, mat.diffuseTexture, hasTexture);
+                bindTexture(1, mat.normalTexture, hasNormalMap);
+                bindTexture(2, mat.roughnessTexture, hasRoughnessMap);
+                bindTexture(3, mat.metallicTexture, hasMetallicMap);
+                bindTexture(4, mat.aoTexture, hasAoMap);
             }
 
             auto* shader = shaderComp.shader.get();
@@ -253,26 +183,12 @@ public:
                 glUniform1i(shader->GetUniformLocation("hasMetallicMap"), hasMetallicMap);
                 glUniform1i(shader->GetUniformLocation("aoTexture"), 4);
                 glUniform1i(shader->GetUniformLocation("hasAoMap"), hasAoMap);
+                glUniform1i(shader->GetUniformLocation("shadowMap"), ShadowMapTextureUnit);
                 glUniform1f(shader->GetUniformLocation("roughnessScalar"), roughnessScalar);
                 glUniform1f(shader->GetUniformLocation("metallicScalar"), metallicScalar);
-                glUniform3f(shader->GetUniformLocation("viewPos"), viewPos.x, viewPos.y, viewPos.z);
-                glUniform3f(shader->GetUniformLocation("ambientColor"), ambient.color.x, ambient.color.y, ambient.color.z);
-                glUniform1f(shader->GetUniformLocation("ambientIntensity"), ambient.intensity);
 
                 glUniform1i(shader->GetUniformLocation("bypassSpotCone"), mesh.renderQueue == RenderQueue::Overlay ? 1 : 0);
-
-                glUniform1i(shader->GetUniformLocation("numLights"), numLights);
-                if (numLights > 0)
-                {
-                    glUniform1iv(shader->GetUniformLocation("lightType"), numLights, lightType);
-                    glUniform3fv(shader->GetUniformLocation("lightColor"), numLights, lightColor);
-                    glUniform1fv(shader->GetUniformLocation("lightIntensity"), numLights, lightIntensity);
-                    glUniform3fv(shader->GetUniformLocation("lightDirection"), numLights, lightDirection);
-                    glUniform3fv(shader->GetUniformLocation("lightPosition"), numLights, lightPosition);
-                    glUniform1fv(shader->GetUniformLocation("lightRange"), numLights, lightRange);
-                    glUniform1fv(shader->GetUniformLocation("lightInnerCos"), numLights, lightInnerCos);
-                    glUniform1fv(shader->GetUniformLocation("lightOuterCos"), numLights, lightOuterCos);
-                }
+                glUniform2f(shader->GetUniformLocation("psxSnapGrid"), psxSnapGrid[0], psxSnapGrid[1]);
 
                 float normalMatrix[9];
                 worldMatrix.GetNormalMatrix(normalMatrix);
@@ -280,52 +196,59 @@ public:
 
                 glUniform3f(shader->GetUniformLocation("emissiveColor"), emissiveColor.x, emissiveColor.y, emissiveColor.z);
                 glUniform1f(shader->GetUniformLocation("emissiveIntensity"), emissiveIntensity);
-
-                glUniform3f(shader->GetUniformLocation("fogColor"), fog.color.x, fog.color.y, fog.color.z);
-                glUniform1f(shader->GetUniformLocation("fogStart"), fog.start);
-                glUniform1f(shader->GetUniformLocation("fogEnd"), fog.end);
-                glUniform1f(shader->GetUniformLocation("fogGlowExponent"), fog.glowExponent);
-                glUniform1f(shader->GetUniformLocation("fogGlowStrength"), fog.glowStrength);
-                glUniform1i(shader->GetUniformLocation("fogRadialEnabled"), fog.radialEnabled ? 1 : 0);
-                glUniform3f(shader->GetUniformLocation("fogRadialOrigin"), fog.radialOrigin.x, fog.radialOrigin.y, fog.radialOrigin.z);
-                glUniform1f(shader->GetUniformLocation("fogRadialStart"), fog.radialStart);
-                glUniform1f(shader->GetUniformLocation("fogRadialEnd"), fog.radialEnd);
-
-                glActiveTexture(GL_TEXTURE0 + 5);
-                glBindTexture(GL_TEXTURE_2D, shadowDepthTextureId);
-                glUniform1i(shader->GetUniformLocation("shadowMap"), 5);
-                glUniform1i(shader->GetUniformLocation("shadowLightIndex"), shadowLightIndex);
-                glUniform1f(shader->GetUniformLocation("shadowBias"), shadowBias);
-                glUniform1f(shader->GetUniformLocation("shadowAmbientOcclusion"), shadowAmbientOcclusion);
-                glUniform1f(shader->GetUniformLocation("shadowNormalBias"), shadowNormalBias);
-                glUniformMatrix4fv(shader->GetUniformLocation("lightSpaceMatrix"), 1, GL_FALSE, &lightSpaceMatrix.matrix[0][0]);
             }
 
             const bool isFire = shaderComp.shaderType == ShaderRenderType::Fire;
-            const bool isShadow = shaderComp.shaderType == ShaderRenderType::Shadow;
+            const bool blended = isTransparent(shaderComp.shaderType);
             if (isFire)
                 glUniform1f(shader->GetUniformLocation("time"), elapsedTime);
 
-            if (isFire || isShadow)
+            const bool cullWasEnabled = glIsEnabled(GL_CULL_FACE) == GL_TRUE;
+            const bool cullDisabled = (doubleSided || blended) && cullWasEnabled;
+            if (cullDisabled)
+                glDisable(GL_CULL_FACE);
+
+            if (blended)
             {
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_SRC_ALPHA, isFire ? GL_ONE : GL_ONE_MINUS_SRC_ALPHA);
                 glDepthMask(GL_FALSE);
-                glDisable(GL_CULL_FACE);
             }
 
             renderEngine->SetVertexArrayObject(mesh.vao);
             renderEngine->DrawIndexedTriangles(List, mesh.indexCount);
 
-            if (isFire || isShadow)
-            {
+            if (cullDisabled)
                 glEnable(GL_CULL_FACE);
+
+            if (blended)
+            {
                 glDepthMask(GL_TRUE);
                 glDisable(GL_BLEND);
             }
         };
 
-        auto typeOf = [&](Entity entity) -> ShaderRenderType { return shaders.Has(entity) ? shaders.Get(entity).shaderType : ShaderRenderType::Unlit; };
+        auto drawTransparent = [&](RenderQueue queue)
+        {
+            transparentDraws.clear();
+            for (auto& [entityId, meshComponent] : meshes)
+            {
+                if (meshComponent.renderQueue != queue || !isTransparent(typeOf(entityId)))
+                    continue;
+                if (!meshComponent.visible || !isVisible(entityId))
+                    continue;
+
+                const Matrix4 worldMatrix = modelMatrixOf(entityId);
+                const Vector3 position = {worldMatrix.matrix[3][0], worldMatrix.matrix[3][1], worldMatrix.matrix[3][2]};
+                const Vector3 toCamera = position - viewPos;
+                transparentDraws.push_back({entityId, Vector3::Dot(toCamera, toCamera)});
+            }
+
+            std::sort(transparentDraws.begin(), transparentDraws.end(), [](const TransparentDraw& a, const TransparentDraw& b) { return a.distanceSq > b.distanceSq; });
+
+            for (const auto& draw : transparentDraws)
+                drawEntity(draw.entity, meshes.Get(draw.entity));
+        };
 
         batchGroups.clear();
 
@@ -341,6 +264,7 @@ public:
                 continue;
 
             unsigned int diffuseTextureId = 0;
+            bool doubleSided = false;
             if (materials.Has(entityId))
             {
                 auto& mat = materials.Get(entityId);
@@ -348,9 +272,10 @@ public:
                     continue;
                 if (mat.diffuseTexture)
                     diffuseTextureId = mat.diffuseTexture->GetId();
+                doubleSided = mat.doubleSided;
             }
 
-            batchGroups[{meshComponent.vao.get(), diffuseTextureId}].push_back(entityId);
+            batchGroups[{meshComponent.vao.get(), diffuseTextureId, doubleSided}].push_back(entityId);
         }
 
         batchedEntities.clear();
@@ -360,8 +285,6 @@ public:
             if (entityList.size() < 2)
                 continue;
 
-            VertexArrayObject* vaoPtr = key.vao;
-
             instances.clear();
             instances.reserve(entityList.size());
             for (auto entity : entityList)
@@ -370,6 +293,12 @@ public:
 
                 const Matrix4 worldMatrix = modelMatrixOf(entity);
                 std::memcpy(instance.world, worldMatrix.matrix, sizeof(float) * 16);
+
+                instance.diffuseColor[0] = 1.0f;
+                instance.diffuseColor[1] = 1.0f;
+                instance.diffuseColor[2] = 1.0f;
+                instance.diffuseColor[3] = 1.0f;
+                instance.materialParams[0] = 1.0f;
 
                 if (materials.Has(entity))
                 {
@@ -385,69 +314,28 @@ public:
                     instance.materialParams[0] = mat.roughness;
                     instance.materialParams[1] = mat.metallic;
                 }
-                else
-                {
-                    instance.diffuseColor[0] = 1;
-                    instance.diffuseColor[1] = 1;
-                    instance.diffuseColor[2] = 1;
-                    instance.diffuseColor[3] = 1;
-                    instance.emissiveColorIntensity[0] = 0;
-                    instance.emissiveColorIntensity[1] = 0;
-                    instance.emissiveColorIntensity[2] = 0;
-                    instance.emissiveColorIntensity[3] = 0;
-                    instance.materialParams[0] = 1.0f;
-                    instance.materialParams[1] = 0.0f;
-                }
 
                 instances.push_back(instance);
             }
 
             renderEngine->SetShaderProgram(litInstancedShader);
 
-            glUniform3f(litInstancedShader->GetUniformLocation("viewPos"), viewPos.x, viewPos.y, viewPos.z);
-            glUniform3f(litInstancedShader->GetUniformLocation("ambientColor"), ambient.color.x, ambient.color.y, ambient.color.z);
-            glUniform1f(litInstancedShader->GetUniformLocation("ambientIntensity"), ambient.intensity);
-
-            glUniform1i(litInstancedShader->GetUniformLocation("numLights"), numLights);
-            if (numLights > 0)
-            {
-                glUniform1iv(litInstancedShader->GetUniformLocation("lightType"), numLights, lightType);
-                glUniform3fv(litInstancedShader->GetUniformLocation("lightColor"), numLights, lightColor);
-                glUniform1fv(litInstancedShader->GetUniformLocation("lightIntensity"), numLights, lightIntensity);
-                glUniform3fv(litInstancedShader->GetUniformLocation("lightDirection"), numLights, lightDirection);
-                glUniform3fv(litInstancedShader->GetUniformLocation("lightPosition"), numLights, lightPosition);
-                glUniform1fv(litInstancedShader->GetUniformLocation("lightRange"), numLights, lightRange);
-                glUniform1fv(litInstancedShader->GetUniformLocation("lightInnerCos"), numLights, lightInnerCos);
-                glUniform1fv(litInstancedShader->GetUniformLocation("lightOuterCos"), numLights, lightOuterCos);
-            }
-
-            glUniform3f(litInstancedShader->GetUniformLocation("fogColor"), fog.color.x, fog.color.y, fog.color.z);
-            glUniform1f(litInstancedShader->GetUniformLocation("fogStart"), fog.start);
-            glUniform1f(litInstancedShader->GetUniformLocation("fogEnd"), fog.end);
-            glUniform1f(litInstancedShader->GetUniformLocation("fogGlowExponent"), fog.glowExponent);
-            glUniform1f(litInstancedShader->GetUniformLocation("fogGlowStrength"), fog.glowStrength);
-            glUniform1i(litInstancedShader->GetUniformLocation("fogRadialEnabled"), fog.radialEnabled ? 1 : 0);
-            glUniform3f(litInstancedShader->GetUniformLocation("fogRadialOrigin"), fog.radialOrigin.x, fog.radialOrigin.y, fog.radialOrigin.z);
-            glUniform1f(litInstancedShader->GetUniformLocation("fogRadialStart"), fog.radialStart);
-            glUniform1f(litInstancedShader->GetUniformLocation("fogRadialEnd"), fog.radialEnd);
-
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, key.diffuseTextureId);
             glUniform1i(litInstancedShader->GetUniformLocation("diffuseTexture"), 0);
             glUniform1i(litInstancedShader->GetUniformLocation("hasTexture"), key.diffuseTextureId != 0 ? 1 : 0);
+            glUniform1i(litInstancedShader->GetUniformLocation("shadowMap"), ShadowMapTextureUnit);
+            glUniform2f(litInstancedShader->GetUniformLocation("psxSnapGrid"), psxSnapGrid[0], psxSnapGrid[1]);
 
-            glActiveTexture(GL_TEXTURE0 + 5);
-            glBindTexture(GL_TEXTURE_2D, shadowDepthTextureId);
-            glUniform1i(litInstancedShader->GetUniformLocation("shadowMap"), 5);
-            glUniform1i(litInstancedShader->GetUniformLocation("shadowLightIndex"), shadowLightIndex);
-            glUniform1f(litInstancedShader->GetUniformLocation("shadowBias"), shadowBias);
-            glUniform1f(litInstancedShader->GetUniformLocation("shadowAmbientOcclusion"), shadowAmbientOcclusion);
-            glUniform1f(litInstancedShader->GetUniformLocation("shadowNormalBias"), shadowNormalBias);
-            glUniformMatrix4fv(litInstancedShader->GetUniformLocation("lightSpaceMatrix"), 1, GL_FALSE, &lightSpaceMatrix.matrix[0][0]);
-
-            vaoPtr->UploadInstanceData(instances.data(), static_cast<unsigned int>(instances.size()));
-            renderEngine->SetVertexArrayObject(meshes.Get(entityList[0]).vao);
-            renderEngine->DrawIndexedTrianglesInstanced(List, meshes.Get(entityList[0]).indexCount, static_cast<unsigned int>(instances.size()));
+            const auto& firstMesh = meshes.Get(entityList[0]);
+            key.vao->UploadInstanceData(instances.data(), static_cast<unsigned int>(instances.size()));
+            renderEngine->SetVertexArrayObject(firstMesh.vao);
+            const bool cullBatchDisabled = key.doubleSided && glIsEnabled(GL_CULL_FACE) == GL_TRUE;
+            if (cullBatchDisabled)
+                glDisable(GL_CULL_FACE);
+            renderEngine->DrawIndexedTrianglesInstanced(List, firstMesh.indexCount, static_cast<unsigned int>(instances.size()));
+            if (cullBatchDisabled)
+                glEnable(GL_CULL_FACE);
 
             for (auto entity : entityList)
                 batchedEntities.insert(entity);
@@ -457,32 +345,25 @@ public:
         {
             if (meshComponent.renderQueue != RenderQueue::Default)
                 continue;
-            const auto type = typeOf(entityId);
-            if (type == ShaderRenderType::Fire || type == ShaderRenderType::Shadow)
+            if (isTransparent(typeOf(entityId)))
                 continue;
             if (batchedEntities.count(entityId))
                 continue;
             drawEntity(entityId, meshComponent);
         }
 
-        for (auto& [entityId, meshComponent] : meshes)
-        {
-            if (meshComponent.renderQueue == RenderQueue::Default && typeOf(entityId) == ShaderRenderType::Fire)
-                drawEntity(entityId, meshComponent);
-        }
-
-        for (auto& [entityId, meshComponent] : meshes)
-        {
-            if (meshComponent.renderQueue == RenderQueue::Default && typeOf(entityId) == ShaderRenderType::Shadow)
-                drawEntity(entityId, meshComponent);
-        }
+        drawTransparent(RenderQueue::Default);
 
         if (outlineShader)
         {
             for (auto& [entityId, outlineComponent] : world.GetPool<OutlineComponent>())
             {
                 const Entity entity = entityId;
-                if (!meshes.Has(entity) || !transforms.Has(entity) || !meshes.Get(entity).visible)
+                if (!meshes.Has(entity))
+                    continue;
+
+                auto& mesh = meshes.Get(entity);
+                if (!mesh.visible || !isVisible(entity))
                     continue;
 
                 Matrix4 worldMatrix = modelMatrixOf(entity);
@@ -493,8 +374,8 @@ public:
                 glUniform3f(outlineShader->GetUniformLocation("outlineColor"), outlineComponent.color[0], outlineComponent.color[1], outlineComponent.color[2]);
 
                 glCullFace(GL_FRONT);
-                renderEngine->SetVertexArrayObject(meshes.Get(entity).vao);
-                renderEngine->DrawIndexedTriangles(List, meshes.Get(entity).indexCount);
+                renderEngine->SetVertexArrayObject(mesh.vao);
+                renderEngine->DrawIndexedTriangles(List, mesh.indexCount);
                 glCullFace(GL_BACK);
             }
         }
@@ -517,17 +398,131 @@ public:
             {
                 if (meshComponent.renderQueue != RenderQueue::Overlay)
                     continue;
-                const auto type = typeOf(entityId);
-                if (type == ShaderRenderType::Fire || type == ShaderRenderType::Shadow)
+                if (isTransparent(typeOf(entityId)))
                     continue;
                 drawEntity(entityId, meshComponent);
             }
+
+            drawTransparent(RenderQueue::Overlay);
         }
+
+        glActiveTexture(GL_TEXTURE0);
     }
 
 private:
+    Vector3 UploadFrameData(EcsWorld& world)
+    {
+        auto& transforms = world.GetPool<TransformComponent>();
+
+        FrameUniformData data = {};
+
+        AmbientLightComponent ambient;
+        for (auto& [entityId, ambientLightComponent] : world.GetPool<AmbientLightComponent>())
+        {
+            ambient = ambientLightComponent;
+            break;
+        }
+
+        FogComponent fog;
+        for (auto& [entityId, fogComponent] : world.GetPool<FogComponent>())
+        {
+            fog = fogComponent;
+            break;
+        }
+
+        Vector3 viewPos;
+        for (auto& [entityId, cameraComponent] : world.GetPool<CameraComponent>())
+        {
+            if (!cameraComponent.isActive || !transforms.Has(entityId))
+                continue;
+            viewPos = transforms.Get(entityId).position;
+            break;
+        }
+
+        const bool shadowsAvailable = shadowMapSystem && shadowMapSystem->IsActive();
+        int shadowLightIndex = -1;
+        int numLights = 0;
+
+        for (auto& [entityId, light] : world.GetPool<LightComponent>())
+        {
+            if (numLights >= MaxLights)
+                break;
+
+            data.lightColorIntensity[numLights][0] = light.color.x;
+            data.lightColorIntensity[numLights][1] = light.color.y;
+            data.lightColorIntensity[numLights][2] = light.color.z;
+            data.lightColorIntensity[numLights][3] = light.intensity;
+            data.lightPositionRange[numLights][0] = light.position.x;
+            data.lightPositionRange[numLights][1] = light.position.y;
+            data.lightPositionRange[numLights][2] = light.position.z;
+            data.lightPositionRange[numLights][3] = light.range;
+            data.lightDirectionType[numLights][0] = light.direction.x;
+            data.lightDirectionType[numLights][1] = light.direction.y;
+            data.lightDirectionType[numLights][2] = light.direction.z;
+            data.lightDirectionType[numLights][3] = static_cast<float>(light.type);
+            data.lightCone[numLights][0] = std::cos(light.innerConeAngleDeg * 0.0174532925f);
+            data.lightCone[numLights][1] = std::cos(light.outerConeAngleDeg * 0.0174532925f);
+
+            if (shadowsAvailable && shadowLightIndex < 0 && light.type == LightType::Directional && light.castShadows)
+                shadowLightIndex = numLights;
+
+            numLights++;
+        }
+
+        data.lightSpaceMatrix = shadowsAvailable ? shadowMapSystem->GetLightSpaceMatrix() : Matrix4();
+        data.viewPos[0] = viewPos.x;
+        data.viewPos[1] = viewPos.y;
+        data.viewPos[2] = viewPos.z;
+        data.ambientColor[0] = ambient.color.x;
+        data.ambientColor[1] = ambient.color.y;
+        data.ambientColor[2] = ambient.color.z;
+        data.ambientIntensity = ambient.intensity;
+        data.fogColor[0] = fog.color.x;
+        data.fogColor[1] = fog.color.y;
+        data.fogColor[2] = fog.color.z;
+        data.fogStart = fog.start;
+        data.fogEnd = fog.end;
+        data.fogGlowExponent = fog.glowExponent;
+        data.fogGlowStrength = fog.glowStrength;
+        data.fogRadialEnabled = fog.radialEnabled ? 1 : 0;
+        data.fogRadialOrigin[0] = fog.radialOrigin.x;
+        data.fogRadialOrigin[1] = fog.radialOrigin.y;
+        data.fogRadialOrigin[2] = fog.radialOrigin.z;
+        data.fogRadialStart = fog.radialStart;
+        data.fogRadialEnd = fog.radialEnd;
+        data.numLights = numLights;
+        data.shadowLightIndex = shadowLightIndex;
+        data.shadowBias = shadowsAvailable ? shadowMapSystem->GetShadowBias() : 0.0025f;
+        data.shadowAmbientOcclusion = shadowsAvailable ? shadowMapSystem->GetShadowAmbientOcclusion() : 1.0f;
+        data.shadowNormalBias = shadowsAvailable ? shadowMapSystem->GetShadowNormalBias() : 0.05f;
+
+        psxSnapGrid[0] = 0.0f;
+        psxSnapGrid[1] = 0.0f;
+        for (auto& [entityId, post] : world.GetPool<PostProcessComponent>())
+        {
+            if (post.psxEnabled && post.psxVertexSnap)
+            {
+                GLint viewport[4] = {};
+                glGetIntegerv(GL_VIEWPORT, viewport);
+                const float aspect = viewport[3] > 0 ? static_cast<float>(viewport[2]) / static_cast<float>(viewport[3]) : 1.0f;
+                psxSnapGrid[0] = post.psxVertexSnapHeight * aspect;
+                psxSnapGrid[1] = post.psxVertexSnapHeight;
+            }
+            break;
+        }
+
+        frameUniformBuffer->SetData(&data);
+        renderEngine->SetUniformBuffer(frameUniformBuffer, FrameUniformBufferSlot);
+
+        glActiveTexture(GL_TEXTURE0 + ShadowMapTextureUnit);
+        glBindTexture(GL_TEXTURE_2D, shadowMapSystem ? shadowMapSystem->GetDepthTextureId() : 0);
+
+        return viewPos;
+    }
+
     RenderEngine* renderEngine;
     UniformBufferPtr uniformBuffer;
+    UniformBufferPtr frameUniformBuffer;
     ShaderProgramPtr outlineShader;
     ShaderProgramPtr litInstancedShader;
     ShadowMapSystem* shadowMapSystem;
@@ -538,6 +533,8 @@ private:
     std::unordered_map<BatchKey, std::vector<Entity>, BatchKeyHash> batchGroups;
     std::unordered_set<Entity> batchedEntities;
     std::vector<InstanceData> instances;
+    std::vector<TransparentDraw> transparentDraws;
 
     float elapsedTime = 0.0f;
+    float psxSnapGrid[2] = {0.0f, 0.0f};
 };

@@ -1,5 +1,9 @@
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
+#include <vector>
 #include <thread>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -72,16 +76,19 @@ void Engine::CreateStandardShaders()
         "Assets/Shaders/SimpleShader_Lit.vert", "Assets/Shaders/SimpleShader_Lit.frag"
     });
     shaders.lit->SetUniformBufferSlot("UniformData", 0);
+    shaders.lit->SetUniformBufferSlot("FrameData", FrameUniformBufferSlot);
 
     shaders.litInstanced = renderEngine->CreateShaderProgram({
         "Assets/Shaders/SimpleShader_LitInstanced.vert", "Assets/Shaders/SimpleShader_LitInstanced.frag"
     });
     shaders.litInstanced->SetUniformBufferSlot("UniformData", 0);
+    shaders.litInstanced->SetUniformBufferSlot("FrameData", FrameUniformBufferSlot);
 
     shaders.skinned = renderEngine->CreateShaderProgram({
         "Assets/Shaders/SimpleShader_Skinned.vert", "Assets/Shaders/SimpleShader_Lit.frag"
     });
     shaders.skinned->SetUniformBufferSlot("UniformData", 0);
+    shaders.skinned->SetUniformBufferSlot("FrameData", FrameUniformBufferSlot);
 
     shaders.skybox = renderEngine->CreateShaderProgram({
         "Assets/Shaders/SimpleShader_Skybox.vert", "Assets/Shaders/SimpleShader_Skybox.frag"
@@ -127,6 +134,8 @@ void Engine::CreateStandardShaders()
     shaders.shadowDepthSkinned = renderEngine->CreateShaderProgram({
         "Assets/Shaders/SimpleShader_ShadowDepthSkinned.vert", "Assets/Shaders/SimpleShader_ShadowDepth.frag"
     });
+    shaders.shadowDepth->SetUniformBufferSlot("UniformData", 0);
+    shaders.shadowDepthSkinned->SetUniformBufferSlot("UniformData", 0);
 
     shaders.postProcess = renderEngine->CreateShaderProgram({
         "Assets/Shaders/SimpleShader_PostProcess.vert", "Assets/Shaders/SimpleShader_PostProcess.frag"
@@ -149,7 +158,13 @@ bool Engine::LaunchPlayInstance()
         return false;
     }
 
-    SceneSerializer::Save(*this, activeSceneName);
+    std::error_code ec;
+    const std::filesystem::path playScenePath = std::filesystem::temp_directory_path(ec) / "OpenGLEngine" / (activeSceneName + ".play.scene");
+    if (ec || !SceneSerializer::SaveToFile(*this, playScenePath.string()))
+    {
+        OGL_WARNING("Engine | Cannot write play scene snapshot")
+        return false;
+    }
 
     const std::string exePath = ProcessLauncher::GetExecutablePath();
     if (exePath.empty())
@@ -158,7 +173,7 @@ bool Engine::LaunchPlayInstance()
         return false;
     }
 
-    if (!ProcessLauncher::Launch("\"" + exePath + "\" --play --scene=" + activeSceneName))
+    if (!ProcessLauncher::Launch("\"" + exePath + "\" --play --scene=" + activeSceneName + " \"--scene-file=" + playScenePath.string() + "\""))
     {
         OGL_WARNING("Engine | Failed to launch play instance")
         return false;
@@ -201,60 +216,61 @@ void Engine::CreateStandardSystems()
     const bool editing = mode == EngineMode::Editor;
 
     systems = std::make_unique<EcsSystems>(world);
-    systems->Add(std::make_unique<AutoOrbitSystem>(inputSystem.get()), true);
-    systems->Add(std::make_unique<CameraInputSystem>(inputSystem.get()), true);
-    systems->Add(std::make_unique<SimplePhysicSystem>(), true);
-    systems->Add(std::make_unique<ProjectileSystem>(), true);
-    systems->Add(std::make_unique<HitFlashSystem>(), true);
+    systems->Add(std::make_unique<AutoOrbitSystem>(inputSystem.get()), SystemPhase::Update, true);
+    systems->Add(std::make_unique<CameraInputSystem>(inputSystem.get()), SystemPhase::Update, true);
+    systems->Add(std::make_unique<SimplePhysicSystem>(), SystemPhase::Update, true);
+    systems->Add(std::make_unique<ProjectileSystem>(), SystemPhase::Update, true);
+    systems->Add(std::make_unique<HitFlashSystem>(), SystemPhase::Update, true);
 
     if (editing)
     {
         auto editorCamera = std::make_unique<EditorCameraSystem>(inputSystem.get());
         editorCameraSystem = editorCamera.get();
-        systems->Add(std::move(editorCamera));
+        systems->Add(std::move(editorCamera), SystemPhase::Update);
 
         auto picking = std::make_unique<EditorPickSystem>(inputSystem.get(), window.get(), &selection, &history);
         editorPickSystem = picking.get();
-        systems->Add(std::move(picking));
+        systems->Add(std::move(picking), SystemPhase::Update);
     }
 
-    systems->Add(std::make_unique<CameraMatrixSystem>(renderEngine.get(), uniformBuffer, window.get()));
-    systems->Add(std::make_unique<SkyboxSystem>(renderEngine.get()));
-    systems->Add(std::make_unique<ProceduralSkySystem>(renderEngine.get()));
-    systems->Add(std::make_unique<HoverSystem>(inputSystem.get(), window.get()), true);
-    systems->Add(std::make_unique<AnimatorSystem>());
-    systems->Add(std::make_unique<TransformHierarchySystem>());
-    systems->Add(std::make_unique<BoundsSystem>());
+    systems->Add(std::make_unique<RotatorSystem>(), SystemPhase::Update, true);
+    systems->Add(std::make_unique<PendulumSystem>(), SystemPhase::Update, true);
+
+    systems->Add(std::make_unique<CameraMatrixSystem>(renderEngine.get(), uniformBuffer, window.get()), SystemPhase::Render);
+    systems->Add(std::make_unique<SkyboxSystem>(renderEngine.get()), SystemPhase::Render);
+    systems->Add(std::make_unique<ProceduralSkySystem>(renderEngine.get()), SystemPhase::Render);
+    systems->Add(std::make_unique<HoverSystem>(inputSystem.get(), window.get()), SystemPhase::Render, true);
+    systems->Add(std::make_unique<AnimatorSystem>(), SystemPhase::Render);
+    systems->Add(std::make_unique<TransformHierarchySystem>(), SystemPhase::Render);
+    systems->Add(std::make_unique<BoundsSystem>(), SystemPhase::Render);
 
     auto culling = std::make_unique<CullingSystem>();
     cullingSystem = culling.get();
-    systems->Add(std::move(culling));
+    systems->Add(std::move(culling), SystemPhase::Render);
 
-    auto shadowMap = std::make_unique<ShadowMapSystem>(renderEngine.get(), window.get(), shaders.shadowDepth,
+    auto shadowMap = std::make_unique<ShadowMapSystem>(renderEngine.get(), window.get(), uniformBuffer, shaders.shadowDepth,
                                                        shaders.shadowDepthSkinned);
     shadowMapSystem = shadowMap.get();
-    systems->Add(std::move(shadowMap));
+    systems->Add(std::move(shadowMap), SystemPhase::Render);
 
     systems->Add(std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer, shaders.outline,
-                                                shaders.litInstanced, shadowMapSystem));
-    systems->Add(std::make_unique<ParticleSystem>(renderEngine.get(), shaders.particle, uniformBuffer));
-    systems->Add(std::make_unique<RotatorSystem>(), true);
-    systems->Add(std::make_unique<PendulumSystem>(), true);
+                                                shaders.litInstanced, shadowMapSystem), SystemPhase::Render);
+    systems->Add(std::make_unique<ParticleSystem>(renderEngine.get(), shaders.particle, uniformBuffer), SystemPhase::Render);
 
     if (editing)
     {
         auto gizmos = std::make_unique<EditorGizmoSystem>(renderEngine.get(), uniformBuffer, shaders.line, &selection);
         editorGizmoSystem = gizmos.get();
-        systems->Add(std::move(gizmos));
+        systems->Add(std::move(gizmos), SystemPhase::Render);
     }
 
     auto fpsCounter = std::make_unique<FpsCounterSystem>(window.get());
     fpsCounterSystem = fpsCounter.get();
-    systems->Add(std::move(fpsCounter));
-    systems->Add(std::make_unique<UITextSystem>(renderEngine.get(), shaders.text, window.get()));
+    systems->Add(std::move(fpsCounter), SystemPhase::Render);
+    systems->Add(std::make_unique<UITextSystem>(renderEngine.get(), shaders.text, window.get()), SystemPhase::Overlay);
 
     if (editing)
-        systems->Add(std::make_unique<EditorSystem>(inputSystem.get(), window.get(), this));
+        systems->Add(std::make_unique<EditorSystem>(inputSystem.get(), window.get(), this), SystemPhase::Render);
 
     systems->Init();
 
@@ -306,6 +322,7 @@ void Engine::OnUpdateInternal()
     const auto frameStart = std::chrono::high_resolution_clock::now();
 
     window->PollEvents();
+    ApplyQueuedScene();
     const Rect windowSize = window->GetInnerSize();
     renderEngine->SetViewPort(windowSize);
 
@@ -316,43 +333,40 @@ void Engine::OnUpdateInternal()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    const auto currentTime = std::chrono::system_clock::now();
-    auto elapsedSeconds = std::chrono::duration<double>();
-    if (previousTime.time_since_epoch().count())
-        elapsedSeconds = currentTime - previousTime;
+    const auto currentTime = std::chrono::steady_clock::now();
+    float deltaTime = 0.0f;
+    if (hasPreviousTime)
+        deltaTime = std::chrono::duration<float>(currentTime - previousTime).count();
     previousTime = currentTime;
+    hasPreviousTime = true;
 
-    const auto deltaTime = static_cast<float>(elapsedSeconds.count());
+    deltaTime = (std::min)(deltaTime, maxDeltaTime);
 
     audioSystem->Update();
+
+    const bool gameplayEnabled = IsGameplayEnabled();
+
+    systems->Update(SystemPhase::Update, deltaTime, gameplayEnabled);
+
+    if (activeScene)
+    {
+        if (gameplayEnabled)
+            activeScene->OnUpdate(*this, deltaTime);
+        else
+            activeScene->OnEditorUpdate(*this, deltaTime);
+    }
+
+    OnUpdate(deltaTime);
+    world.ProcessDeferred();
 
     const Vector4 clearColor = activeScene ? activeScene->GetClearColor() : Vector4(0, 0, 0, 1);
     renderEngine->Clear(clearColor);
     renderEngine->SetFaceCulling(CullingType::Both);
     renderEngine->SetWindingOrder(ClockWise);
 
-    {
-        const auto perfStart = std::chrono::high_resolution_clock::now();
-        systems->Update(deltaTime, IsGameplayEnabled());
-        const auto perfMid = std::chrono::high_resolution_clock::now();
-        const double systemsMs = std::chrono::duration_cast<std::chrono::microseconds>(perfMid - perfStart).count() /
-            1000.0;
+    systems->Update(SystemPhase::Render, deltaTime, gameplayEnabled);
 
-        if (activeScene)
-        {
-            if (IsGameplayEnabled())
-                activeScene->OnUpdate(*this, deltaTime);
-            else
-                activeScene->OnEditorUpdate(*this, deltaTime);
-        }
-
-        OnUpdate(deltaTime);
-        inputSystem->Update();
-
-        const auto perfEnd = std::chrono::high_resolution_clock::now();
-        const double frameAfterSceneMs = std::chrono::duration_cast<std::chrono::microseconds>(perfEnd - perfMid).
-            count() / 1000.0;
-    }
+    inputSystem->Update();
 
     if (postProcessEnabled && postProcessPipeline)
     {
@@ -363,7 +377,21 @@ void Engine::OnUpdateInternal()
             break;
         }
 
-        postProcessPipeline->Resolve(post.exposure, post.vignetteStrength, post.vignetteRadius, post.vignetteSoftness);
+        postProcessPipeline->Resolve(post);
+    }
+
+    systems->Update(SystemPhase::Overlay, deltaTime, gameplayEnabled);
+
+    if (activeScene)
+        activeScene->OnRender(*this);
+
+    frameIndex++;
+    if (!screenshotPath.empty() && frameIndex == screenshotFrame)
+    {
+        CaptureScreenshot(windowSize.width, windowSize.height);
+        if (screenshotQuits)
+            Quit();
+        screenshotPath.clear();
     }
 
     ImGui::Render();
@@ -419,25 +447,63 @@ void Engine::Quit()
 
 void Engine::LoadScene(std::unique_ptr<IScene> scene, const std::string& sceneName)
 {
-    activeSceneName = sceneName;
-
     if (systemsInitialized)
     {
-        if (activeScene)
-            activeScene->OnUnload(*this);
-        audioSystem->StopAll();
-        selection.Clear();
-        history.Clear();
-        world.Clear();
-        BumpSceneStructureVersion();
-        activeScene = std::move(scene);
-        activeScene->OnLoad(*this);
+        queuedScene = std::move(scene);
+        queuedSceneName = sceneName;
+        return;
+    }
 
-        if (!activeSceneName.empty())
-            SceneSerializer::Load(*this, activeSceneName);
-    }
-    else
+    activeSceneName = sceneName;
+    pendingScene = std::move(scene);
+}
+
+void Engine::CaptureScreenshot(int width, int height)
+{
+    if (width <= 0 || height <= 0)
+        return;
+
+    std::vector<unsigned char> pixels(static_cast<size_t>(width) * height * 3);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+
+    std::ofstream file(screenshotPath, std::ios::binary);
+    if (!file.is_open())
     {
-        pendingScene = std::move(scene);
+        OGL_WARNING("Engine | Cannot write screenshot: " << screenshotPath)
+        return;
     }
+
+    file << "P6\n" << width << " " << height << "\n255\n";
+    for (int y = height - 1; y >= 0; y--)
+        file.write(reinterpret_cast<const char*>(pixels.data() + static_cast<size_t>(y) * width * 3), static_cast<std::streamsize>(width) * 3);
+
+    OGL_INFO("Engine | Screenshot saved: " << screenshotPath)
+}
+
+void Engine::ApplyQueuedScene()
+{
+    if (!queuedScene)
+        return;
+
+    if (activeScene)
+        activeScene->OnUnload(*this);
+    audioSystem->StopAll();
+    selection.Clear();
+    history.Clear();
+    world.Clear();
+    BumpSceneStructureVersion();
+
+    activeSceneName = queuedSceneName;
+    activeScene = std::move(queuedScene);
+    queuedSceneName.clear();
+    sceneFileOverride.clear();
+
+    activeScene->OnLoad(*this);
+
+    if (!activeSceneName.empty())
+        SceneSerializer::Load(*this, activeSceneName);
+
+    ApplyCursorMode(editorPanelOpen);
 }

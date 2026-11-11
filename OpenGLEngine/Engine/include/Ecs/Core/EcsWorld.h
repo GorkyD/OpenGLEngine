@@ -58,6 +58,5 @@ private:
 
     Entity nextEntity = 0;
     std::vector<std::unique_ptr<IComponentPool>> pools;
-    std::vector<Entity> alive;
     std::vector<Entity> toDestroy;
 };

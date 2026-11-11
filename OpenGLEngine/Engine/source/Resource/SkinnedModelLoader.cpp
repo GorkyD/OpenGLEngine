@@ -66,6 +66,14 @@ static SkinnedMeshData ProcessSkinnedMesh(aiMesh* mesh, Skeleton& skeleton)
 
         if (mesh->mNormals)
             v.normal = {mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z};
+
+        if (mesh->mColors[0])
+        {
+            v.color[0] = mesh->mColors[0][i].r;
+            v.color[1] = mesh->mColors[0][i].g;
+            v.color[2] = mesh->mColors[0][i].b;
+            v.color[3] = mesh->mColors[0][i].a;
+        }
         else
             v.normal = {0, 1, 0};
     }
@@ -148,7 +156,7 @@ SkinnedModelData SkinnedModelLoader::Load(const std::string& filePath)
 {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(
-        filePath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals | aiProcess_CalcTangentSpace | aiProcess_LimitBoneWeights | aiProcess_FlipWindingOrder);
+        filePath, aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_CalcTangentSpace | aiProcess_LimitBoneWeights | aiProcess_FlipWindingOrder);
 
     if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !scene->mRootNode)
     {
@@ -178,7 +186,7 @@ SkinnedModelData SkinnedModelLoader::Load(const std::string& filePath)
         {
             aiString texPath;
             mat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath);
-            matData.diffuseTexturePath = directory + texPath.C_Str();
+            matData.diffuseTexturePath = ModelLoader::ResolveTexturePath(directory, texPath.C_Str());
         }
 
         model.materials.push_back(matData);

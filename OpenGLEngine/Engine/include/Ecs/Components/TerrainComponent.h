@@ -29,8 +29,8 @@ struct TerrainComponent
 
         const int x0 = static_cast<int>(gx);
         const int z0 = static_cast<int>(gz);
-        const int x1 = std::min(x0 + 1, resolution);
-        const int z1 = std::min(z0 + 1, resolution);
+        const int x1 = (std::min)(x0 + 1, resolution);
+        const int z1 = (std::min)(z0 + 1, resolution);
 
         const float tx = gx - static_cast<float>(x0);
         const float tz = gz - static_cast<float>(z0);

@@ -171,12 +171,8 @@ private:
     {
         if (selection->draggingAxis != GizmoAxis::None && history && selection->HasSelection())
         {
-            EditorAction action;
-            action.type = EditorAction::Type::Transform;
-            action.before = dragBefore;
-            action.after = CaptureSelection(world);
-            if (!action.before.empty())
-                history->Push(std::move(action));
+            if (!dragBefore.empty())
+                history->Push(EditorCommands::MakePropertyEdit("Gizmo", std::move(dragBefore), CaptureSelection(world)));
         }
 
         dragBefore.clear();
@@ -212,9 +208,9 @@ private:
             fn(entity);
     }
 
-    std::vector<TransformSnapshot> CaptureSelection(EcsWorld& world)
+    std::vector<EntityState> CaptureSelection(EcsWorld& world)
     {
-        return EditorCommands::CaptureTransforms(world, SelectedEntities(world));
+        return EditorState::Capture(world, SelectedEntities(world), StateTransform);
     }
 
 
@@ -405,6 +401,6 @@ private:
     EditorSelection* selection;
     EditorHistory* history;
 
-    std::vector<TransformSnapshot> dragBefore;
+    std::vector<EntityState> dragBefore;
     bool wasMouseDown = false;
 };

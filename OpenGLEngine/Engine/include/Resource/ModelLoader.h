@@ -29,6 +29,7 @@ struct MaterialData
     std::vector<unsigned char> embeddedTexture;
     int embeddedWidth = 0;
     int embeddedHeight = 0;
+    bool doubleSided = false;
 };
 
 struct ModelData
@@ -40,5 +41,6 @@ struct ModelData
 class ModelLoader
 {
 public:
-    static ModelData Load(const std::string& filePath);
+    static ModelData Load(const std::string& requestPath);
+    static std::string ResolveTexturePath(const std::string& modelDirectory, const std::string& rawPath);
 };

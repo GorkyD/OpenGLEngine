@@ -151,6 +151,9 @@ static void WriteScene(EcsWorld& world, std::ostream& file, int& outObjects, int
 
     for (auto& [entity, light] : world.GetPool<LightComponent>())
     {
+        if (!light.serialized)
+            continue;
+
         file << "light " << static_cast<int>(light.type) << ' ' << light.color.x << ' ' << light.color.y << ' ' << light.color.z << ' ' << light.direction.x << ' '
              << light.direction.y << ' ' << light.direction.z << ' ' << light.position.x << ' ' << light.position.y << ' ' << light.position.z << ' ' << light.intensity << ' '
              << light.range << ' ' << (light.castShadows ? 1 : 0) << ' ' << light.shadowOrthoSize << ' ' << light.shadowDistance << ' ' << light.shadowBias << ' '
@@ -164,6 +167,27 @@ static void WriteScene(EcsWorld& world, std::ostream& file, int& outObjects, int
         file << "ambient " << ambient.color.x << ' ' << ambient.color.y << ' ' << ambient.color.z << ' ' << ambient.intensity << '\n';
         outLights++;
     }
+}
+
+bool SceneSerializer::SaveToFile(Engine& engine, const std::string& path)
+{
+    std::ostringstream buffer;
+    int objectCount = 0;
+    int lightCount = 0;
+    WriteScene(engine.GetWorld(), buffer, objectCount, lightCount);
+
+    std::error_code ec;
+    std::filesystem::create_directories(std::filesystem::path(path).parent_path(), ec);
+
+    std::ofstream file(path);
+    if (!file.is_open())
+    {
+        OGL_WARNING("SceneSerializer | Cannot write: " << path)
+        return false;
+    }
+
+    file << buffer.str();
+    return true;
 }
 
 bool SceneSerializer::Save(Engine& engine, const std::string& sceneName)
@@ -204,13 +228,30 @@ bool SceneSerializer::Save(Engine& engine, const std::string& sceneName)
 
 SceneData SceneSerializer::ReadFile(const std::string& sceneName, const std::string& ownerName, const std::string& sourceAssetsPath)
 {
-    SceneData data;
-
     std::ifstream file(GetScenePath(sceneName, ownerName));
     if (!file.is_open())
         file.open(GetSourceScenePath(sceneName, ownerName, sourceAssetsPath));
     if (!file.is_open())
-        return data;
+        return {};
+
+    return Parse(file);
+}
+
+SceneData SceneSerializer::ReadFileAt(const std::string& path)
+{
+    std::ifstream file(path);
+    if (!file.is_open())
+    {
+        OGL_WARNING("SceneSerializer | Cannot read: " << path)
+        return {};
+    }
+
+    return Parse(file);
+}
+
+SceneData SceneSerializer::Parse(std::istream& file)
+{
+    SceneData data;
 
     std::string line;
     while (std::getline(file, line))
@@ -349,7 +390,7 @@ bool SceneSerializer::Load(Engine& engine, const std::string& sceneName)
     const std::string ownerName = entry ? entry->ownerName : "";
     const std::string sourceAssets = entry ? entry->sourceAssetsPath : "";
 
-    const SceneData data = ReadFile(sceneName, ownerName, sourceAssets);
+    const SceneData data = engine.GetSceneFileOverride().empty() ? ReadFile(sceneName, ownerName, sourceAssets) : ReadFileAt(engine.GetSceneFileOverride());
     if (data.Empty())
         return false;
 
@@ -359,7 +400,16 @@ bool SceneSerializer::Load(Engine& engine, const std::string& sceneName)
 
     if (!data.lights.empty() || !data.ambients.empty())
     {
-        world.GetPool<LightComponent>().Clear();
+        auto& lights = world.GetPool<LightComponent>();
+        std::vector<Entity> sceneLights;
+        for (auto& [entity, light] : lights)
+        {
+            if (light.serialized)
+                sceneLights.push_back(entity);
+        }
+        for (const Entity entity : sceneLights)
+            lights.Remove(entity);
+
         world.GetPool<AmbientLightComponent>().Clear();
     }
 
@@ -477,6 +527,6 @@ bool SceneSerializer::Load(Engine& engine, const std::string& sceneName)
         }
     }
 
-    OGL_INFO("SceneSerializer | Loaded " << data.objects.size() << " objects, " << data.lights.size() << " lights from " << GetScenePath(sceneName, ownerName))
+    OGL_INFO("SceneSerializer | Loaded " << data.objects.size() << " objects, " << data.lights.size() << " lights from " << (engine.GetSceneFileOverride().empty() ? GetScenePath(sceneName, ownerName) : engine.GetSceneFileOverride()))
     return true;
 }

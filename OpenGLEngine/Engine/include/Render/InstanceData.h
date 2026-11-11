@@ -1,5 +1,7 @@
 #pragma once
 
+constexpr unsigned int InstanceAttributeBaseLocation = 8;
+
 struct InstanceData
 {
     float world[16];

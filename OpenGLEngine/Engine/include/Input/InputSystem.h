@@ -30,6 +30,13 @@ public:
         return leftMouseDown;
     }
 
+    void SetSimulatedKey(Key key, bool down)
+    {
+        const size_t index = static_cast<size_t>(key);
+        if (index < keys.size())
+            keys[index] = down;
+    }
+
 private:
     static void KeyCallback(GLFWwindow* w, int key, int scancode, int action, int mods);
     static void MouseButtonCallback(GLFWwindow* w, int button, int action, int mods);

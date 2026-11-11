@@ -2,6 +2,7 @@
 #include <glad/glad.h>
 #include <utility>
 #include "Extension/Extension.h"
+#include "Ecs/Components/PostProcessComponent.h"
 #include "Render/RenderEngine.h"
 #include "Render/ShaderProgram.h"
 #include "Render/VertexArrayObject.h"
@@ -78,7 +79,7 @@ void PostProcessPipeline::BeginScene(int newWidth, int newHeight)
     glBindFramebuffer(GL_FRAMEBUFFER, framebufferId);
 }
 
-void PostProcessPipeline::Resolve(float exposure, float vignetteStrength, float vignetteRadius, float vignetteSoftness)
+void PostProcessPipeline::Resolve(const PostProcessComponent& settings)
 {
     if (!framebufferId || !shader)
         return;
@@ -92,10 +93,16 @@ void PostProcessPipeline::Resolve(float exposure, float vignetteStrength, float 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, colorTextureId);
     glUniform1i(shader->GetUniformLocation("sceneColor"), 0);
-    glUniform1f(shader->GetUniformLocation("exposure"), exposure);
-    glUniform1f(shader->GetUniformLocation("vignetteStrength"), vignetteStrength);
-    glUniform1f(shader->GetUniformLocation("vignetteRadius"), vignetteRadius);
-    glUniform1f(shader->GetUniformLocation("vignetteSoftness"), vignetteSoftness);
+    glUniform1f(shader->GetUniformLocation("exposure"), settings.exposure);
+    glUniform1f(shader->GetUniformLocation("vignetteStrength"), settings.vignetteStrength);
+    glUniform1f(shader->GetUniformLocation("vignetteRadius"), settings.vignetteRadius);
+    glUniform1f(shader->GetUniformLocation("vignetteSoftness"), settings.vignetteSoftness);
+
+    const float aspect = height > 0 ? static_cast<float>(width) / static_cast<float>(height) : 1.0f;
+    const float virtualHeight = settings.psxEnabled ? settings.psxResolutionHeight : 0.0f;
+    glUniform2f(shader->GetUniformLocation("psxResolution"), virtualHeight * aspect, virtualHeight);
+    glUniform1f(shader->GetUniformLocation("psxColorLevels"), settings.psxEnabled ? settings.psxColorLevels : 0.0f);
+    glUniform1f(shader->GetUniformLocation("psxDitherStrength"), settings.psxDitherStrength);
 
     renderEngine->SetVertexArrayObject(fullscreenVao);
     renderEngine->DrawTriangles(List, 3, 0);

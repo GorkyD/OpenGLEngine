@@ -14,6 +14,8 @@ public:
 
     ~Texture();
 
+    void SetPointFiltering(bool point);
+
     unsigned int GetId() const
     {
         return id;
@@ -33,4 +35,5 @@ private:
     int width = 0;
     int height = 0;
     int channels = 0;
+    bool mipmapped = false;
 };

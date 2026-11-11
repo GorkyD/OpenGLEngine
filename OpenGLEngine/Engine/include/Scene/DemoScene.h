@@ -19,7 +19,6 @@ private:
     void CreateMaterialGallery(Engine& engine, ShaderProgramPtr shader, float platformTopY, float platformHalfWidth);
     void CreateUiText(Engine& engine);
 
-    VertexArrayObjectPtr CreateFlameMesh(Engine& engine, unsigned int& outIndexCount);
 
     Entity cameraEntity = 0;
 };

@@ -19,4 +19,6 @@ struct MaterialComponent
 
     float roughness = 1.0f;
     float metallic = 0.0f;
+
+    bool doubleSided = false;
 };

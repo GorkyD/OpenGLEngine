@@ -58,7 +58,7 @@ OpenGLEngine/OpenGLEngine.vcxproj.filters
 OpenGLEngine/OpenGLEngine.vcxproj.filters
 OpenGLEngine/OpenGLEngine.vcxproj.user
 *.sln
-/.idea/
+.idea/
 /CMakeUserPresets.json
 /vcpkg/
 

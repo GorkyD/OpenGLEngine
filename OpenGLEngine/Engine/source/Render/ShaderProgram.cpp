@@ -10,7 +10,7 @@ ShaderProgram::ShaderProgram(const ShaderProgramDesc& desc)
     programId = glCreateProgram();
     Attach(desc.vertexShaderFilePath, VertexType);
     Attach(desc.fragmentShaderFilePath, FragmentType);
-    Link();
+    Link(desc);
 }
 
 ShaderProgram::~ShaderProgram()
@@ -91,17 +91,21 @@ void ShaderProgram::Attach(const char* shaderFilePath, const ShaderType& type)
     OGL_INFO("ShaderProgram | " << shaderFilePath << " compiled successfully");
 }
 
-void ShaderProgram::Link() const
+void ShaderProgram::Link(const ShaderProgramDesc& desc) const
 {
     glLinkProgram(programId);
 
+    int linkStatus = GL_FALSE;
+    glGetProgramiv(programId, GL_LINK_STATUS, &linkStatus);
+
     int logLength = 0;
     glGetProgramiv(programId, GL_INFO_LOG_LENGTH, &logLength);
+    std::vector<char> log(logLength > 0 ? logLength + 1 : 1, '\0');
     if (logLength > 0)
-    {
-        std::vector<char> errorMessage(logLength + 1);
-        glGetProgramInfoLog(programId, logLength, nullptr, errorMessage.data());
-        OGL_WARNING("ShaderProgram | " << errorMessage.data())
-        return;
-    }
+        glGetProgramInfoLog(programId, logLength, nullptr, log.data());
+
+    if (linkStatus == GL_FALSE)
+        OGL_WARNING("ShaderProgram | link failed (" << desc.vertexShaderFilePath << ", " << desc.fragmentShaderFilePath << "): " << log.data())
+    else if (logLength > 1)
+        OGL_INFO("ShaderProgram | link log (" << desc.vertexShaderFilePath << ", " << desc.fragmentShaderFilePath << "): " << log.data())
 }

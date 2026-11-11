@@ -102,6 +102,27 @@ public:
     }
     void SetMode(EngineMode newMode);
     bool LaunchPlayInstance();
+
+    void RequestScreenshot(const std::string& path, int atFrame, bool quitAfter = true)
+    {
+        screenshotPath = path;
+        screenshotFrame = atFrame;
+        screenshotQuits = quitAfter;
+    }
+
+    int GetFrameIndex() const
+    {
+        return frameIndex;
+    }
+
+    void SetSceneFileOverride(const std::string& path)
+    {
+        sceneFileOverride = path;
+    }
+    const std::string& GetSceneFileOverride() const
+    {
+        return sceneFileOverride;
+    }
     void ApplyCursorMode(bool panelOpen);
     bool IsEditorPanelOpen() const
     {
@@ -184,6 +205,8 @@ public:
 
 private:
     void OnUpdateInternal();
+    void ApplyQueuedScene();
+    void CaptureScreenshot(int width, int height);
     void WaitForFrameDeadline(const std::chrono::high_resolution_clock::time_point& frameStart) const;
     void ThrottleWhenUnfocused() const;
     void CreateStandardShaders();
@@ -204,6 +227,13 @@ protected:
     std::unique_ptr<Window> window;
 
     std::unique_ptr<IScene> pendingScene;
+    std::unique_ptr<IScene> queuedScene;
+    std::string queuedSceneName;
+    std::string sceneFileOverride;
+    std::string screenshotPath;
+    int screenshotFrame = 0;
+    bool screenshotQuits = true;
+    int frameIndex = 0;
     std::unique_ptr<IScene> activeScene;
 
     std::vector<SceneEntry> sceneRegistry;
@@ -218,7 +248,9 @@ protected:
     StandardShaders shaders;
     UniformBufferPtr uniformBuffer;
 
-    std::chrono::system_clock::time_point previousTime;
+    std::chrono::steady_clock::time_point previousTime;
+    bool hasPreviousTime = false;
+    static constexpr float maxDeltaTime = 0.1f;
 
     EngineMode mode = EngineMode::Editor;
 

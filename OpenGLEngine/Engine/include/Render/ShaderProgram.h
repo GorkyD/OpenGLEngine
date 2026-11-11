@@ -19,7 +19,7 @@ public:
 
 private:
     void Attach(const char* shaderFilePath, const ShaderType& type);
-    void Link() const;
+    void Link(const ShaderProgramDesc& desc) const;
 
     int programId = 0;
     int attachedShaders[2] = {};

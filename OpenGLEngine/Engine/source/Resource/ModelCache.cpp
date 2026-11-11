@@ -44,6 +44,7 @@ const CachedModel& ModelCache::Get(RenderEngine* renderEngine, const std::string
     for (auto& material : modelData.materials)
     {
         cached.diffuseColors.push_back(material.diffuseColor);
+        cached.doubleSided.push_back(material.doubleSided);
 
         if (!material.embeddedTexture.empty())
         {

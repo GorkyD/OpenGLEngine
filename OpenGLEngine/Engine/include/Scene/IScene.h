@@ -13,6 +13,7 @@ public:
     virtual void OnUnload(Engine& engine) {}
     virtual void OnUpdate(Engine& engine, float deltaTime) {}
     virtual void OnEditorUpdate(Engine& engine, float deltaTime) {}
+    virtual void OnRender(Engine& engine) {}
     virtual void OnDebugUI(Engine& engine) {}
 
     virtual bool WantsCursorLocked() const

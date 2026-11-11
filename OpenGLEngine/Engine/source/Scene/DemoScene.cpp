@@ -179,7 +179,7 @@ void DemoScene::CreateTorch(Engine& engine, const Vector3& basePosition, ShaderP
     handleShaderComp.shaderType = ShaderRenderType::Lit;
 
     unsigned int flameIndexCount = 0;
-    const auto flameVao = CreateFlameMesh(engine, flameIndexCount);
+    const auto flameVao = MeshFactory::CreateFlame(engine.GetRenderEngine(), flameIndexCount);
 
     const auto flameEntity = world.CreateEntity();
     auto& flameTransform = world.AddComponent<TransformComponent>(flameEntity);
@@ -300,86 +300,6 @@ void DemoScene::CreateHangingLamp(Engine& engine, const Vector3& pivot, ShaderPr
     lampPendulum.flickerSpeed = 5.0f;
 }
 
-VertexArrayObjectPtr DemoScene::CreateFlameMesh(Engine& engine, unsigned int& outIndexCount)
-{
-    auto* renderEngine = engine.GetRenderEngine();
-
-    constexpr int segments = 10;
-
-    struct RingProfile
-    {
-        float height;
-        float radius;
-    };
-    static const RingProfile profile[] = {
-        {0.0f, 0.42f}, {0.16f, 0.78f}, {0.36f, 0.66f}, {0.58f, 0.4f}, {0.8f, 0.16f}, {1.0f, 0.0f},
-    };
-    constexpr int ringCount = sizeof(profile) / sizeof(profile[0]);
-
-    std::vector<std::vector<Vector3>> rings(ringCount);
-    for (int r = 0; r < ringCount; r++)
-    {
-        rings[r].resize(segments);
-        for (int s = 0; s < segments; s++)
-        {
-            const float angle = (2.0f * 3.14159265f * static_cast<float>(s)) / static_cast<float>(segments);
-            rings[r][s] = {std::cos(angle) * profile[r].radius, profile[r].height, std::sin(angle) * profile[r].radius};
-        }
-    }
-
-    std::vector<Vector3> vertices;
-    vertices.reserve(segments * (ringCount - 1) * 6);
-
-    for (int r = 0; r < ringCount - 1; r++)
-    {
-        for (int s = 0; s < segments; s++)
-        {
-            const Vector3& a = rings[r][s];
-            const Vector3& b = rings[r][(s + 1) % segments];
-
-            if (profile[r + 1].radius < 0.001f)
-            {
-                vertices.push_back(a);
-                vertices.push_back(b);
-                vertices.push_back(rings[r + 1][0]);
-                continue;
-            }
-
-            const Vector3& c = rings[r + 1][s];
-            const Vector3& d = rings[r + 1][(s + 1) % segments];
-
-            vertices.push_back(a);
-            vertices.push_back(b);
-            vertices.push_back(d);
-
-            vertices.push_back(a);
-            vertices.push_back(d);
-            vertices.push_back(c);
-        }
-    }
-
-    const Vector3 baseCenter = {0.0f, 0.0f, 0.0f};
-    for (int s = 0; s < segments; s++)
-    {
-        const Vector3& a = rings[0][s];
-        const Vector3& b = rings[0][(s + 1) % segments];
-
-        vertices.push_back(baseCenter);
-        vertices.push_back(b);
-        vertices.push_back(a);
-    }
-
-    std::vector<unsigned int> indices(vertices.size());
-    for (unsigned int i = 0; i < indices.size(); i++)
-        indices[i] = i;
-
-    VertexAttributes attrs[] = {{3}};
-    const auto vao = renderEngine->CreateVertexArrayObject({static_cast<void*>(vertices.data()), 3 * sizeof(float), static_cast<int>(vertices.size()), attrs, 1},
-                                                           {static_cast<void*>(indices.data()), static_cast<int>(indices.size() * sizeof(unsigned int))});
-
-    outIndexCount = static_cast<unsigned int>(indices.size());
-    return vao;
-}
 
 void DemoScene::CreateMaterialGallery(Engine& engine, ShaderProgramPtr shader, float platformTopY, float platformHalfWidth)
 {

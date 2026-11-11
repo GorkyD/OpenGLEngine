@@ -76,6 +76,7 @@ Entity EntityFactory::CreateModelEntity(EcsWorld& world, RenderEngine* renderEng
             auto& matComp = world.AddComponent<MaterialComponent>(entity);
             matComp.diffuseTexture = model.textures[cachedMesh.materialIndex];
             matComp.diffuseColor = model.diffuseColors[cachedMesh.materialIndex];
+            matComp.doubleSided = model.doubleSided[cachedMesh.materialIndex];
         }
 
         if (outEntities)
@@ -106,13 +107,13 @@ Entity EntityFactory::CreateSkinnedModelEntity(EcsWorld& world, RenderEngine* re
     animatorState->clips = std::make_shared<std::vector<AnimationClip>>(std::move(modelData.animations));
     animatorState->boneMatrices.assign(animatorState->skeleton->bones.size(), Matrix4());
 
-    VertexAttributes attrs[] = {{sizeof(Vector3) / sizeof(float)}, {sizeof(Vector2) / sizeof(float)}, {sizeof(Vector3) / sizeof(float)}, {4}, {4}};
+    VertexAttributes attrs[] = {{sizeof(Vector3) / sizeof(float)}, {sizeof(Vector2) / sizeof(float)}, {sizeof(Vector3) / sizeof(float)}, {4}, {4}, {4}};
 
     Entity result = 0;
 
     for (auto& meshData : modelData.meshes)
     {
-        const auto vao = renderEngine->CreateVertexArrayObject({static_cast<void*>(meshData.vertices.data()), sizeof(SkinnedVertex), static_cast<int>(meshData.vertices.size()), attrs, 5},
+        const auto vao = renderEngine->CreateVertexArrayObject({static_cast<void*>(meshData.vertices.data()), sizeof(SkinnedVertex), static_cast<int>(meshData.vertices.size()), attrs, 6},
                                                                 {static_cast<void*>(meshData.indices.data()), static_cast<int>(meshData.indices.size() * sizeof(unsigned int))});
 
         const auto entity = world.CreateEntity();

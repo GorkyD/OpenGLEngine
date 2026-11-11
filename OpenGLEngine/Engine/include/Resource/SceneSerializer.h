@@ -1,5 +1,6 @@
 #pragma once
 
+#include <istream>
 #include <string>
 #include <vector>
 #include "Math/Vector3.h"
@@ -84,9 +85,14 @@ public:
     static std::string GetSourceScenePath(const std::string& sceneName, const std::string& ownerName, const std::string& sourceAssetsPath);
 
     static bool Save(Engine& engine, const std::string& sceneName);
+    static bool SaveToFile(Engine& engine, const std::string& path);
     static bool Load(Engine& engine, const std::string& sceneName);
 
     static SceneData ReadFile(const std::string& sceneName, const std::string& ownerName, const std::string& sourceAssetsPath);
+    static SceneData ReadFileAt(const std::string& path);
 
     static std::string MakeUniqueGroupName(EcsWorld& world, const std::string& assetPath);
+
+private:
+    static SceneData Parse(std::istream& file);
 };

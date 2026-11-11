@@ -3,6 +3,7 @@
 #include "Extension/Extension.h"
 
 class RenderEngine;
+struct PostProcessComponent;
 
 class PostProcessPipeline
 {
@@ -14,7 +15,7 @@ public:
     PostProcessPipeline& operator=(const PostProcessPipeline&) = delete;
 
     void BeginScene(int width, int height);
-    void Resolve(float exposure, float vignetteStrength, float vignetteRadius, float vignetteSoftness);
+    void Resolve(const PostProcessComponent& settings);
 
 private:
     void EnsureTargets(int newWidth, int newHeight);

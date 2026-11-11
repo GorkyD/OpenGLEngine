@@ -30,4 +30,6 @@ struct LightComponent
     float shadowAmbientOcclusion = 0.4f;
     float shadowFocusDistance = 0.0f;
     float shadowNormalBias = 0.05f;
+
+    bool serialized = true;
 };

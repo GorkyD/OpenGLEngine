@@ -7,7 +7,12 @@ layout(location = 1) in vec2 texcoord;
 layout(location = 3) in vec4 boneIds;
 layout(location = 4) in vec4 boneWeights;
 
-uniform mat4 world;
+uniform UniformData
+{
+    mat4 world;
+    mat4 view;
+    mat4 projection;
+};
 uniform mat4 lightSpaceMatrix;
 uniform mat4 boneMatrices[MAX_BONES];
 
