@@ -6,7 +6,6 @@
 #include "Ecs/Components/CameraComponent.h"
 #include "Ecs/Components/EditorIdComponent.h"
 #include "Ecs/Components/GroupComponent.h"
-#include "Ecs/Components/HitFlashComponent.h"
 #include "Ecs/Components/LightComponent.h"
 #include "Ecs/Components/MeshComponent.h"
 #include "Ecs/Components/ParentComponent.h"
@@ -62,7 +61,6 @@ static void ConfigurePlacedEntity(EcsWorld& world, Entity entity, const std::str
     world.AddComponent<PrefabComponent>(entity).assetPath = assetPath;
     world.AddComponent<GroupComponent>(entity).name = groupName;
     world.AddComponent<TransformOffsetComponent>(entity);
-    world.AddComponent<HitFlashComponent>(entity);
 }
 
 static Vector3 SpawnPointInFrontOfCamera(EcsWorld& world)

@@ -30,7 +30,6 @@
 #include "Ecs/Systems/EditorPickSystem.h"
 #include "Ecs/Systems/EditorSystem.h"
 #include "Ecs/Systems/FpsCounterSystem.h"
-#include "Ecs/Systems/HitFlashSystem.h"
 #include "Ecs/Systems/HoverSystem.h"
 #include "Ecs/Systems/ParticleSystem.h"
 #include "Ecs/Systems/ProjectileSystem.h"
@@ -220,7 +219,6 @@ void Engine::CreateStandardSystems()
     systems->Add(std::make_unique<CameraInputSystem>(inputSystem.get()), SystemPhase::Update, true);
     systems->Add(std::make_unique<SimplePhysicSystem>(), SystemPhase::Update, true);
     systems->Add(std::make_unique<ProjectileSystem>(), SystemPhase::Update, true);
-    systems->Add(std::make_unique<HitFlashSystem>(), SystemPhase::Update, true);
 
     if (editing)
     {

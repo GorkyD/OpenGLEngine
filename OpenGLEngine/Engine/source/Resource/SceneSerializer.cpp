@@ -7,7 +7,6 @@
 #include <unordered_set>
 #include "Ecs/Components/MaterialComponent.h"
 #include "Ecs/Components/ColliderComponent.h"
-#include "Ecs/Components/HitFlashComponent.h"
 #include "Ecs/Components/MeshComponent.h"
 #include "Ecs/Components/ParentComponent.h"
 #include "Ecs/Components/AmbientLightComponent.h"
@@ -476,7 +475,6 @@ bool SceneSerializer::Load(Engine& engine, const std::string& sceneName)
 
             world.AddComponent<PrefabComponent>(entity).assetPath = object.assetPath;
             world.AddComponent<GroupComponent>(entity).name = groupName;
-            world.AddComponent<HitFlashComponent>(entity);
 
             if (world.HasComponent<ShaderComponent>(entity))
                 world.GetComponent<ShaderComponent>(entity).shaderType = ShaderRenderType::Lit;
