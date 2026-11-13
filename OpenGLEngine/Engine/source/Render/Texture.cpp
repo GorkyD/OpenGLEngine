@@ -171,6 +171,21 @@ TexturePtr Texture::CreateFromPixels(const unsigned char* pixels, int width, int
     return texture;
 }
 
+void Texture::UpdatePixels(const unsigned char* pixels)
+{
+    if (target != GL_TEXTURE_2D || id == 0 || !pixels)
+        return;
+
+    const GLenum format = channels == 1 ? GL_RED : GL_RGBA;
+    glBindTexture(GL_TEXTURE_2D, id);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, format, GL_UNSIGNED_BYTE, pixels);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    if (mipmapped)
+        glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 void Texture::SetPointFiltering(bool point)
 {
     if (target != GL_TEXTURE_2D)

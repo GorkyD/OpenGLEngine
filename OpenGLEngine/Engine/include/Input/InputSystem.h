@@ -29,6 +29,10 @@ public:
     {
         return leftMouseDown;
     }
+    bool IsRightMouseDown() const
+    {
+        return rightMouseDown;
+    }
 
     void SetSimulatedKey(Key key, bool down)
     {
