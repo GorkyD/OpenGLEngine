@@ -185,6 +185,28 @@ Key InputSystem::TranslateKey(int glfwKey)
 
     case GLFW_KEY_F1:
         return Key::F1;
+    case GLFW_KEY_1:
+        return Key::Num1;
+    case GLFW_KEY_2:
+        return Key::Num2;
+    case GLFW_KEY_3:
+        return Key::Num3;
+    case GLFW_KEY_4:
+        return Key::Num4;
+    case GLFW_KEY_5:
+        return Key::Num5;
+    case GLFW_KEY_6:
+        return Key::Num6;
+    case GLFW_KEY_7:
+        return Key::Num7;
+    case GLFW_KEY_8:
+        return Key::Num8;
+    case GLFW_KEY_9:
+        return Key::Num9;
+    case GLFW_KEY_0:
+        return Key::Num0;
+    case GLFW_KEY_TAB:
+        return Key::Tab;
 
     default:
         return Key::Unknown;
