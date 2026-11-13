@@ -41,6 +41,7 @@ struct Voice
     float age = 0.0f;
     float duration = 3.0f;
     float energy = 1.0f;
+    float rattle = 0.0f;
     bool finished = false;
     unsigned int noise = 22222u;
 
@@ -89,8 +90,10 @@ struct Voice
         float sample = filtered;
         if (buzz > 0.0f)
         {
-            const float rattle = std::fabs(filtered) > 0.12f ? NextNoise() * std::fabs(filtered) * buzz : 0.0f;
-            sample += rattle * std::exp(-age * 2.5f);
+            const float level = std::fabs(filtered);
+            const float contact = level > 0.06f ? (level - 0.06f) : 0.0f;
+            rattle += (NextNoise() * contact - rattle) * 0.18f;
+            sample += rattle * buzz * 1.4f * std::exp(-age * 3.0f);
         }
 
         if (drive > 0.0f)
@@ -123,14 +126,22 @@ Voice MakePluck(const PluckParams& params, unsigned int seed)
     voice.volume = params.volume;
     voice.frequency = frequency;
 
-    const int period = static_cast<int>(voice.delay);
+    const int period = (std::max)(2, static_cast<int>(voice.delay));
+    const float pickPoint = 0.2f;
     float smooth = 0.0f;
+    float mean = 0.0f;
     for (int i = 0; i < period; i++)
     {
-        const float raw = voice.NextNoise();
-        smooth = smooth + (raw - smooth) * (0.35f + 0.6f * voice.brightness);
+        const float phase = static_cast<float>(i) / static_cast<float>(period);
+        const float shape = phase < pickPoint ? phase / pickPoint : (1.0f - phase) / (1.0f - pickPoint);
+        const float raw = shape * 1.6f - 0.8f + voice.NextNoise() * 0.35f;
+        smooth = smooth + (raw - smooth) * (0.25f + 0.45f * voice.brightness);
         voice.line[i] = smooth;
+        mean += smooth;
     }
+    mean /= static_cast<float>(period);
+    for (int i = 0; i < period; i++)
+        voice.line[i] -= mean;
     voice.writeIndex = period;
 
     const float pan = std::clamp(params.pan, -1.0f, 1.0f);
@@ -184,8 +195,8 @@ struct SynthAudio::State
             }
             lowpass[0] += (left - lowpass[0]) * 0.55f;
             lowpass[1] += (right - lowpass[1]) * 0.55f;
-            out[frame * 2 + 0] = std::tanh(lowpass[0] * masterVolume);
-            out[frame * 2 + 1] = std::tanh(lowpass[1] * masterVolume);
+            out[frame * 2 + 0] = std::tanh(lowpass[0] * masterVolume * 0.75f);
+            out[frame * 2 + 1] = std::tanh(lowpass[1] * masterVolume * 0.75f);
         }
 
         voices.erase(std::remove_if(voices.begin(), voices.end(), [](const Voice& voice) { return voice.finished; }), voices.end());
