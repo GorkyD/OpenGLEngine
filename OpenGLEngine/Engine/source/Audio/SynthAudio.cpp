@@ -32,6 +32,7 @@ struct Voice
     float brightness = 0.6f;
     float lastSample = 0.0f;
     float buzz = 0.0f;
+    float drive = 0.0f;
     float volume = 0.5f;
     float panLeft = 0.7f;
     float panRight = 0.7f;
@@ -92,6 +93,11 @@ struct Voice
             sample += rattle * std::exp(-age * 2.5f);
         }
 
+        if (drive > 0.0f)
+        {
+            const float gain = 1.0f + drive * 14.0f;
+            sample = std::tanh(sample * gain) / std::tanh(gain) * 0.55f;
+        }
         energy = energy * 0.999f + std::fabs(filtered) * 0.001f;
         if (age > 0.3f && energy < 0.0004f)
             finished = true;
@@ -113,6 +119,7 @@ Voice MakePluck(const PluckParams& params, unsigned int seed)
     voice.delay = static_cast<float>(SynthAudio::SampleRate) / frequency - filterDelay;
     voice.line.assign(static_cast<size_t>(voice.delay) + 4, 0.0f);
     voice.buzz = (std::max)(0.0f, params.buzz);
+    voice.drive = (std::max)(0.0f, params.drive);
     voice.volume = params.volume;
     voice.frequency = frequency;
 

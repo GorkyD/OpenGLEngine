@@ -11,6 +11,7 @@ struct PluckParams
     float sustain = 0.996f;
     float buzz = 0.0f;
     float pan = 0.0f;
+    float drive = 0.0f;
 };
 
 class SynthAudio
