@@ -30,12 +30,19 @@ public:
 private:
     Font() = default;
 
-    static constexpr int FirstChar = 32;
-    static constexpr int NumChars = 96;
+    struct GlyphRange
+    {
+        int first = 0;
+        int count = 0;
+        int offset = 0;
+    };
+
+    int GlyphIndex(unsigned int codepoint) const;
 
     TexturePtr atlasTexture;
 
-    std::vector<unsigned char> bakedChars;
+    std::vector<unsigned char> packedChars;
+    std::vector<GlyphRange> ranges;
 
     float pixelHeight = 48.0f;
     float ascent = 0.0f;
