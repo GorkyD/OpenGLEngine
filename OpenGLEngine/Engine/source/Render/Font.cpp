@@ -261,22 +261,56 @@ void Font::DrawToPixels(const std::string& text, unsigned char* rgba, int width,
         const float y0 = cursorY + packed.yoff * scale;
         const float glyphWidth = static_cast<float>(packed.x1 - packed.x0);
         const float glyphHeight = static_cast<float>(packed.y1 - packed.y0);
-        const int targetWidth = static_cast<int>(std::ceil(glyphWidth * scale));
-        const int targetHeight = static_cast<int>(std::ceil(glyphHeight * scale));
+        const int startX = static_cast<int>(std::floor(x0));
+        const int startY = static_cast<int>(std::floor(y0));
+        const float offsetX = x0 - static_cast<float>(startX);
+        const float offsetY = y0 - static_cast<float>(startY);
+        const int targetWidth = static_cast<int>(std::ceil(glyphWidth * scale + offsetX)) + 1;
+        const int targetHeight = static_cast<int>(std::ceil(glyphHeight * scale + offsetY)) + 1;
+
+        auto sampleAtlas = [&](float gx, float gy) -> float
+        {
+            gx -= 0.5f;
+            gy -= 0.5f;
+            const int ix = static_cast<int>(std::floor(gx));
+            const int iy = static_cast<int>(std::floor(gy));
+            const float fx = gx - static_cast<float>(ix);
+            const float fy = gy - static_cast<float>(iy);
+            auto texel = [&](int cx, int cy) -> float
+            {
+                if (cx < 0 || cy < 0 || cx >= static_cast<int>(glyphWidth) || cy >= static_cast<int>(glyphHeight))
+                    return 0.0f;
+                return atlasCoverage[static_cast<size_t>(packed.y0 + cy) * atlasWidth + packed.x0 + cx] / 255.0f;
+            };
+            const float top = texel(ix, iy) + (texel(ix + 1, iy) - texel(ix, iy)) * fx;
+            const float bottom = texel(ix, iy + 1) + (texel(ix + 1, iy + 1) - texel(ix, iy + 1)) * fx;
+            return top + (bottom - top) * fy;
+        };
+
+        const int taps = scale < 0.75f ? 3 : 2;
+        const float tapWeight = 1.0f / static_cast<float>(taps * taps);
 
         for (int ty = 0; ty < targetHeight; ty++)
         {
-            const int py = static_cast<int>(std::floor(y0)) + ty;
+            const int py = startY + ty;
             if (py < 0 || py >= height)
                 continue;
-            const int sy = packed.y0 + (std::min)(static_cast<int>(glyphHeight) - 1, static_cast<int>((ty + 0.5f) / scale));
             for (int tx = 0; tx < targetWidth; tx++)
             {
-                const int px = static_cast<int>(std::floor(x0)) + tx;
+                const int px = startX + tx;
                 if (px < 0 || px >= width)
                     continue;
-                const int sx = packed.x0 + (std::min)(static_cast<int>(glyphWidth) - 1, static_cast<int>((tx + 0.5f) / scale));
-                const float coverage = atlasCoverage[static_cast<size_t>(sy) * atlasWidth + sx] / 255.0f * color.w;
+                float sum = 0.0f;
+                for (int sy = 0; sy < taps; sy++)
+                {
+                    for (int sx = 0; sx < taps; sx++)
+                    {
+                        const float subX = static_cast<float>(tx) + (static_cast<float>(sx) + 0.5f) / static_cast<float>(taps) - offsetX;
+                        const float subY = static_cast<float>(ty) + (static_cast<float>(sy) + 0.5f) / static_cast<float>(taps) - offsetY;
+                        sum += sampleAtlas(subX / scale, subY / scale);
+                    }
+                }
+                const float coverage = (std::min)(1.0f, sum * tapWeight * 1.15f) * color.w;
                 if (coverage <= 0.0f)
                     continue;
                 unsigned char* pixel = rgba + (static_cast<size_t>(py) * width + px) * 4;

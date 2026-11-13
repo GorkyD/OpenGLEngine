@@ -24,6 +24,11 @@ public:
 
     void DrawToPixels(const std::string& text, unsigned char* rgba, int width, int height, float x, float y, float scale, const Vector4& color) const;
 
+    float GetPixelHeight() const
+    {
+        return pixelHeight;
+    }
+
     TexturePtr GetAtlasTexture() const
     {
         return atlasTexture;

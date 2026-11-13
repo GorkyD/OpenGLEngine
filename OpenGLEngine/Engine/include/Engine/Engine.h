@@ -259,6 +259,7 @@ protected:
     class EditorPickSystem* editorPickSystem = nullptr;
     class CullingSystem* cullingSystem = nullptr;
     class ShadowMapSystem* shadowMapSystem = nullptr;
+    class RenderSystem* renderSystem = nullptr;
     class FpsCounterSystem* fpsCounterSystem = nullptr;
     EditorSelection selection;
     EditorHistory history;

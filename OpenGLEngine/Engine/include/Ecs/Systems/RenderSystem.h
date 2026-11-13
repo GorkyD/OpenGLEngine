@@ -62,6 +62,8 @@ class RenderSystem : public IEcsSystem
     };
 
     static constexpr int ShadowMapTextureUnit = 5;
+    bool overlayPassOnly = false;
+    bool overlayDeferred = false;
 
 public:
     static constexpr int MaxLights = MaxFrameLights;
@@ -72,9 +74,31 @@ public:
         frameUniformBuffer = renderEngine->CreateUniformBuffer({sizeof(FrameUniformData)});
     }
 
+    bool HasDeferredOverlay() const
+    {
+        return overlayDeferred;
+    }
+
+    void RunOverlay(EcsWorld& world)
+    {
+        overlayPassOnly = true;
+        Run(world, 0.0f);
+        overlayPassOnly = false;
+        overlayDeferred = false;
+    }
+
     void Run(EcsWorld& world, float deltaTime) override
     {
         elapsedTime += deltaTime;
+
+        bool deferOverlay = false;
+        for (auto& pair : world.GetPool<PostProcessComponent>())
+        {
+            deferOverlay = pair.second.overlayAfterPostProcess;
+            break;
+        }
+        if (!overlayPassOnly)
+            overlayDeferred = deferOverlay;
 
         lastUploadedPose = nullptr;
         lastPoseShader = nullptr;
@@ -254,6 +278,8 @@ public:
 
         for (auto& [entityId, meshComponent] : meshes)
         {
+            if (overlayPassOnly)
+                break;
             if (!meshComponent.visible || !isVisible(entityId))
                 continue;
             if (meshComponent.renderQueue != RenderQueue::Default)
@@ -343,6 +369,8 @@ public:
 
         for (auto& [entityId, meshComponent] : meshes)
         {
+            if (overlayPassOnly)
+                break;
             if (meshComponent.renderQueue != RenderQueue::Default)
                 continue;
             if (isTransparent(typeOf(entityId)))
@@ -352,9 +380,10 @@ public:
             drawEntity(entityId, meshComponent);
         }
 
-        drawTransparent(RenderQueue::Default);
+        if (!overlayPassOnly)
+            drawTransparent(RenderQueue::Default);
 
-        if (outlineShader)
+        if (outlineShader && !overlayPassOnly)
         {
             for (auto& [entityId, outlineComponent] : world.GetPool<OutlineComponent>())
             {
@@ -381,6 +410,7 @@ public:
         }
 
         bool hasOverlay = false;
+        const bool overlayNow = overlayPassOnly || !overlayDeferred;
         for (auto& [entityId, meshComponent] : meshes)
         {
             if (meshComponent.renderQueue == RenderQueue::Overlay && meshComponent.visible && isVisible(entityId))
@@ -390,7 +420,7 @@ public:
             }
         }
 
-        if (hasOverlay)
+        if (hasOverlay && overlayNow)
         {
             glClear(GL_DEPTH_BUFFER_BIT);
 

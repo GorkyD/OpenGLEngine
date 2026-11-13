@@ -13,4 +13,5 @@ struct PostProcessComponent
     float psxDitherStrength = 1.0f;
     bool psxVertexSnap = true;
     float psxVertexSnapHeight = 160.0f;
+    bool overlayAfterPostProcess = false;
 };

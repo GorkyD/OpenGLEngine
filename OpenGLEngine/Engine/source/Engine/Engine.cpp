@@ -251,8 +251,9 @@ void Engine::CreateStandardSystems()
     shadowMapSystem = shadowMap.get();
     systems->Add(std::move(shadowMap), SystemPhase::Render);
 
-    systems->Add(std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer, shaders.outline,
-                                                shaders.litInstanced, shadowMapSystem), SystemPhase::Render);
+    auto render = std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer, shaders.outline, shaders.litInstanced, shadowMapSystem);
+    renderSystem = render.get();
+    systems->Add(std::move(render), SystemPhase::Render);
     systems->Add(std::make_unique<ParticleSystem>(renderEngine.get(), shaders.particle, uniformBuffer), SystemPhase::Render);
 
     if (editing)
@@ -376,6 +377,13 @@ void Engine::OnUpdateInternal()
         }
 
         postProcessPipeline->Resolve(post);
+    }
+
+    if (renderSystem && renderSystem->HasDeferredOverlay())
+    {
+        renderEngine->SetFaceCulling(CullingType::Both);
+        renderEngine->SetWindingOrder(ClockWise);
+        renderSystem->RunOverlay(world);
     }
 
     systems->Update(SystemPhase::Overlay, deltaTime, gameplayEnabled);
