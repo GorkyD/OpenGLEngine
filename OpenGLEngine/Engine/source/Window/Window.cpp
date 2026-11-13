@@ -2,6 +2,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <cassert>
+#include <cstdlib>
 
 Window::Window(bool windowed, const char* title)
 {
@@ -18,7 +19,14 @@ Window::Window(bool windowed, const char* title)
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = monitor ? glfwGetVideoMode(monitor) : nullptr;
 
-    if (windowed)
+    if (std::getenv("OGL_HIDDEN_WINDOW"))
+    {
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
+        glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
+        window = glfwCreateWindow(1920, 1080, title, nullptr, nullptr);
+    }
+    else if (windowed)
     {
         glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);

@@ -22,6 +22,8 @@ public:
     float MeasureWidth(const std::string& text, float scale) const;
     float GetLineHeight(float scale) const;
 
+    void DrawToPixels(const std::string& text, unsigned char* rgba, int width, int height, float x, float y, float scale, const Vector4& color) const;
+
     TexturePtr GetAtlasTexture() const
     {
         return atlasTexture;
@@ -42,6 +44,7 @@ private:
     TexturePtr atlasTexture;
 
     std::vector<unsigned char> packedChars;
+    std::vector<unsigned char> atlasCoverage;
     std::vector<GlyphRange> ranges;
 
     float pixelHeight = 48.0f;

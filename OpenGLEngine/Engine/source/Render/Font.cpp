@@ -5,6 +5,7 @@
 #include "stb/stb_truetype.h"
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 
 FontPtr Font::LoadFromFile(const std::string& path, float pixelHeight)
@@ -80,6 +81,7 @@ FontPtr Font::LoadFromFile(const std::string& path, float pixelHeight)
 
     auto font = FontPtr(new Font());
     font->atlasTexture = Texture::CreateFromPixels(atlasPixels.data(), atlasWidth, atlasHeight, 1);
+    font->atlasCoverage = atlasPixels;
     font->packedChars = std::move(packedChars);
     font->ranges = std::move(glyphRanges);
     font->atlasWidth = atlasWidth;
@@ -228,4 +230,62 @@ float Font::MeasureWidth(const std::string& text, float scale) const
 float Font::GetLineHeight(float scale) const
 {
     return pixelHeight * scale * 1.2f;
+}
+
+void Font::DrawToPixels(const std::string& text, unsigned char* rgba, int width, int height, float x, float y, float scale, const Vector4& color) const
+{
+    if (atlasCoverage.empty() || !rgba)
+        return;
+
+    const auto* chars = reinterpret_cast<const stbtt_packedchar*>(packedChars.data());
+    float cursorX = x;
+    float cursorY = y + ascent * scale;
+
+    size_t index = 0;
+    while (index < text.size())
+    {
+        const unsigned int c = NextCodepoint(text, index);
+        if (c == '\n')
+        {
+            cursorX = x;
+            cursorY += GetLineHeight(scale);
+            continue;
+        }
+
+        const int glyph = GlyphIndex(c);
+        if (glyph < 0)
+            continue;
+
+        const stbtt_packedchar& packed = chars[glyph];
+        const float x0 = cursorX + packed.xoff * scale;
+        const float y0 = cursorY + packed.yoff * scale;
+        const float glyphWidth = static_cast<float>(packed.x1 - packed.x0);
+        const float glyphHeight = static_cast<float>(packed.y1 - packed.y0);
+        const int targetWidth = static_cast<int>(std::ceil(glyphWidth * scale));
+        const int targetHeight = static_cast<int>(std::ceil(glyphHeight * scale));
+
+        for (int ty = 0; ty < targetHeight; ty++)
+        {
+            const int py = static_cast<int>(std::floor(y0)) + ty;
+            if (py < 0 || py >= height)
+                continue;
+            const int sy = packed.y0 + (std::min)(static_cast<int>(glyphHeight) - 1, static_cast<int>((ty + 0.5f) / scale));
+            for (int tx = 0; tx < targetWidth; tx++)
+            {
+                const int px = static_cast<int>(std::floor(x0)) + tx;
+                if (px < 0 || px >= width)
+                    continue;
+                const int sx = packed.x0 + (std::min)(static_cast<int>(glyphWidth) - 1, static_cast<int>((tx + 0.5f) / scale));
+                const float coverage = atlasCoverage[static_cast<size_t>(sy) * atlasWidth + sx] / 255.0f * color.w;
+                if (coverage <= 0.0f)
+                    continue;
+                unsigned char* pixel = rgba + (static_cast<size_t>(py) * width + px) * 4;
+                pixel[0] = static_cast<unsigned char>(pixel[0] + (color.x * 255.0f - pixel[0]) * coverage);
+                pixel[1] = static_cast<unsigned char>(pixel[1] + (color.y * 255.0f - pixel[1]) * coverage);
+                pixel[2] = static_cast<unsigned char>(pixel[2] + (color.z * 255.0f - pixel[2]) * coverage);
+            }
+        }
+
+        cursorX += packed.xadvance * scale;
+    }
 }
