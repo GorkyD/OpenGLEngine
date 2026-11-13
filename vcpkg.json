@@ -4,9 +4,13 @@
   "dependencies": [
     "assimp",
     "glfw3",
+    "miniaudio",
     {
       "name": "imgui",
-      "features": ["glfw-binding", "opengl3-binding"]
+      "features": [
+        "glfw-binding",
+        "opengl3-binding"
+      ]
     }
   ]
 }
