@@ -130,7 +130,7 @@ Voice MakePluck(const PluckParams& params, unsigned int seed)
     voice.rig = params.rig;
 
     const int period = (std::max)(2, static_cast<int>(voice.delay));
-    const float pickPoint = 0.2f;
+    const float pickPoint = std::clamp(params.pickPosition, 0.05f, 0.5f);
     float smooth = 0.0f;
     float mean = 0.0f;
     for (int i = 0; i < period; i++)

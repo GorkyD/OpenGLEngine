@@ -13,6 +13,7 @@ struct PluckParams
     float pan = 0.0f;
     float drive = 0.0f;
     bool rig = false;
+    float pickPosition = 0.2f;
 };
 
 enum class RigPickup
@@ -52,6 +53,13 @@ struct RigPedalSlot
 struct RigSettings
 {
     RigPickup pickup = RigPickup::Humbucker;
+    bool customPickup = false;
+    float pickupGain = 1.35f;
+    float pickupLowCut = 60.0f;
+    float pickupResonance = 2300.0f;
+    float pickupResonanceDb = 4.0f;
+    float pickupQ = 1.2f;
+    float pickupCutoff = 4600.0f;
     std::vector<RigPedalSlot> pedals;
     RigAmp amp = RigAmp::CleanTube;
     float gain = 0.5f;

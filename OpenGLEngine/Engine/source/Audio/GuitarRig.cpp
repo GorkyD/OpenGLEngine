@@ -142,6 +142,13 @@ void GuitarRig::Configure(const RigSettings& newSettings, float rate)
         pickupGain = 1.0f;
         break;
     }
+    if (settings.customPickup)
+    {
+        pickup[0].HighPass(settings.pickupLowCut, 0.7f, sr);
+        pickup[1].Peak(settings.pickupResonance, settings.pickupQ, settings.pickupResonanceDb, sr);
+        pickup[2].LowPass(settings.pickupCutoff, 0.75f, sr);
+        pickupGain = settings.pickupGain;
+    }
 
     std::vector<PedalState> previous = std::move(pedals);
     pedals.clear();
