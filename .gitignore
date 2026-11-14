@@ -72,3 +72,5 @@ run_err.log
 
 /OpenGLEngine/Game/*/
 !/OpenGLEngine/Game/Demo/
+
+/dist/

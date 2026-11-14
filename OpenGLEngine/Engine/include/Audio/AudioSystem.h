@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #if OPENGLENGINE_USE_WWISE
 #include <AK/AkPlatforms.h>
 #include <AK/SoundEngine/Common/AkSoundEngine.h>

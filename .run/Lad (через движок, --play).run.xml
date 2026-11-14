@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Lad (через движок, --play)" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="--play --scene=Lad" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" WORKING_DIR="file://$CMakeCurrentBuildDir$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="OpenGLEngine" TARGET_NAME="OpenGLEngine" CONFIG_NAME="clang-cl-debug-local" RUN_TARGET_PROJECT_NAME="OpenGLEngine" RUN_TARGET_NAME="OpenGLEngine">
+    <method v="2">
+      <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+    </method>
+  </configuration>
+</component>

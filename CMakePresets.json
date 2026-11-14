@@ -108,6 +108,15 @@
         "CC": "clang",
         "CXX": "clang++"
       }
+    },
+    {
+      "name": "clang-cl-release",
+      "displayName": "Clang-CL Release (Ninja + vcpkg)",
+      "inherits": "clang-cl-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "OPENGLENGINE_ENABLE_WWISE": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -122,6 +131,10 @@
     {
       "name": "clang-debug-macos",
       "configurePreset": "clang-debug-macos"
+    },
+    {
+      "name": "clang-cl-release",
+      "configurePreset": "clang-cl-release"
     }
   ]
 }

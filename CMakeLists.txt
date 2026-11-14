@@ -232,6 +232,10 @@ foreach (_gameMain ${GAME_MAIN_SOURCES})
 
     add_dependencies(${_gameTarget} OpenGLEngineAssets)
 
+    if (WIN32)
+        target_link_options(${_gameTarget} PRIVATE "$<$<CONFIG:Release>:/SUBSYSTEM:WINDOWS>" "$<$<CONFIG:Release>:/ENTRY:mainCRTStartup>")
+    endif ()
+
     message(STATUS "Game executable: ${_gameTarget} (${_gameName})")
 endforeach ()
 
