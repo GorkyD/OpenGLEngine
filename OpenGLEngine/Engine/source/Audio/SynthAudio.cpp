@@ -134,8 +134,8 @@ Voice MakePluck(const PluckParams& params, unsigned int seed)
     {
         const float phase = static_cast<float>(i) / static_cast<float>(period);
         const float shape = phase < pickPoint ? phase / pickPoint : (1.0f - phase) / (1.0f - pickPoint);
-        const float raw = shape * 1.6f - 0.8f + voice.NextNoise() * 0.35f;
-        smooth = smooth + (raw - smooth) * (0.25f + 0.45f * voice.brightness);
+        const float raw = shape * 1.6f - 0.8f + voice.NextNoise() * 0.15f;
+        smooth = smooth + (raw - smooth) * (0.2f + 0.35f * voice.brightness);
         voice.line[i] = smooth;
         mean += smooth;
     }
@@ -193,8 +193,8 @@ struct SynthAudio::State
                 left += sample * voice.panLeft;
                 right += sample * voice.panRight;
             }
-            lowpass[0] += (left - lowpass[0]) * 0.55f;
-            lowpass[1] += (right - lowpass[1]) * 0.55f;
+            lowpass[0] += (left - lowpass[0]) * 0.45f;
+            lowpass[1] += (right - lowpass[1]) * 0.45f;
             out[frame * 2 + 0] = std::tanh(lowpass[0] * masterVolume * 0.75f);
             out[frame * 2 + 1] = std::tanh(lowpass[1] * masterVolume * 0.75f);
         }
