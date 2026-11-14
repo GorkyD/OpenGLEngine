@@ -50,6 +50,39 @@ vec3 FresnelSchlick(float cosTheta, vec3 f0)
     return f0 + (1.0 - f0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
+vec3 FresnelSchlickRoughness(float cosTheta, vec3 f0, float roughness)
+{
+    return f0 + (max(vec3(1.0 - roughness), f0) - f0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+float DistributionGGX(float nDotH, float roughness)
+{
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float denom = nDotH * nDotH * (a2 - 1.0) + 1.0;
+    return a2 / max(PI * denom * denom, 0.0001);
+}
+
+float GeometrySchlick(float nDotX, float roughness)
+{
+    float r = roughness + 1.0;
+    float k = r * r / 8.0;
+    return nDotX / (nDotX * (1.0 - k) + k);
+}
+
+vec3 EnvironmentRadiance(vec3 dir, float roughness, vec3 base)
+{
+    vec3 ceiling = base * 3.4 + vec3(0.05, 0.045, 0.04);
+    vec3 horizon = base * 1.5;
+    vec3 ground = base * 0.55;
+    vec3 color = dir.y > 0.0 ? mix(horizon, ceiling, smoothstep(0.0, 0.75, dir.y)) : mix(horizon, ground, smoothstep(0.0, 0.5, -dir.y));
+    float sharpness = (1.0 - roughness) * (1.0 - roughness);
+    float bands = smoothstep(0.92, 1.0, sin(dir.x * 9.0 + dir.z * 4.0) * 0.5 + 0.5) * smoothstep(0.1, 0.5, dir.y);
+    color += (base * 6.0 + vec3(0.08, 0.075, 0.07)) * bands * sharpness;
+    vec3 average = (ceiling + horizon * 2.0 + ground) * 0.25;
+    return mix(color, average, clamp(roughness * roughness * 1.4, 0.0, 1.0));
+}
+
 float ShadowFactor(vec3 worldPos, vec3 normal, float nDotL)
 {
     float normalOffset = shadowNormalBias * (1.0 - nDotL) + shadowNormalBias * 0.1;
@@ -124,10 +157,11 @@ void main()
         vec3 halfVec = normalize(viewDir + lightDir);
         vec3 fresnel = FresnelSchlick(max(dot(halfVec, viewDir), 0.0), f0);
 
-        vec3 specular = vec3(0.0);
-
         vec3 kD = (vec3(1.0) - fresnel) * (1.0 - metallic);
         float nDotL = max(dot(norm, lightDir), 0.0);
+        float nDotV = max(dot(norm, viewDir), 0.001);
+        float nDotH = max(dot(norm, halfVec), 0.0);
+        vec3 specular = DistributionGGX(nDotH, roughness) * GeometrySchlick(nDotV, roughness) * GeometrySchlick(nDotL, roughness) * fresnel / max(4.0 * nDotV * nDotL, 0.001);
 
         float shadowFactor = 1.0;
         if (i == shadowLightIndex)
@@ -139,7 +173,14 @@ void main()
         lightingOut += (kD * albedo / PI + specular) * radiance * nDotL * shadowFactor;
     }
 
-    vec3 ambient = ambientColor * ambientIntensity * albedo * ao * mix(shadowAmbientOcclusion, 1.0, sunShadowFactor);
+    vec3 environmentBase = ambientColor * ambientIntensity;
+    float occlusion = ao * mix(shadowAmbientOcclusion, 1.0, sunShadowFactor);
+    float viewCos = max(dot(norm, viewDir), 0.001);
+    vec3 ambientFresnel = FresnelSchlickRoughness(viewCos, f0, roughness);
+    vec3 ambientDiffuse = (vec3(1.0) - ambientFresnel) * (1.0 - metallic);
+    vec3 reflected = reflect(-viewDir, norm);
+    vec3 ambient = environmentBase * albedo * ambientDiffuse * occlusion;
+    ambient += EnvironmentRadiance(reflected, roughness, environmentBase) * ambientFresnel * occlusion;
     vec3 emissive = fragEmissiveColor * fragEmissiveIntensity;
     vec3 finalColor = ambient + lightingOut + emissive;
 
