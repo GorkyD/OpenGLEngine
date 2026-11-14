@@ -5,6 +5,7 @@
 #include <miniaudio.h>
 
 #include "Audio/SynthAudio.h"
+#include "Audio/GuitarRig.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -43,6 +44,7 @@ struct Voice
     float energy = 1.0f;
     float rattle = 0.0f;
     bool finished = false;
+    bool rig = false;
     unsigned int noise = 22222u;
 
     float NextNoise()
@@ -125,6 +127,7 @@ Voice MakePluck(const PluckParams& params, unsigned int seed)
     voice.drive = (std::max)(0.0f, params.drive);
     voice.volume = params.volume;
     voice.frequency = frequency;
+    voice.rig = params.rig;
 
     const int period = (std::max)(2, static_cast<int>(voice.delay));
     const float pickPoint = 0.2f;
@@ -162,6 +165,9 @@ struct SynthAudio::State
     float lowpass[2] = {0.0f, 0.0f};
     unsigned int seed = 12345u;
     bool stopRequested = false;
+    GuitarRig rig;
+    RigSettings pendingRig;
+    bool rigDirty = true;
 
     void Mix(float* out, unsigned int frames)
     {
@@ -179,20 +185,34 @@ struct SynthAudio::State
                 voices.push_back(std::move(voice));
             }
             pending.clear();
+            if (rigDirty)
+            {
+                rig.Configure(pendingRig, static_cast<float>(SampleRate));
+                rigDirty = false;
+            }
         }
 
         for (unsigned int frame = 0; frame < frames; frame++)
         {
             float left = 0.0f;
             float right = 0.0f;
+            float bus = 0.0f;
             for (Voice& voice : voices)
             {
                 if (voice.finished)
                     continue;
                 const float sample = voice.Next();
+                if (voice.rig)
+                {
+                    bus += sample;
+                    continue;
+                }
                 left += sample * voice.panLeft;
                 right += sample * voice.panRight;
             }
+            const float amp = rig.Process(bus);
+            left += amp * 0.7f;
+            right += amp * 0.7f;
             lowpass[0] += (left - lowpass[0]) * 0.45f;
             lowpass[1] += (right - lowpass[1]) * 0.45f;
             out[frame * 2 + 0] = std::tanh(lowpass[0] * masterVolume * 0.75f);
@@ -285,6 +305,13 @@ void SynthAudio::StopAll()
 void SynthAudio::SetMasterVolume(float volume)
 {
     state->masterVolume = std::clamp(volume, 0.0f, 2.0f);
+}
+
+void SynthAudio::SetRig(const RigSettings& settings)
+{
+    std::lock_guard<std::mutex> lock(state->mutex);
+    state->pendingRig = settings;
+    state->rigDirty = true;
 }
 
 void SynthAudio::RenderOffline(std::vector<float>& outStereo, int frames)

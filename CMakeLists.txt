@@ -32,6 +32,7 @@ target_include_directories(glad PUBLIC
 set(ENGINE_SOURCES
         OpenGLEngine/Engine/source/Audio/AudioSystem.cpp
         OpenGLEngine/Engine/source/Audio/SynthAudio.cpp
+        OpenGLEngine/Engine/source/Audio/GuitarRig.cpp
         OpenGLEngine/Engine/source/Engine/Engine.cpp
         OpenGLEngine/Engine/source/Render/RenderEngine.cpp
         OpenGLEngine/Engine/source/Render/ShaderProgram.cpp
