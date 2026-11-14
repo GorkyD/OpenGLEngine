@@ -12,6 +12,8 @@ public:
     void Peak(float frequency, float q, float gainDb, float sampleRate);
     void LowShelf(float frequency, float gainDb, float sampleRate);
     void HighShelf(float frequency, float gainDb, float sampleRate);
+    void HighPassFirst(float frequency, float sampleRate);
+    void LowPassFirst(float frequency, float sampleRate);
     void Bypass();
     float Process(float x);
     void Reset();

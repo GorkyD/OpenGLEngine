@@ -87,6 +87,28 @@ void Biquad::HighShelf(float frequency, float gainDb, float sampleRate)
     a2 = ((a + 1.0f) - (a - 1.0f) * c - root) / a0;
 }
 
+void Biquad::HighPassFirst(float frequency, float sampleRate)
+{
+    const float k = std::tan(Pi * std::clamp(frequency, 10.0f, sampleRate * 0.45f) / sampleRate);
+    const float norm = 1.0f / (1.0f + k);
+    b0 = norm;
+    b1 = -norm;
+    b2 = 0.0f;
+    a1 = (k - 1.0f) * norm;
+    a2 = 0.0f;
+}
+
+void Biquad::LowPassFirst(float frequency, float sampleRate)
+{
+    const float k = std::tan(Pi * std::clamp(frequency, 10.0f, sampleRate * 0.45f) / sampleRate);
+    const float norm = 1.0f / (1.0f + k);
+    b0 = k * norm;
+    b1 = k * norm;
+    b2 = 0.0f;
+    a1 = (k - 1.0f) * norm;
+    a2 = 0.0f;
+}
+
 void Biquad::Bypass()
 {
     b0 = 1.0f;
@@ -169,22 +191,22 @@ void GuitarRig::Configure(const RigSettings& newSettings, float rate)
             state.post.Bypass();
             break;
         case RigPedal::Overdrive:
-            state.pre.HighPass(720.0f, 0.7f, sr);
-            state.shape.Peak(700.0f, 0.7f, 3.0f + d * 2.0f, sr);
-            state.tone.LowPass(Lerp(900.0f, 5200.0f, t), 0.7f, sr);
-            state.post.HighPass(60.0f, 0.7f, sr);
+            state.pre.HighPassFirst(720.0f, sr);
+            state.shape.Peak(750.0f, 0.8f, 4.0f, sr);
+            state.tone.LowPass(Lerp(1200.0f, 5200.0f, t), 0.7f, sr);
+            state.post.HighPassFirst(80.0f, sr);
             break;
         case RigPedal::Distortion:
-            state.pre.HighPass(120.0f, 0.7f, sr);
-            state.shape.Peak(850.0f, 0.8f, -6.0f, sr);
-            state.tone.LowPass(Lerp(1500.0f, 6500.0f, t), 0.7f, sr);
-            state.post.HighPass(70.0f, 0.7f, sr);
+            state.pre.HighPassFirst(100.0f, sr);
+            state.shape.Peak(900.0f, 0.9f, -3.0f, sr);
+            state.tone.LowPass(Lerp(2200.0f, 7000.0f, t), 0.7f, sr);
+            state.post.HighPassFirst(60.0f, sr);
             break;
         case RigPedal::BigFuzz:
-            state.pre.HighPass(100.0f, 0.7f, sr);
-            state.shape.Peak(1000.0f, 0.6f, -9.0f, sr);
-            state.tone.LowPass(Lerp(1200.0f, 5000.0f, t), 0.7f, sr);
-            state.post.HighPass(100.0f, 0.7f, sr);
+            state.pre.HighPassFirst(90.0f, sr);
+            state.shape.Peak(1000.0f, 0.9f, -5.0f, sr);
+            state.tone.LowPass(Lerp(2000.0f, 6500.0f, t), 0.7f, sr);
+            state.post.HighPassFirst(80.0f, sr);
             break;
         case RigPedal::RoughFuzz:
             state.pre.LowPass(6000.0f, 0.7f, sr);
@@ -326,7 +348,7 @@ float GuitarRig::Pedal(PedalState& pedal, float x)
 {
     const RigPedalSlot& slot = pedal.slot;
     const float d = std::clamp(slot.drive, 0.0f, 1.0f);
-    const float level = std::clamp(slot.level, 0.0f, 1.0f) * 2.0f;
+    const float level = std::clamp(slot.level, 0.0f, 1.0f) * 0.9f;
     float y = 0.0f;
     switch (slot.type)
     {
@@ -335,15 +357,15 @@ float GuitarRig::Pedal(PedalState& pedal, float x)
         const float gain = Lerp(2.0f, 9.0f, d);
         const float boosted = pedal.pre.Process(x);
         y = std::tanh(pedal.shape.Process(boosted) * gain + 0.15f) - std::tanh(0.15f);
-        y = pedal.tone.Process(y) * 0.8f;
+        y = pedal.tone.Process(y) * 1.5f;
         break;
     }
     case RigPedal::Overdrive:
     {
-        const float gain = Lerp(6.0f, 130.0f, d * d);
-        const float high = pedal.pre.Process(x);
-        const float clipped = std::tanh(high * gain) * 0.55f;
-        y = pedal.post.Process(pedal.tone.Process(pedal.shape.Process(x * 0.6f + clipped)));
+        const float gain = Lerp(8.0f, 160.0f, d * d);
+        const float high = pedal.pre.Process(x) * gain;
+        const float clipped = high > 0.0f ? std::tanh(high) : std::tanh(high * 0.8f) * 1.1f;
+        y = pedal.post.Process(pedal.tone.Process(pedal.shape.Process(x * 0.4f + clipped * 0.75f)));
         break;
     }
     case RigPedal::Distortion:
