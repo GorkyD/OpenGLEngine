@@ -15,6 +15,9 @@
 #include "Platform/ProcessLauncher.h"
 #include "Math/Vector4.h"
 #include "Ecs/Components/PostProcessComponent.h"
+#include "Ecs/Components/TransformComponent.h"
+#include "Ecs/Components/LightComponent.h"
+#include "Ecs/Components/CameraComponent.h"
 #include "Render/PostProcessPipeline.h"
 #include "Render/RenderEngine.h"
 #include "Render/UniformData.h"
@@ -140,7 +143,12 @@ void Engine::CreateStandardShaders()
         "Assets/Shaders/SimpleShader_PostProcess.vert", "Assets/Shaders/SimpleShader_PostProcess.frag"
     });
 
-    postProcessPipeline = std::make_unique<PostProcessPipeline>(renderEngine.get(), shaders.postProcess);
+    PostProcessShaders postShaders;
+    postShaders.composite = shaders.postProcess;
+    postShaders.ambientOcclusion = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_PostProcess.vert", "Assets/Shaders/PostAo.frag"});
+    postShaders.blur = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_PostProcess.vert", "Assets/Shaders/PostBlur.frag"});
+    postShaders.volume = renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_PostProcess.vert", "Assets/Shaders/PostVolume.frag"});
+    postProcessPipeline = std::make_unique<PostProcessPipeline>(renderEngine.get(), postShaders);
 }
 
 void Engine::SetMode(EngineMode newMode)
@@ -385,8 +393,36 @@ void Engine::OnUpdateInternal()
             break;
         }
 
+        PostFrameData frame;
+        frame.time = static_cast<float>(frameIndex) / 60.0f;
+        for (auto& [entity, camera] : world.GetPool<CameraComponent>())
+        {
+            if (!camera.isActive || !world.HasComponent<TransformComponent>(entity))
+                continue;
+            frame.view = camera.view;
+            frame.projection = camera.projection;
+            frame.nearPlane = camera.nearPlane;
+            frame.farPlane = camera.farPlane;
+            frame.cameraPosition = world.GetComponent<TransformComponent>(entity).position;
+            frame.cameraValid = !camera.orthographic;
+            break;
+        }
+        for (auto& [entity, light] : world.GetPool<LightComponent>())
+        {
+            if (light.type != LightType::Directional || !light.castShadows)
+                continue;
+            frame.sunDirection = light.direction;
+            frame.sunColor = light.color * light.intensity;
+            break;
+        }
+        if (shadowMapSystem && shadowMapSystem->IsActive())
+        {
+            frame.shadowValid = true;
+            frame.lightSpace = shadowMapSystem->GetLightSpaceMatrix();
+            frame.shadowTexture = shadowMapSystem->GetDepthTextureId();
+        }
         renderEngine->SetViewPort(windowSize);
-        postProcessPipeline->Resolve(post);
+        postProcessPipeline->Resolve(post, frame);
     }
 
     if (renderSystem && renderSystem->HasDeferredOverlay())

@@ -49,6 +49,18 @@ void InputSystem::CursorPosCallback(GLFWwindow* w, double xPos, double yPos)
 
     auto* self = static_cast<InputSystem*>(glfwGetWindowUserPointer(w));
 
+    int windowWidth = 0;
+    int windowHeight = 0;
+    int framebufferWidth = 0;
+    int framebufferHeight = 0;
+    glfwGetWindowSize(w, &windowWidth, &windowHeight);
+    glfwGetFramebufferSize(w, &framebufferWidth, &framebufferHeight);
+    if (windowWidth > 0 && windowHeight > 0)
+    {
+        xPos *= static_cast<double>(framebufferWidth) / windowWidth;
+        yPos *= static_cast<double>(framebufferHeight) / windowHeight;
+    }
+
     if (self->firstMouse)
     {
         self->lastMouseX = xPos;

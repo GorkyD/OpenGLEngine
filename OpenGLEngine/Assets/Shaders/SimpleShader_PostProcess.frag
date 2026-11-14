@@ -8,6 +8,22 @@ uniform float vignetteStrength;
 uniform float vignetteRadius;
 uniform float vignetteSoftness;
 
+uniform sampler2D aoTexture;
+uniform sampler2D volumeTexture;
+uniform sampler2D bloomTexture;
+uniform sampler2D blurTexture;
+uniform sampler2D sceneDepth;
+uniform int aoEnabled;
+uniform float aoStrength;
+uniform int volumeEnabled;
+uniform int bloomEnabled;
+uniform float bloomIntensity;
+uniform int dofEnabled;
+uniform float dofFocus;
+uniform float dofRange;
+uniform float nearPlane;
+uniform float farPlane;
+
 uniform vec2 psxResolution;
 uniform float psxColorLevels;
 uniform float psxDitherStrength;
@@ -44,7 +60,21 @@ void main()
         uv = (virtualPixel + 0.5) / psxResolution;
     }
 
-    vec3 color = texture(sceneColor, uv).rgb * exposure;
+    vec3 color = texture(sceneColor, uv).rgb;
+    if (dofEnabled != 0)
+    {
+        float depth = texture(sceneDepth, uv).r * 2.0 - 1.0;
+        float z = nearPlane * farPlane / (farPlane - depth * (farPlane - nearPlane));
+        float blur = clamp((abs(z - dofFocus) - dofRange * 0.3) / max(dofRange, 0.001), 0.0, 1.0);
+        color = mix(color, texture(blurTexture, uv).rgb, blur);
+    }
+    if (aoEnabled != 0)
+        color *= mix(1.0, texture(aoTexture, uv).r, aoStrength);
+    if (volumeEnabled != 0)
+        color += texture(volumeTexture, uv).rgb;
+    if (bloomEnabled != 0)
+        color += texture(bloomTexture, uv).rgb * bloomIntensity;
+    color *= exposure;
     color = ACESFilm(color);
 
     float dist = length(fragUv - vec2(0.5)) * 2.0;
