@@ -2,7 +2,7 @@ param(
     [string]$Game = "Lad",
     [string]$Version = "0.1",
     [string]$Preset = "clang-cl-release-local",
-    [string[]]$AssetDirs = @("Shaders", "Fonts", "Scenes"),
+    [string[]]$AssetDirs = @("Shaders", "Fonts", "Scenes", "Models/Cat"),
     [switch]$SkipBuild
 )
 
@@ -41,7 +41,11 @@ $assetsDist = Join-Path $gameDist "Assets"
 New-Item -ItemType Directory -Force $assetsDist | Out-Null
 foreach ($dir in $AssetDirs) {
     $source = Join-Path $buildDir "Assets/$dir"
-    if (Test-Path $source) { Copy-Item -Recurse $source (Join-Path $assetsDist $dir) }
+    if (Test-Path $source) {
+        $target = Join-Path $assetsDist $dir
+        New-Item -ItemType Directory -Force (Split-Path -Parent $target) | Out-Null
+        Copy-Item -Recurse $source $target
+    }
 }
 Copy-Item (Join-Path $buildDir "Assets/CREDITS.md") $assetsDist -ErrorAction SilentlyContinue
 
