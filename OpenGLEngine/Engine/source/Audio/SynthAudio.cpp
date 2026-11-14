@@ -45,6 +45,8 @@ struct Voice
     float rattle = 0.0f;
     bool finished = false;
     bool rig = false;
+    int id = 0;
+    float targetDelay = 0.0f;
     float taps[4] = {0.0f, 0.0f, 0.0f, 0.0f};
     int tapCount = 0;
     unsigned int noise = 22222u;
@@ -85,6 +87,8 @@ struct Voice
             return sample;
         }
 
+        if (targetDelay > 0.0f && std::fabs(targetDelay - delay) > 0.001f)
+            delay += (targetDelay - delay) * 0.0015f;
         const float delayed = Read(delay);
         const float filtered = sustain * (brightness * delayed + (1.0f - brightness) * lastSample);
         lastSample = filtered;
@@ -131,7 +135,8 @@ Voice MakePluck(const PluckParams& params, unsigned int seed)
     const float feedback = 1.0f - voice.brightness;
     const float filterDelay = std::atan2(feedback * std::sin(omega), 1.0f - feedback * std::cos(omega)) / omega;
     voice.delay = static_cast<float>(SynthAudio::SampleRate) / frequency - filterDelay;
-    voice.line.assign(static_cast<size_t>(voice.delay) + 4, 0.0f);
+    voice.targetDelay = voice.delay;
+    voice.line.assign(static_cast<size_t>(static_cast<float>(SynthAudio::SampleRate) / (std::max)(20.0f, frequency * 0.2f)) + 8, 0.0f);
     voice.buzz = (std::max)(0.0f, params.buzz);
     voice.drive = (std::max)(0.0f, params.drive);
     voice.volume = params.volume;
@@ -180,6 +185,18 @@ struct SynthAudio::State
     GuitarRig rig;
     RigSettings pendingRig;
     bool rigDirty = true;
+    int nextId = 1;
+    std::vector<std::pair<int, float>> bends;
+
+    static float DelayFor(const Voice& voice, float frequency)
+    {
+        const float f = std::clamp(frequency, 20.0f, 4000.0f);
+        const float omega = 2.0f * Pi * f / static_cast<float>(SampleRate);
+        const float feedback = 1.0f - voice.brightness;
+        const float filterDelay = std::atan2(feedback * std::sin(omega), 1.0f - feedback * std::cos(omega)) / omega;
+        const float delay = static_cast<float>(SampleRate) / f - filterDelay;
+        return std::clamp(delay, 2.0f, static_cast<float>(voice.line.size()) - 4.0f);
+    }
 
     void Mix(float* out, unsigned int frames)
     {
@@ -197,6 +214,18 @@ struct SynthAudio::State
                 voices.push_back(std::move(voice));
             }
             pending.clear();
+            for (const auto& bend : bends)
+            {
+                for (std::vector<Voice>* list : {&voices, &pending})
+                {
+                    for (Voice& voice : *list)
+                    {
+                        if (voice.id == bend.first && voice.kind == Voice::Kind::Pluck)
+                            voice.targetDelay = DelayFor(voice, bend.second);
+                    }
+                }
+            }
+            bends.clear();
             if (rigDirty)
             {
                 rig.Configure(pendingRig, static_cast<float>(SampleRate));
@@ -289,11 +318,21 @@ bool SynthAudio::IsRunning() const
     return state->deviceStarted;
 }
 
-void SynthAudio::Pluck(const PluckParams& params)
+int SynthAudio::Pluck(const PluckParams& params)
 {
     std::lock_guard<std::mutex> lock(state->mutex);
     state->seed = state->seed * 747796405u + 2891336453u;
     state->pending.push_back(MakePluck(params, state->seed));
+    state->pending.back().id = state->nextId++;
+    return state->pending.back().id;
+}
+
+void SynthAudio::Bend(int voice, float frequency)
+{
+    if (voice <= 0)
+        return;
+    std::lock_guard<std::mutex> lock(state->mutex);
+    state->bends.emplace_back(voice, frequency);
 }
 
 void SynthAudio::Tone(float frequency, float seconds, float volume)

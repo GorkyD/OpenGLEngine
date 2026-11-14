@@ -84,7 +84,8 @@ public:
     void Shutdown();
     bool IsRunning() const;
 
-    void Pluck(const PluckParams& params);
+    int Pluck(const PluckParams& params);
+    void Bend(int voice, float frequency);
     void Tone(float frequency, float seconds, float volume);
     void StopAll();
     void SetMasterVolume(float volume);
