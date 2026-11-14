@@ -326,7 +326,16 @@ void Engine::OnUpdateInternal()
     renderEngine->SetViewPort(windowSize);
 
     if (postProcessEnabled && postProcessPipeline)
-        postProcessPipeline->BeginScene(windowSize.width, windowSize.height);
+    {
+        int renderHeight = 0;
+        for (auto& pair : world.GetPool<PostProcessComponent>())
+        {
+            if (pair.second.psxEnabled && pair.second.psxRenderLowRes)
+                renderHeight = static_cast<int>(pair.second.psxResolutionHeight);
+            break;
+        }
+        postProcessPipeline->BeginScene(windowSize.width, windowSize.height, renderHeight);
+    }
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -376,6 +385,7 @@ void Engine::OnUpdateInternal()
             break;
         }
 
+        renderEngine->SetViewPort(windowSize);
         postProcessPipeline->Resolve(post);
     }
 

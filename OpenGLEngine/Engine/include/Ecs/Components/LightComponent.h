@@ -24,6 +24,7 @@ struct LightComponent
     float outerConeAngleDeg = 30.0f;
 
     bool castShadows = false;
+    int shadowResolution = 4096;
     float shadowOrthoSize = 25.0f;
     float shadowDistance = 40.0f;
     float shadowBias = 0.0025f;

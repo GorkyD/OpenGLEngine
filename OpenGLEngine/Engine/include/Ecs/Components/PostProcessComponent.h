@@ -9,6 +9,7 @@ struct PostProcessComponent
 
     bool psxEnabled = false;
     float psxResolutionHeight = 240.0f;
+    bool psxRenderLowRes = false;
     float psxColorLevels = 32.0f;
     float psxDitherStrength = 1.0f;
     bool psxVertexSnap = true;

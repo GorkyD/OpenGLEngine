@@ -4,6 +4,28 @@
 
 ShadowMap::ShadowMap(int resolution) : resolution(resolution)
 {
+    Create();
+}
+
+void ShadowMap::Resize(int newResolution)
+{
+    if (newResolution == resolution || newResolution <= 0)
+        return;
+    Destroy();
+    resolution = newResolution;
+    Create();
+}
+
+void ShadowMap::Destroy()
+{
+    glDeleteFramebuffers(1, &framebufferId);
+    glDeleteTextures(1, &depthTextureId);
+    framebufferId = 0;
+    depthTextureId = 0;
+}
+
+void ShadowMap::Create()
+{
     glGenTextures(1, &depthTextureId);
     glBindTexture(GL_TEXTURE_2D, depthTextureId);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, resolution, resolution, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
@@ -29,8 +51,7 @@ ShadowMap::ShadowMap(int resolution) : resolution(resolution)
 
 ShadowMap::~ShadowMap()
 {
-    glDeleteFramebuffers(1, &framebufferId);
-    glDeleteTextures(1, &depthTextureId);
+    Destroy();
 }
 
 void ShadowMap::BeginWrite() const

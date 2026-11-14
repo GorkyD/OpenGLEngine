@@ -48,6 +48,7 @@ public:
 
         if (!castingLight)
             return;
+        shadowMap.Resize(castingLight->shadowResolution);
 
         Vector3 camPos;
         Vector3 camForward = {0, 0, 1};
@@ -88,7 +89,8 @@ public:
         shadowAmbientOcclusion = castingLight->shadowAmbientOcclusion;
         shadowNormalBias = castingLight->shadowNormalBias;
 
-        const Rect restoreViewport = window->GetInnerSize();
+        GLint restoreViewport[4] = {0, 0, 0, 0};
+        glGetIntegerv(GL_VIEWPORT, restoreViewport);
 
         GLint previousFramebuffer = 0;
         glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &previousFramebuffer);
@@ -198,7 +200,7 @@ public:
 
         shadowMap.EndWrite();
         glBindFramebuffer(GL_FRAMEBUFFER, previousFramebuffer);
-        renderEngine->SetViewPort(restoreViewport);
+        glViewport(restoreViewport[0], restoreViewport[1], restoreViewport[2], restoreViewport[3]);
 
         active = true;
     }

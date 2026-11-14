@@ -1,5 +1,6 @@
 #include "Render/PostProcessPipeline.h"
 #include <glad/glad.h>
+#include <algorithm>
 #include <utility>
 #include "Extension/Extension.h"
 #include "Ecs/Components/PostProcessComponent.h"
@@ -48,8 +49,8 @@ void PostProcessPipeline::EnsureTargets(int newWidth, int newHeight)
     glGenTextures(1, &colorTextureId);
     glBindTexture(GL_TEXTURE_2D, colorTextureId);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
@@ -70,13 +71,19 @@ void PostProcessPipeline::EnsureTargets(int newWidth, int newHeight)
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
 
-void PostProcessPipeline::BeginScene(int newWidth, int newHeight)
+void PostProcessPipeline::BeginScene(int newWidth, int newHeight, int renderHeight)
 {
+    if (renderHeight > 0 && renderHeight < newHeight && newHeight > 0)
+    {
+        newWidth = (std::max)(1, static_cast<int>(static_cast<float>(newWidth) * renderHeight / newHeight + 0.5f));
+        newHeight = renderHeight;
+    }
     EnsureTargets(newWidth, newHeight);
     if (!framebufferId)
         return;
 
     glBindFramebuffer(GL_FRAMEBUFFER, framebufferId);
+    glViewport(0, 0, width, height);
 }
 
 void PostProcessPipeline::Resolve(const PostProcessComponent& settings)

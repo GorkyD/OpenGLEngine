@@ -14,7 +14,7 @@ public:
     PostProcessPipeline(const PostProcessPipeline&) = delete;
     PostProcessPipeline& operator=(const PostProcessPipeline&) = delete;
 
-    void BeginScene(int width, int height);
+    void BeginScene(int width, int height, int renderHeight = 0);
     void Resolve(const PostProcessComponent& settings);
 
 private:

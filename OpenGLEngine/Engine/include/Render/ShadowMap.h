@@ -9,6 +9,7 @@ public:
     ShadowMap(const ShadowMap&) = delete;
     ShadowMap& operator=(const ShadowMap&) = delete;
 
+    void Resize(int newResolution);
     void BeginWrite() const;
     void EndWrite() const;
 
@@ -22,6 +23,8 @@ public:
     }
 
 private:
+    void Create();
+    void Destroy();
     unsigned int framebufferId = 0;
     unsigned int depthTextureId = 0;
     int resolution = 0;

@@ -137,6 +137,8 @@ void main()
 
         vec3 toLight = lightPositionRange[i].xyz - fragWorldPos;
         float dist = length(toLight);
+        if (!isDirectional && dist >= lightPositionRange[i].w)
+            continue;
         vec3 pointDir = toLight / max(dist, 0.0001);
         vec3 dirLightDir = normalize(lightDirectionType[i].xyz);
         vec3 lightDir = isDirectional ? dirLightDir : pointDir;
