@@ -186,6 +186,23 @@ void Texture::UpdatePixels(const unsigned char* pixels)
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void Texture::SetRepeat(bool repeat)
+{
+    if (target != GL_TEXTURE_2D)
+        return;
+    glBindTexture(GL_TEXTURE_2D, id);
+    const GLint wrap = repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+    if (repeat && !mipmapped)
+    {
+        glGenerateMipmap(GL_TEXTURE_2D);
+        mipmapped = true;
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 void Texture::SetPointFiltering(bool point)
 {
     if (target != GL_TEXTURE_2D)

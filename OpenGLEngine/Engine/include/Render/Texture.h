@@ -15,6 +15,7 @@ public:
     ~Texture();
 
     void SetPointFiltering(bool point);
+    void SetRepeat(bool repeat);
     void UpdatePixels(const unsigned char* pixels);
 
     unsigned int GetId() const
