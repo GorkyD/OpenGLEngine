@@ -26,6 +26,17 @@ New-Item -ItemType Directory -Force $gameDist | Out-Null
 
 Copy-Item (Join-Path $buildDir "$Game.exe") $gameDist
 Get-ChildItem $buildDir -Filter *.dll | Copy-Item -Destination $gameDist
+$crt = Get-ChildItem -Directory -ErrorAction SilentlyContinue @(
+    "${env:ProgramFiles(x86)}\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT",
+    "$env:ProgramFiles\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT"
+) | Sort-Object FullName -Descending | Select-Object -First 1
+if ($crt) {
+    foreach ($dll in @("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll")) {
+        Copy-Item (Join-Path $crt.FullName $dll) $gameDist -ErrorAction SilentlyContinue
+    }
+} else {
+    Write-Host "VC++ runtime not found: players need the Visual C++ 2015-2022 redistributable"
+}
 $assetsDist = Join-Path $gameDist "Assets"
 New-Item -ItemType Directory -Force $assetsDist | Out-Null
 foreach ($dir in $AssetDirs) {
