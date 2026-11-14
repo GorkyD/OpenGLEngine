@@ -14,6 +14,8 @@ struct PluckParams
     float drive = 0.0f;
     bool rig = false;
     float pickPosition = 0.2f;
+    float pickupTaps[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    int pickupTapCount = 0;
 };
 
 enum class RigPickup

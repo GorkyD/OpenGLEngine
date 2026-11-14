@@ -45,6 +45,8 @@ struct Voice
     float rattle = 0.0f;
     bool finished = false;
     bool rig = false;
+    float taps[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    int tapCount = 0;
     unsigned int noise = 22222u;
 
     float NextNoise()
@@ -90,6 +92,13 @@ struct Voice
         writeIndex = (writeIndex + 1) % static_cast<int>(line.size());
 
         float sample = filtered;
+        if (tapCount > 0)
+        {
+            float picked = 0.0f;
+            for (int i = 0; i < tapCount; i++)
+                picked += filtered - Read(1.0f + 2.0f * taps[i] * delay);
+            sample = picked / static_cast<float>(tapCount);
+        }
         if (buzz > 0.0f)
         {
             const float level = std::fabs(filtered);
@@ -128,6 +137,9 @@ Voice MakePluck(const PluckParams& params, unsigned int seed)
     voice.volume = params.volume;
     voice.frequency = frequency;
     voice.rig = params.rig;
+    voice.tapCount = std::clamp(params.pickupTapCount, 0, 4);
+    for (int i = 0; i < voice.tapCount; i++)
+        voice.taps[i] = std::clamp(params.pickupTaps[i], 0.01f, 0.45f);
 
     const int period = (std::max)(2, static_cast<int>(voice.delay));
     const float pickPoint = std::clamp(params.pickPosition, 0.05f, 0.5f);
