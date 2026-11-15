@@ -292,6 +292,12 @@ void Engine::OnCreate()
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    if (FILE* fontFile = std::fopen("Assets/Fonts/JetBrainsMono-Regular.ttf", "rb"))
+    {
+        std::fclose(fontFile);
+        ImGuiIO& io = ImGui::GetIO();
+        io.Fonts->AddFontFromFileTTF("Assets/Fonts/JetBrainsMono-Regular.ttf", 16.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
+    }
     ImGui_ImplGlfw_InitForOpenGL(window->GetGLFWWindow(), false);
     ImGui_ImplOpenGL3_Init("#version 400");
     glfwSetScrollCallback(window->GetGLFWWindow(), ImGui_ImplGlfw_ScrollCallback);
