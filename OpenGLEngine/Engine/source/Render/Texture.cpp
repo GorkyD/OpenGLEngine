@@ -171,6 +171,35 @@ TexturePtr Texture::CreateFromPixels(const unsigned char* pixels, int width, int
     return texture;
 }
 
+void Texture::RegenerateMipmaps()
+{
+    if (target != GL_TEXTURE_2D || id == 0 || !mipmapped)
+        return;
+    glBindTexture(GL_TEXTURE_2D, id);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void Texture::UpdatePixelsRegion(const unsigned char* pixels, int x, int y, int regionWidth, int regionHeight, bool regenerateMipmaps)
+{
+    if (target != GL_TEXTURE_2D || id == 0 || !pixels || regionWidth <= 0 || regionHeight <= 0)
+        return;
+    const GLenum format = channels == 1 ? GL_RED : GL_RGBA;
+    glBindTexture(GL_TEXTURE_2D, id);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, x);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, y);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, regionWidth, regionHeight, format, GL_UNSIGNED_BYTE, pixels);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    if (mipmapped && regenerateMipmaps)
+        glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 void Texture::UpdatePixels(const unsigned char* pixels)
 {
     if (target != GL_TEXTURE_2D || id == 0 || !pixels)

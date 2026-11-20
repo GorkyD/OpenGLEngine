@@ -17,6 +17,8 @@ public:
     void SetPointFiltering(bool point);
     void SetRepeat(bool repeat);
     void UpdatePixels(const unsigned char* pixels);
+    void RegenerateMipmaps();
+    void UpdatePixelsRegion(const unsigned char* pixels, int x, int y, int regionWidth, int regionHeight, bool regenerateMipmaps);
 
     unsigned int GetId() const
     {
