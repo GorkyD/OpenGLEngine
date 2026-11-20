@@ -100,6 +100,27 @@ bool Window::IsFocused() const
     return glfwGetWindowAttrib(window, GLFW_FOCUSED) != 0;
 }
 
+int Window::CreateCursorImage(const unsigned char* rgba, int width, int height, int hotX, int hotY)
+{
+    GLFWimage image;
+    image.width = width;
+    image.height = height;
+    image.pixels = const_cast<unsigned char*>(rgba);
+    GLFWcursor* cursor = glfwCreateCursor(&image, hotX, hotY);
+    if (!cursor)
+        return -1;
+    cursors.push_back(cursor);
+    return static_cast<int>(cursors.size()) - 1;
+}
+
+void Window::UseCursor(int cursor)
+{
+    if (cursor == activeCursor)
+        return;
+    activeCursor = cursor;
+    glfwSetCursor(window, cursor >= 0 && cursor < static_cast<int>(cursors.size()) ? cursors[cursor] : nullptr);
+}
+
 void Window::SetCursorLocked(bool locked)
 {
     glfwSetInputMode(window, GLFW_CURSOR, locked ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
