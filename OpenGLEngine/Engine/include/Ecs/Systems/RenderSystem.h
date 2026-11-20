@@ -65,6 +65,12 @@ class RenderSystem : public IEcsSystem
     bool overlayPassOnly = false;
     bool overlayDeferred = false;
     unsigned int sceneDepthTexture = 0;
+    ShaderProgramPtr outlineEdgeShader;
+    unsigned int maskFramebuffer = 0;
+    unsigned int maskTexture = 0;
+    unsigned int emptyVao = 0;
+    int maskWidth = 0;
+    int maskHeight = 0;
     int sceneWidth = 0;
     int sceneHeight = 0;
 
@@ -75,6 +81,11 @@ public:
         renderEngine(re), uniformBuffer(ub), outlineShader(outlineShader), litInstancedShader(litInstancedShader), shadowMapSystem(shadowMapSystem)
     {
         frameUniformBuffer = renderEngine->CreateUniformBuffer({sizeof(FrameUniformData)});
+    }
+
+    void SetOutlineEdgeShader(const ShaderProgramPtr& shader)
+    {
+        outlineEdgeShader = shader;
     }
 
     void SetSceneDepth(unsigned int texture, int width, int height)
@@ -412,6 +423,7 @@ public:
                 glUniform1f(outlineShader->GetUniformLocation("outlineWidth"), outlineComponent.width);
                 glUniform3f(outlineShader->GetUniformLocation("outlineColor"), outlineComponent.color[0], outlineComponent.color[1], outlineComponent.color[2]);
                 glUniform1i(outlineShader->GetUniformLocation("useSceneDepth"), useSceneDepth ? 1 : 0);
+                glUniform1i(outlineShader->GetUniformLocation("maskPass"), 0);
                 if (useSceneDepth)
                 {
                     glActiveTexture(GL_TEXTURE0);
@@ -429,14 +441,88 @@ public:
             }
         };
 
+        auto drawMaskOutlines = [&]()
+        {
+            if (maskWidth != sceneWidth || maskHeight != sceneHeight || maskFramebuffer == 0)
+            {
+                if (maskFramebuffer)
+                    glDeleteFramebuffers(1, &maskFramebuffer);
+                if (maskTexture)
+                    glDeleteTextures(1, &maskTexture);
+                maskWidth = sceneWidth;
+                maskHeight = sceneHeight;
+                glGenTextures(1, &maskTexture);
+                glBindTexture(GL_TEXTURE_2D, maskTexture);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, maskWidth, maskHeight, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glGenFramebuffers(1, &maskFramebuffer);
+                glBindFramebuffer(GL_FRAMEBUFFER, maskFramebuffer);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, maskTexture, 0);
+                glBindTexture(GL_TEXTURE_2D, 0);
+            }
+            if (emptyVao == 0)
+                glGenVertexArrays(1, &emptyVao);
+            GLint previousFramebuffer = 0;
+            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &previousFramebuffer);
+            glBindFramebuffer(GL_FRAMEBUFFER, maskFramebuffer);
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+            float color[3] = {1.0f, 1.0f, 1.0f};
+            for (auto& [entityId, outlineComponent] : world.GetPool<OutlineComponent>())
+            {
+                const Entity entity = entityId;
+                if (!meshes.Has(entity))
+                    continue;
+                auto& mesh = meshes.Get(entity);
+                if (!mesh.visible || !isVisible(entity))
+                    continue;
+                color[0] = outlineComponent.color[0];
+                color[1] = outlineComponent.color[1];
+                color[2] = outlineComponent.color[2];
+                Matrix4 worldMatrix = modelMatrixOf(entity);
+                uniformBuffer->SetSubData(&worldMatrix, 0, sizeof(Matrix4));
+                renderEngine->SetShaderProgram(outlineShader);
+                glUniform1f(outlineShader->GetUniformLocation("outlineWidth"), 0.0f);
+                glUniform3f(outlineShader->GetUniformLocation("outlineColor"), 1.0f, 1.0f, 1.0f);
+                glUniform1i(outlineShader->GetUniformLocation("useSceneDepth"), 1);
+                glUniform1i(outlineShader->GetUniformLocation("maskPass"), 1);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, sceneDepthTexture);
+                glUniform1i(outlineShader->GetUniformLocation("sceneDepth"), 0);
+                glUniform2f(outlineShader->GetUniformLocation("screenSize"), static_cast<float>(sceneWidth), static_cast<float>(sceneHeight));
+                const bool cullWasEnabled = glIsEnabled(GL_CULL_FACE) == GL_TRUE;
+                glDisable(GL_CULL_FACE);
+                renderEngine->SetVertexArrayObject(mesh.vao);
+                renderEngine->DrawIndexedTriangles(List, mesh.indexCount);
+                if (cullWasEnabled)
+                    glEnable(GL_CULL_FACE);
+            }
+            glBindFramebuffer(GL_FRAMEBUFFER, previousFramebuffer);
+            renderEngine->SetShaderProgram(outlineEdgeShader);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, maskTexture);
+            glUniform1i(outlineEdgeShader->GetUniformLocation("mask"), 0);
+            glUniform3f(outlineEdgeShader->GetUniformLocation("outlineColor"), color[0], color[1], color[2]);
+            glUniform1i(outlineEdgeShader->GetUniformLocation("radius"), (std::max)(1, sceneHeight / 540));
+            glBindVertexArray(emptyVao);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            glBindVertexArray(0);
+        };
+
         if (outlineShader && !overlayPassOnly && !(overlayDeferred && sceneDepthTexture != 0))
             drawOutlines(false);
 
-        if (outlineShader && overlayPassOnly && sceneDepthTexture != 0)
+        if (outlineShader && overlayPassOnly && sceneDepthTexture != 0 && world.GetPool<OutlineComponent>().Size() > 0)
         {
             const bool depthWasEnabled = glIsEnabled(GL_DEPTH_TEST) == GL_TRUE;
             glDisable(GL_DEPTH_TEST);
-            drawOutlines(true);
+            if (outlineEdgeShader && sceneWidth > 0 && sceneHeight > 0)
+                drawMaskOutlines();
+            else
+                drawOutlines(true);
             if (depthWasEnabled)
                 glEnable(GL_DEPTH_TEST);
         }

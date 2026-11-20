@@ -261,6 +261,7 @@ void Engine::CreateStandardSystems()
 
     auto render = std::make_unique<RenderSystem>(renderEngine.get(), uniformBuffer, shaders.outline, shaders.litInstanced, shadowMapSystem);
     renderSystem = render.get();
+    renderSystem->SetOutlineEdgeShader(renderEngine->CreateShaderProgram({"Assets/Shaders/SimpleShader_PostProcess.vert", "Assets/Shaders/OutlineEdge.frag"}));
     systems->Add(std::move(render), SystemPhase::Render);
     systems->Add(std::make_unique<ParticleSystem>(renderEngine.get(), shaders.particle, uniformBuffer), SystemPhase::Render);
 
