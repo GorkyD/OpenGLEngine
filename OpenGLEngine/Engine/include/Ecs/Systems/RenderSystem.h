@@ -402,10 +402,12 @@ public:
                 glUniform1f(outlineShader->GetUniformLocation("outlineWidth"), outlineComponent.width);
                 glUniform3f(outlineShader->GetUniformLocation("outlineColor"), outlineComponent.color[0], outlineComponent.color[1], outlineComponent.color[2]);
 
-                glCullFace(GL_FRONT);
+                const bool cullWasEnabled = glIsEnabled(GL_CULL_FACE) == GL_TRUE;
+                glDisable(GL_CULL_FACE);
                 renderEngine->SetVertexArrayObject(mesh.vao);
                 renderEngine->DrawIndexedTriangles(List, mesh.indexCount);
-                glCullFace(GL_BACK);
+                if (cullWasEnabled)
+                    glEnable(GL_CULL_FACE);
             }
         }
 
