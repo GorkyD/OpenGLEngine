@@ -42,6 +42,10 @@ public:
 
     void BeginScene(int width, int height, int renderHeight = 0);
     void Resolve(const PostProcessComponent& settings, const PostFrameData& frame);
+    unsigned int DepthTexture() const
+    {
+        return depthTextureId;
+    }
 
 private:
     struct Target

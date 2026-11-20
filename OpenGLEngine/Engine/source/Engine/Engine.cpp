@@ -431,6 +431,8 @@ void Engine::OnUpdateInternal()
         postProcessPipeline->Resolve(post, frame);
     }
 
+    if (renderSystem)
+        renderSystem->SetSceneDepth(postProcessEnabled && postProcessPipeline ? postProcessPipeline->DepthTexture() : 0, windowSize.width, windowSize.height);
     if (renderSystem && renderSystem->HasDeferredOverlay())
     {
         renderEngine->SetFaceCulling(CullingType::Both);

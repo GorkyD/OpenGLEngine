@@ -64,6 +64,9 @@ class RenderSystem : public IEcsSystem
     static constexpr int ShadowMapTextureUnit = 5;
     bool overlayPassOnly = false;
     bool overlayDeferred = false;
+    unsigned int sceneDepthTexture = 0;
+    int sceneWidth = 0;
+    int sceneHeight = 0;
 
 public:
     static constexpr int MaxLights = MaxFrameLights;
@@ -72,6 +75,13 @@ public:
         renderEngine(re), uniformBuffer(ub), outlineShader(outlineShader), litInstancedShader(litInstancedShader), shadowMapSystem(shadowMapSystem)
     {
         frameUniformBuffer = renderEngine->CreateUniformBuffer({sizeof(FrameUniformData)});
+    }
+
+    void SetSceneDepth(unsigned int texture, int width, int height)
+    {
+        sceneDepthTexture = texture;
+        sceneWidth = width;
+        sceneHeight = height;
     }
 
     bool HasDeferredOverlay() const
@@ -383,7 +393,7 @@ public:
         if (!overlayPassOnly)
             drawTransparent(RenderQueue::Default);
 
-        if (outlineShader && !overlayPassOnly)
+        auto drawOutlines = [&](bool useSceneDepth)
         {
             for (auto& [entityId, outlineComponent] : world.GetPool<OutlineComponent>())
             {
@@ -401,6 +411,14 @@ public:
                 renderEngine->SetShaderProgram(outlineShader);
                 glUniform1f(outlineShader->GetUniformLocation("outlineWidth"), outlineComponent.width);
                 glUniform3f(outlineShader->GetUniformLocation("outlineColor"), outlineComponent.color[0], outlineComponent.color[1], outlineComponent.color[2]);
+                glUniform1i(outlineShader->GetUniformLocation("useSceneDepth"), useSceneDepth ? 1 : 0);
+                if (useSceneDepth)
+                {
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, sceneDepthTexture);
+                    glUniform1i(outlineShader->GetUniformLocation("sceneDepth"), 0);
+                    glUniform2f(outlineShader->GetUniformLocation("screenSize"), static_cast<float>(sceneWidth), static_cast<float>(sceneHeight));
+                }
 
                 const bool cullWasEnabled = glIsEnabled(GL_CULL_FACE) == GL_TRUE;
                 glDisable(GL_CULL_FACE);
@@ -409,6 +427,18 @@ public:
                 if (cullWasEnabled)
                     glEnable(GL_CULL_FACE);
             }
+        };
+
+        if (outlineShader && !overlayPassOnly && !(overlayDeferred && sceneDepthTexture != 0))
+            drawOutlines(false);
+
+        if (outlineShader && overlayPassOnly && sceneDepthTexture != 0)
+        {
+            const bool depthWasEnabled = glIsEnabled(GL_DEPTH_TEST) == GL_TRUE;
+            glDisable(GL_DEPTH_TEST);
+            drawOutlines(true);
+            if (depthWasEnabled)
+                glEnable(GL_DEPTH_TEST);
         }
 
         bool hasOverlay = false;
