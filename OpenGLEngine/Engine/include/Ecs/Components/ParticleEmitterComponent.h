@@ -25,6 +25,11 @@ struct ParticleEmitterComponent
     Vector3 gravity = {0, 0.15f, 0};
     Vector3 spawnAreaHalfExtents = {0, 0, 0};
 
+    Vector3 coneDirection = {0, -1, 0};
+    float coneAngle = 0.0f;
+    float coneSpeedMin = 0.5f;
+    float coneSpeedMax = 0.7f;
+
     float spawnRadius = 0.0f;
     float spawnRate = 12.0f;
     float lifetimeMin = 0.9f;

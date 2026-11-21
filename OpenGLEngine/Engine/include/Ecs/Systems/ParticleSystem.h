@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <vector>
@@ -160,7 +161,22 @@ private:
             if (emitter.spawnAreaHalfExtents.z > 0.0f)
                 particle.position.z += RandomRange(-emitter.spawnAreaHalfExtents.z, emitter.spawnAreaHalfExtents.z);
 
-            particle.velocity = {RandomRange(emitter.velocityMin.x, emitter.velocityMax.x), RandomRange(emitter.velocityMin.y, emitter.velocityMax.y), RandomRange(emitter.velocityMin.z, emitter.velocityMax.z)};
+            if (emitter.coneAngle > 0.0f)
+            {
+                const Vector3 axis = Vector3::Normalize(emitter.coneDirection);
+                const Vector3 helper = std::fabs(axis.y) < 0.9f ? Vector3(0, 1, 0) : Vector3(1, 0, 0);
+                const Vector3 side = Vector3::Normalize(Vector3::Cross(axis, helper));
+                const Vector3 other = Vector3::Cross(axis, side);
+                const float cosTheta = 1.0f - RandomRange(0.0f, 1.0f) * (1.0f - std::cos(emitter.coneAngle));
+                const float sinTheta = std::sqrt((std::max)(0.0f, 1.0f - cosTheta * cosTheta));
+                const float phi = RandomRange(0.0f, 6.2831853f);
+                const Vector3 direction = axis * cosTheta + (side * std::cos(phi) + other * std::sin(phi)) * sinTheta;
+                particle.velocity = direction * RandomRange(emitter.coneSpeedMin, emitter.coneSpeedMax);
+            }
+            else
+            {
+                particle.velocity = {RandomRange(emitter.velocityMin.x, emitter.velocityMax.x), RandomRange(emitter.velocityMin.y, emitter.velocityMax.y), RandomRange(emitter.velocityMin.z, emitter.velocityMax.z)};
+            }
             particle.lifetime = RandomRange(emitter.lifetimeMin, emitter.lifetimeMax);
             particle.age = 0.0f;
             emitter.particles.push_back(particle);
