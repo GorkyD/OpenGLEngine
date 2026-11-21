@@ -2,7 +2,7 @@ param(
     [string]$Game = "Lad",
     [string]$Version = "0.1",
     [string]$Preset = "clang-cl-release-local",
-    [string[]]$AssetDirs = @("Shaders", "Fonts", "Scenes", "Models/Cat"),
+    [string[]]$AssetDirs = @("Shaders", "Fonts", "Scenes", "Models/Cat", "Sounds"),
     [switch]$SkipBuild
 )
 

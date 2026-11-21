@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <vector>
 
 struct PluckParams
@@ -90,6 +91,8 @@ public:
     void StopAll();
     void SetMasterVolume(float volume);
     void SetRig(const RigSettings& settings);
+    int LoadWav(const std::string& path);
+    void SetLoop(int sample, float volume);
 
     void RenderOffline(std::vector<float>& outStereo, int frames);
 

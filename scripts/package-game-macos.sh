@@ -17,7 +17,7 @@ cmake --build --preset "$PRESET" --target "$GAME" -j 8
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/Assets"
 cp "$BUILD/$GAME" "$APP/Contents/MacOS/$APP_NAME"
-for dir in Shaders Fonts Scenes Models/Cat; do
+for dir in Shaders Fonts Scenes Models/Cat Sounds; do
     if [ -d "$BUILD/Assets/$dir" ]; then
         mkdir -p "$(dirname "$APP/Contents/Resources/Assets/$dir")"
         cp -R "$BUILD/Assets/$dir" "$APP/Contents/Resources/Assets/$dir"

@@ -8,6 +8,9 @@
 #include "Audio/GuitarRig.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <fstream>
 #include <iostream>
 #include <mutex>
 #include <random>
@@ -187,6 +190,11 @@ struct SynthAudio::State
     bool rigDirty = true;
     int nextId = 1;
     std::vector<std::pair<int, float>> bends;
+    std::vector<std::vector<float>> samples;
+    int loopSample = -1;
+    float loopTarget = 0.0f;
+    float loopGain = 0.0f;
+    size_t loopPosition = 0;
 
     static float DelayFor(const Voice& voice, float frequency)
     {
@@ -254,6 +262,18 @@ struct SynthAudio::State
             const float amp = rig.Process(bus);
             left += amp * 0.7f;
             right += amp * 0.7f;
+            if (loopSample >= 0 && loopSample < static_cast<int>(samples.size()) && !samples[loopSample].empty())
+            {
+                loopGain += (loopTarget - loopGain) * 0.0004f;
+                if (loopGain > 0.0005f)
+                {
+                    const std::vector<float>& data = samples[loopSample];
+                    const float value = data[loopPosition % data.size()] * loopGain;
+                    left += value;
+                    right += value;
+                }
+                loopPosition = (loopPosition + 1) % samples[loopSample].size();
+            }
             lowpass[0] += (left - lowpass[0]) * 0.45f;
             lowpass[1] += (right - lowpass[1]) * 0.45f;
             out[frame * 2 + 0] = std::tanh(lowpass[0] * masterVolume * 0.75f);
@@ -283,6 +303,7 @@ bool SynthAudio::Init()
     if (state->deviceStarted)
         return true;
 
+    state->samples.reserve(32);
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
     config.playback.format = ma_format_f32;
     config.playback.channels = 2;
@@ -363,6 +384,108 @@ void SynthAudio::SetRig(const RigSettings& settings)
     std::lock_guard<std::mutex> lock(state->mutex);
     state->pendingRig = settings;
     state->rigDirty = true;
+}
+
+int SynthAudio::LoadWav(const std::string& path)
+{
+    std::ifstream file(path, std::ios::binary);
+    if (!file)
+        return -1;
+    std::vector<unsigned char> bytes((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    if (bytes.size() < 12 || std::memcmp(bytes.data(), "RIFF", 4) != 0 || std::memcmp(bytes.data() + 8, "WAVE", 4) != 0)
+        return -1;
+    auto read16 = [&](size_t at) { return static_cast<uint32_t>(bytes[at]) | (static_cast<uint32_t>(bytes[at + 1]) << 8); };
+    auto read32 = [&](size_t at) { return read16(at) | (read16(at + 2) << 16); };
+    uint32_t format = 0;
+    uint32_t channels = 0;
+    uint32_t rate = 0;
+    uint32_t bits = 0;
+    size_t dataAt = 0;
+    size_t dataSize = 0;
+    size_t at = 12;
+    while (at + 8 <= bytes.size())
+    {
+        const uint32_t size = read32(at + 4);
+        if (std::memcmp(bytes.data() + at, "fmt ", 4) == 0 && at + 24 <= bytes.size())
+        {
+            format = read16(at + 8);
+            channels = read16(at + 10);
+            rate = read32(at + 12);
+            bits = read16(at + 22);
+            if (format == 0xFFFE && at + 34 <= bytes.size())
+                format = read16(at + 32);
+        }
+        else if (std::memcmp(bytes.data() + at, "data", 4) == 0)
+        {
+            dataAt = at + 8;
+            dataSize = (std::min)(static_cast<size_t>(size), bytes.size() - dataAt);
+            break;
+        }
+        at += 8 + size + (size & 1u);
+    }
+    if (dataAt == 0 || channels == 0 || rate == 0 || (bits != 16 && bits != 24 && bits != 32))
+        return -1;
+    const size_t frameBytes = static_cast<size_t>(bits / 8) * channels;
+    const size_t frames = dataSize / frameBytes;
+    std::vector<float> mono(frames);
+    for (size_t i = 0; i < frames; i++)
+    {
+        float sum = 0.0f;
+        for (uint32_t c = 0; c < channels; c++)
+        {
+            const size_t p = dataAt + i * frameBytes + c * (bits / 8);
+            float value = 0.0f;
+            if (bits == 16)
+                value = static_cast<int16_t>(read16(p)) / 32768.0f;
+            else if (bits == 24)
+                value = static_cast<float>(static_cast<int32_t>((read16(p) << 8) | (static_cast<uint32_t>(bytes[p + 2]) << 24)) >> 8) / 8388608.0f;
+            else if (format == 3)
+            {
+                const uint32_t raw = read32(p);
+                std::memcpy(&value, &raw, sizeof(float));
+            }
+            else
+                value = static_cast<float>(static_cast<int32_t>(read32(p))) / 2147483648.0f;
+            sum += value;
+        }
+        mono[i] = sum / static_cast<float>(channels);
+    }
+    std::vector<float> resampled;
+    const double step = static_cast<double>(rate) / SampleRate;
+    const size_t outFrames = static_cast<size_t>(frames / step);
+    resampled.reserve(outFrames);
+    for (size_t i = 0; i < outFrames; i++)
+    {
+        const double source = i * step;
+        const size_t i0 = static_cast<size_t>(source);
+        const size_t i1 = (std::min)(i0 + 1, frames - 1);
+        const float t = static_cast<float>(source - static_cast<double>(i0));
+        resampled.push_back(mono[i0] + (mono[i1] - mono[i0]) * t);
+    }
+    const size_t fade = (std::min)(resampled.size() / 4, static_cast<size_t>(SampleRate / 5));
+    for (size_t i = 0; i < fade; i++)
+    {
+        const float t = static_cast<float>(i) / static_cast<float>(fade);
+        const size_t tail = resampled.size() - fade + i;
+        resampled[i] = resampled[i] * t + resampled[tail] * (1.0f - t);
+    }
+    resampled.resize(resampled.size() - fade);
+    std::lock_guard<std::mutex> lock(state->mutex);
+    if (state->samples.size() >= state->samples.capacity())
+        return -1;
+    state->samples.push_back(std::move(resampled));
+    return static_cast<int>(state->samples.size()) - 1;
+}
+
+void SynthAudio::SetLoop(int sample, float volume)
+{
+    std::lock_guard<std::mutex> lock(state->mutex);
+    if (sample != state->loopSample && state->loopGain < 0.001f)
+    {
+        state->loopSample = sample;
+        state->loopPosition = 0;
+    }
+    state->loopTarget = (std::max)(0.0f, volume);
 }
 
 void SynthAudio::RenderOffline(std::vector<float>& outStereo, int frames)
