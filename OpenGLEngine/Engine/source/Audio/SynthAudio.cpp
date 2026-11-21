@@ -190,6 +190,7 @@ struct SynthAudio::State
     bool rigDirty = true;
     int nextId = 1;
     std::vector<std::pair<int, float>> bends;
+    std::vector<int> releases;
     std::vector<std::vector<float>> samples;
     int loopSample = -1;
     float loopTarget = 0.0f;
@@ -234,6 +235,18 @@ struct SynthAudio::State
                 }
             }
             bends.clear();
+            for (const int released : releases)
+            {
+                for (std::vector<Voice>* list : {&voices, &pending})
+                {
+                    for (Voice& voice : *list)
+                    {
+                        if (voice.id == released && voice.kind == Voice::Kind::Pluck)
+                            voice.sustain = (std::min)(voice.sustain, 0.86f);
+                    }
+                }
+            }
+            releases.clear();
             if (rigDirty)
             {
                 rig.Configure(pendingRig, static_cast<float>(SampleRate));
@@ -354,6 +367,14 @@ void SynthAudio::Bend(int voice, float frequency)
         return;
     std::lock_guard<std::mutex> lock(state->mutex);
     state->bends.emplace_back(voice, frequency);
+}
+
+void SynthAudio::Release(int voice)
+{
+    if (voice <= 0)
+        return;
+    std::lock_guard<std::mutex> lock(state->mutex);
+    state->releases.push_back(voice);
 }
 
 void SynthAudio::Tone(float frequency, float seconds, float volume)
