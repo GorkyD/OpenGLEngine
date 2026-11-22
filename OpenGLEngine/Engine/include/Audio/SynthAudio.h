@@ -32,7 +32,9 @@ enum class RigPedal
     Overdrive,
     Distortion,
     BigFuzz,
-    RoughFuzz
+    RoughFuzz,
+    Delay,
+    SpringReverb
 };
 
 enum class RigAmp

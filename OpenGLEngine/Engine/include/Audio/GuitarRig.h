@@ -33,6 +33,7 @@ class GuitarRig
 public:
     void Configure(const RigSettings& settings, float sampleRate);
     float Process(float x);
+    void Process(float x, float& left, float& right);
     void Reset();
 
 private:
@@ -60,19 +61,55 @@ private:
         int index = 0;
     };
 
+    struct Echo
+    {
+        std::vector<float> left;
+        std::vector<float> right;
+        int index = 0;
+        float time = 0.4f;
+        float feedback = 0.4f;
+        float mix = 0.0f;
+        float wow = 0.0f;
+        Biquad toneLeft;
+        Biquad toneRight;
+        Biquad lowLeft;
+        Biquad lowRight;
+    };
+
+    struct Room
+    {
+        std::array<Comb, 8> left;
+        std::array<Comb, 8> right;
+        std::array<AllPass, 4> passLeft;
+        std::array<AllPass, 4> passRight;
+        Biquad inputCut;
+        Biquad inputTop;
+        float feedback = 0.84f;
+        float damping = 0.25f;
+        float mix = 0.0f;
+        float spring = 0.0f;
+    };
+
     float Pedal(PedalState& pedal, float x);
-    float Amp(float x);
-    float Reverb(float x);
+    float Drive(float x);
+    float PreAmp(float x);
+    float PowerAmp(float x);
+    void Delay(float x, float& left, float& right);
+    void Reverb(Room& room, float x, float& left, float& right);
     float Shape(float x, float gain, float bias) const;
+    static bool TimeBased(RigPedal type);
 
     RigSettings settings;
     float sampleRate = 48000.0f;
+    float overRate = 192000.0f;
     std::array<Biquad, 3> pickup;
     float pickupGain = 1.0f;
     std::vector<PedalState> pedals;
     std::array<Biquad, 4> pre;
     std::array<Biquad, 4> stack;
     std::array<Biquad, 6> cabinet;
+    std::array<Biquad, 2> antiAlias;
+    std::array<Biquad, 2> inputGuard;
     float preGain = 1.0f;
     float powerGain = 1.0f;
     float outputGain = 1.0f;
@@ -81,10 +118,14 @@ private:
     float sag = 0.0f;
     float sagAmount = 0.0f;
     float previousInput = 0.0f;
-    float reverbMix = 0.0f;
-    std::array<Comb, 4> combs;
-    std::array<AllPass, 2> allPasses;
-    Biquad reverbTone;
+    float previousSample = 0.0f;
+    float ampReverb = 0.0f;
+    Room room;
+    Room spring;
+    Echo echo;
+    bool echoOn = false;
+    bool springOn = false;
     float humPhase = 0.0f;
     float humLevel = 0.0f;
+    float wowPhase = 0.0f;
 };

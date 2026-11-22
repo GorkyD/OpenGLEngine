@@ -157,8 +157,15 @@ Voice MakePluck(const PluckParams& params, unsigned int seed)
     {
         const float phase = static_cast<float>(i) / static_cast<float>(period);
         const float shape = phase < pickPoint ? phase / pickPoint : (1.0f - phase) / (1.0f - pickPoint);
-        const float raw = shape * 1.6f - 0.8f + voice.NextNoise() * 0.15f;
-        smooth = smooth + (raw - smooth) * (0.2f + 0.35f * voice.brightness);
+        float raw = shape * 1.6f - 0.8f + voice.NextNoise() * 0.15f;
+        float follow = 0.2f + 0.35f * voice.brightness;
+        if (voice.rig)
+        {
+            const float slope = phase < pickPoint ? 1.0f : -pickPoint / (1.0f - pickPoint);
+            raw = raw * 0.55f + slope * 0.5f + voice.NextNoise() * 0.08f;
+            follow = 0.45f + 0.4f * voice.brightness;
+        }
+        smooth = smooth + (raw - smooth) * follow;
         voice.line[i] = smooth;
         mean += smooth;
     }
@@ -272,9 +279,9 @@ struct SynthAudio::State
                 left += sample * voice.panLeft;
                 right += sample * voice.panRight;
             }
-            const float amp = rig.Process(bus);
-            left += amp * 0.7f;
-            right += amp * 0.7f;
+            float ampLeft = 0.0f;
+            float ampRight = 0.0f;
+            rig.Process(bus, ampLeft, ampRight);
             if (loopSample >= 0 && loopSample < static_cast<int>(samples.size()) && !samples[loopSample].empty())
             {
                 loopGain += (loopTarget - loopGain) * 0.0004f;
@@ -289,8 +296,8 @@ struct SynthAudio::State
             }
             lowpass[0] += (left - lowpass[0]) * 0.45f;
             lowpass[1] += (right - lowpass[1]) * 0.45f;
-            out[frame * 2 + 0] = std::tanh(lowpass[0] * masterVolume * 0.75f);
-            out[frame * 2 + 1] = std::tanh(lowpass[1] * masterVolume * 0.75f);
+            out[frame * 2 + 0] = std::tanh((lowpass[0] + ampLeft * 0.7f) * masterVolume * 0.75f);
+            out[frame * 2 + 1] = std::tanh((lowpass[1] + ampRight * 0.7f) * masterVolume * 0.75f);
         }
 
         voices.erase(std::remove_if(voices.begin(), voices.end(), [](const Voice& voice) { return voice.finished; }), voices.end());
