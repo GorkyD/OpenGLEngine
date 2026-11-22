@@ -13,6 +13,7 @@
 #include "Ecs/Components/TransformComponent.h"
 #include "Ecs/Components/VisibilityComponent.h"
 #include "Ecs/Components/WorldTransformComponent.h"
+#include "Ecs/Components/XrayCutoutComponent.h"
 #include "Ecs/Core/IEcsSystem.h"
 #include "Ecs/Systems/ShadowMapSystem.h"
 #include "Render/RenderEngine.h"
@@ -174,6 +175,7 @@ public:
             int hasMetallicMap = 0;
             int hasAoMap = 0;
             bool doubleSided = false;
+            int cutoutImmune = 0;
 
             auto bindTexture = [](int unit, const TexturePtr& texture, int& hasFlag)
             {
@@ -193,6 +195,7 @@ public:
                 roughnessScalar = mat.roughness;
                 metallicScalar = mat.metallic;
                 doubleSided = mat.doubleSided;
+                cutoutImmune = mat.cutoutImmune ? 1 : 0;
                 bindTexture(0, mat.diffuseTexture, hasTexture);
                 bindTexture(1, mat.normalTexture, hasNormalMap);
                 bindTexture(2, mat.roughnessTexture, hasRoughnessMap);
@@ -233,6 +236,7 @@ public:
                 glUniform1f(shader->GetUniformLocation("metallicScalar"), metallicScalar);
 
                 glUniform1i(shader->GetUniformLocation("bypassSpotCone"), mesh.renderQueue == RenderQueue::Overlay ? 1 : 0);
+                glUniform1i(shader->GetUniformLocation("cutoutImmune"), cutoutImmune || mesh.renderQueue == RenderQueue::Overlay ? 1 : 0);
                 glUniform2f(shader->GetUniformLocation("psxSnapGrid"), psxSnapGrid[0], psxSnapGrid[1]);
 
                 float normalMatrix[9];
@@ -643,6 +647,21 @@ private:
         data.shadowBias = shadowsAvailable ? shadowMapSystem->GetShadowBias() : 0.0025f;
         data.shadowAmbientOcclusion = shadowsAvailable ? shadowMapSystem->GetShadowAmbientOcclusion() : 1.0f;
         data.shadowNormalBias = shadowsAvailable ? shadowMapSystem->GetShadowNormalBias() : 0.05f;
+        data.cutoutCount = 0;
+        for (auto& [entityId, cutout] : world.GetPool<XrayCutoutComponent>())
+        {
+            data.cutoutCount = (std::min)(cutout.count, 4);
+            data.cutoutRadius = cutout.radius;
+            data.cutoutDepthMargin = cutout.depthMargin;
+            for (int c = 0; c < data.cutoutCount; c++)
+            {
+                data.cutoutCenters[c][0] = cutout.centers[c].x;
+                data.cutoutCenters[c][1] = cutout.centers[c].y;
+                data.cutoutCenters[c][2] = cutout.centers[c].z;
+                data.cutoutCenters[c][3] = 1.0f;
+            }
+            break;
+        }
 
         psxSnapGrid[0] = 0.0f;
         psxSnapGrid[1] = 0.0f;

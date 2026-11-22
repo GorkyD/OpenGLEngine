@@ -21,4 +21,5 @@ struct MaterialComponent
     float metallic = 0.0f;
 
     bool doubleSided = false;
+    bool cutoutImmune = false;
 };

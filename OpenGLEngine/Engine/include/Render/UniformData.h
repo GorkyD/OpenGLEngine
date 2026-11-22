@@ -37,7 +37,10 @@ struct FrameUniformData
     float shadowBias;
     float shadowAmbientOcclusion;
     float shadowNormalBias;
-    float padding[3];
+    float cutoutRadius;
+    float cutoutDepthMargin;
+    int cutoutCount;
+    float cutoutCenters[4][4];
 };
 
 static_assert(sizeof(Matrix4) == 64);
@@ -45,4 +48,5 @@ static_assert(offsetof(FrameUniformData, lightColorIntensity) == 64);
 static_assert(offsetof(FrameUniformData, viewPos) == 64 + MaxFrameLights * 16 * 4);
 static_assert(offsetof(FrameUniformData, fogRadialEnd) == offsetof(FrameUniformData, viewPos) + 64);
 static_assert(offsetof(FrameUniformData, shadowNormalBias) == offsetof(FrameUniformData, viewPos) + 96);
+static_assert(offsetof(FrameUniformData, cutoutCenters) == offsetof(FrameUniformData, viewPos) + 112);
 static_assert(sizeof(FrameUniformData) % 16 == 0);

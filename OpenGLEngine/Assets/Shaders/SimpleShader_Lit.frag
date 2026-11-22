@@ -50,9 +50,14 @@ layout(std140) uniform FrameData
     float shadowBias;
     float shadowAmbientOcclusion;
     float shadowNormalBias;
+    float cutoutRadius;
+    float cutoutDepthMargin;
+    int cutoutCount;
+    vec4 cutoutCenters[4];
 };
 
 uniform int bypassSpotCone;
+uniform int cutoutImmune;
 
 uniform sampler2D shadowMap;
 
@@ -154,6 +159,26 @@ void main()
 
     if (texColor.a * diffuseColor.a < 0.5)
         discard;
+
+    if (cutoutImmune == 0)
+    {
+        for (int c = 0; c < cutoutCount; c++)
+        {
+            vec3 toTarget = cutoutCenters[c].xyz - viewPos;
+            float targetDistance = length(toTarget);
+            vec3 rayDir = toTarget / max(targetDistance, 1e-5);
+            vec3 toFrag = fragWorldPos - viewPos;
+            float along = dot(toFrag, rayDir);
+            if (along > 0.0 && along < targetDistance && fragWorldPos.y - cutoutCenters[c].y > cutoutDepthMargin)
+            {
+                float side = length(toFrag - rayDir * along);
+                float radius = cutoutRadius * clamp(along / targetDistance, 0.15, 1.0);
+                float dither = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+                if (side < radius * (0.72 + 0.28 * dither))
+                    discard;
+            }
+        }
+    }
 
     vec3 albedo = texColor.rgb * diffuseColor.rgb * fragVertexColor.rgb;
 

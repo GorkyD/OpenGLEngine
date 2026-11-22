@@ -39,6 +39,10 @@ layout(std140) uniform FrameData
     float shadowBias;
     float shadowAmbientOcclusion;
     float shadowNormalBias;
+    float cutoutRadius;
+    float cutoutDepthMargin;
+    int cutoutCount;
+    vec4 cutoutCenters[4];
 };
 
 uniform sampler2D shadowMap;
