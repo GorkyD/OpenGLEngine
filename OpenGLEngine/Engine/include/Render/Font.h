@@ -2,7 +2,9 @@
 
 #include "Extension/Extension.h"
 #include "Math/Vector4.h"
+#include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 struct FontGlyphVertex
@@ -50,6 +52,13 @@ private:
 
     std::vector<unsigned char> packedChars;
     std::vector<unsigned char> atlasCoverage;
+    struct GlyphBitmap
+    {
+        int width = 0;
+        int height = 0;
+        std::vector<float> coverage;
+    };
+    mutable std::unordered_map<uint64_t, GlyphBitmap> glyphBitmaps;
     std::vector<GlyphRange> ranges;
 
     float pixelHeight = 48.0f;
