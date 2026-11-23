@@ -16,7 +16,7 @@ find_package(glfw3 3.3 REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(assimp REQUIRED)
 find_package(imgui CONFIG REQUIRED)
-find_path(MINIAUDIO_INCLUDE_DIR miniaudio.h REQUIRED)
+set(MINIAUDIO_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/OpenGLEngine/Engine/miniaudio")
 
 include(cmake/WwiseSetup.cmake)
 
@@ -186,6 +186,9 @@ target_link_libraries(OpenGLEngineCore PUBLIC
 
 if (WIN32)
     target_link_libraries(OpenGLEngineCore PUBLIC winmm)
+endif ()
+if (APPLE)
+    target_link_libraries(OpenGLEngineCore PUBLIC "-framework CoreAudio" "-framework AudioToolbox" "-framework AudioUnit" "-framework CoreFoundation")
 endif ()
 
 target_compile_definitions(OpenGLEngineCore PUBLIC GL_SILENCE_DEPRECATION)
