@@ -68,7 +68,7 @@ if (Test-Path $zip) { Remove-Item -Force $zip }
 Compress-Archive -Path (Join-Path $gameDist "*") -DestinationPath $zip
 Write-Host "Portable archive: $zip"
 
-$iss = Join-Path $root "OpenGLEngine/Game/$Game/Installer/$Game.iss"
+$iss = Join-Path $root "OpenGLEngine/Game/$Game/Installer/$Target.iss"
 $iscc = @(
     (Get-Command iscc -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source),
     "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
@@ -76,7 +76,7 @@ $iscc = @(
     "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
 ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 
-if ($NoInstaller -or $Target -ne $Game) {
+if ($NoInstaller) {
     Write-Host "Installer skipped for $Target"
 } elseif ((Test-Path $iss) -and $iscc) {
     & $iscc "/DSourceDir=$gameDist" "/DOutputDir=$distDir" "/DAppVersion=$Version" $iss
