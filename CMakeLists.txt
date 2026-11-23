@@ -237,6 +237,10 @@ foreach (_gameMain ${GAME_MAIN_SOURCES})
         target_link_options(${_gameTarget} PRIVATE "$<$<CONFIG:Release>:/SUBSYSTEM:WINDOWS>" "$<$<CONFIG:Release>:/ENTRY:mainCRTStartup>")
     endif ()
 
+    if (EXISTS "${_gameDir}/Game.cmake")
+        include("${_gameDir}/Game.cmake")
+    endif ()
+
     message(STATUS "Game executable: ${_gameTarget} (${_gameName})")
 endforeach ()
 
