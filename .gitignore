@@ -74,3 +74,4 @@ run_err.log
 !/OpenGLEngine/Game/Demo/
 
 /dist/
+/imgui.ini

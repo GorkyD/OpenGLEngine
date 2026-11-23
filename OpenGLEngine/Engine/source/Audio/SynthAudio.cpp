@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -324,6 +325,8 @@ bool SynthAudio::Init()
         return true;
 
     state->samples.reserve(32);
+    if (std::getenv("OGL_MUTE"))
+        state->masterVolume = 0.0f;
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
     config.playback.format = ma_format_f32;
     config.playback.channels = 2;
@@ -404,7 +407,7 @@ void SynthAudio::StopAll()
 
 void SynthAudio::SetMasterVolume(float volume)
 {
-    state->masterVolume = std::clamp(volume, 0.0f, 2.0f);
+    state->masterVolume = std::getenv("OGL_MUTE") ? 0.0f : std::clamp(volume, 0.0f, 2.0f);
 }
 
 void SynthAudio::SetRig(const RigSettings& settings)
