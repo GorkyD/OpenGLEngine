@@ -19,6 +19,31 @@ struct PluckParams
     int pickupTapCount = 0;
 };
 
+enum class SfxSource
+{
+    Noise,
+    Creak,
+    Crackle
+};
+
+struct SfxParams
+{
+    SfxSource source = SfxSource::Noise;
+    float volume = 0.3f;
+    float attack = 0.004f;
+    float decay = 0.0f;
+    float release = 0.08f;
+    float center = 1200.0f;
+    float q = 1.0f;
+    float sweep = 0.0f;
+    float rate = 30.0f;
+    float jitter = 0.3f;
+    float body = 0.0f;
+    float bodyLevel = 0.0f;
+    float pan = 0.0f;
+    float level = 1.0f;
+};
+
 enum class RigPickup
 {
     SingleCoil,
@@ -91,6 +116,8 @@ public:
     void Bend(int voice, float frequency);
     void Release(int voice);
     void Tone(float frequency, float seconds, float volume);
+    int Sfx(const SfxParams& params);
+    void SetSfx(int voice, float level, float rate);
     void StopAll();
     void SetMasterVolume(float volume);
     void SetRig(const RigSettings& settings);

@@ -18,7 +18,7 @@
 
 namespace
 {
-constexpr int MaxVoices = 32;
+constexpr int MaxVoices = 48;
 constexpr float Pi = 3.14159265358979f;
 
 struct Voice
@@ -26,7 +26,8 @@ struct Voice
     enum class Kind
     {
         Pluck,
-        Tone
+        Tone,
+        Sfx
     };
 
     Kind kind = Kind::Pluck;
@@ -54,6 +55,97 @@ struct Voice
     float taps[4] = {0.0f, 0.0f, 0.0f, 0.0f};
     int tapCount = 0;
     unsigned int noise = 22222u;
+    SfxSource source = SfxSource::Noise;
+    float attack = 0.004f;
+    float decay = 0.0f;
+    float releaseCoefficient = 0.999f;
+    float releaseGain = 1.0f;
+    bool released = false;
+    float center = 1200.0f;
+    float damping = 1.0f;
+    float sweep = 0.0f;
+    float rate = 30.0f;
+    float jitter = 0.3f;
+    float bodyFrequency = 0.0f;
+    float bodyLevel = 0.0f;
+    float level = 1.0f;
+    float levelTarget = 1.0f;
+    float rateScale = 1.0f;
+    float rateTarget = 1.0f;
+    float pulse = 0.0f;
+    float click = 0.0f;
+    float svfLow = 0.0f;
+    float svfBand = 0.0f;
+
+    float Uniform()
+    {
+        return (NextNoise() + 1.0f) * 0.5f;
+    }
+
+    float NextSfx(float dt)
+    {
+        level += (levelTarget - level) * 0.0015f;
+        rateScale += (rateTarget - rateScale) * 0.0015f;
+        float envelope = attack > 0.0f ? (std::min)(1.0f, age / attack) : 1.0f;
+        if (decay > 0.0f)
+        {
+            envelope *= std::exp(-age / decay);
+            if (age > attack + decay * 10.0f)
+                finished = true;
+        }
+        if (released)
+        {
+            releaseGain *= releaseCoefficient;
+            envelope *= releaseGain;
+            if (releaseGain < 0.0001f)
+                finished = true;
+        }
+        float input = 0.0f;
+        if (source == SfxSource::Noise)
+        {
+            input = NextNoise();
+        }
+        else if (source == SfxSource::Creak)
+        {
+            pulse += rate * rateScale * dt * (1.0f + jitter * NextNoise());
+            if (pulse >= 1.0f)
+            {
+                pulse -= std::floor(pulse);
+                click = 0.6f + 0.4f * Uniform();
+            }
+            input = click + NextNoise() * 0.04f;
+            click *= 0.55f;
+        }
+        else
+        {
+            if (Uniform() < rate * rateScale * dt)
+                click = (NextNoise() > 0.0f ? 1.0f : -1.0f) * (0.4f + 0.6f * Uniform());
+            input = click + NextNoise() * 0.08f;
+            click *= 0.5f;
+        }
+        float frequency = center * std::pow(2.0f, sweep * age);
+        if (source == SfxSource::Noise)
+            frequency *= 0.75f + 0.25f * rateScale;
+        frequency = std::clamp(frequency, 30.0f, static_cast<float>(SynthAudio::SampleRate) * 0.45f);
+        const float g = std::tan(Pi * frequency / static_cast<float>(SynthAudio::SampleRate));
+        const float a1 = 1.0f / (1.0f + g * (g + damping));
+        const float a2 = g * a1;
+        const float a3 = g * a2;
+        const float v3 = input - svfLow;
+        const float v1 = a1 * svfBand + a2 * v3;
+        const float v2 = svfLow + a2 * svfBand + a3 * v3;
+        svfBand = 2.0f * v1 - svfBand;
+        svfLow = 2.0f * v2 - svfLow;
+        float sample = v1 * damping;
+        if (bodyLevel > 0.0f)
+        {
+            phase += 2.0f * Pi * bodyFrequency * dt;
+            if (phase > 2.0f * Pi)
+                phase -= 2.0f * Pi;
+            sample += std::sin(phase) * bodyLevel;
+        }
+        return sample * volume * envelope * level;
+    }
 
     float NextNoise()
     {
@@ -77,6 +169,9 @@ struct Voice
     {
         const float dt = 1.0f / SynthAudio::SampleRate;
         age += dt;
+
+        if (kind == Kind::Sfx)
+            return NextSfx(dt);
 
         if (kind == Kind::Tone)
         {
@@ -198,6 +293,13 @@ struct SynthAudio::State
     bool rigDirty = true;
     int nextId = 1;
     std::vector<std::pair<int, float>> bends;
+    struct SfxControl
+    {
+        int id;
+        float level;
+        float rate;
+    };
+    std::vector<SfxControl> controls;
     std::vector<int> releases;
     std::vector<std::vector<float>> samples;
     int loopSample = -1;
@@ -227,7 +329,10 @@ struct SynthAudio::State
             for (Voice& voice : pending)
             {
                 if (voices.size() >= MaxVoices)
-                    voices.erase(voices.begin());
+                {
+                    auto oldest = std::find_if(voices.begin(), voices.end(), [](const Voice& v) { return !(v.kind == Voice::Kind::Sfx && v.decay <= 0.0f && !v.released); });
+                    voices.erase(oldest != voices.end() ? oldest : voices.begin());
+                }
                 voices.push_back(std::move(voice));
             }
             pending.clear();
@@ -251,10 +356,27 @@ struct SynthAudio::State
                     {
                         if (voice.id == released && voice.kind == Voice::Kind::Pluck)
                             voice.sustain = (std::min)(voice.sustain, 0.86f);
+                        if (voice.id == released && voice.kind == Voice::Kind::Sfx)
+                            voice.released = true;
                     }
                 }
             }
             releases.clear();
+            for (const SfxControl& control : controls)
+            {
+                for (std::vector<Voice>* list : {&voices, &pending})
+                {
+                    for (Voice& voice : *list)
+                    {
+                        if (voice.id == control.id && voice.kind == Voice::Kind::Sfx)
+                        {
+                            voice.levelTarget = control.level;
+                            voice.rateTarget = control.rate;
+                        }
+                    }
+                }
+            }
+            controls.clear();
             if (rigDirty)
             {
                 rig.Configure(pendingRig, static_cast<float>(SampleRate));
@@ -267,11 +389,19 @@ struct SynthAudio::State
             float left = 0.0f;
             float right = 0.0f;
             float bus = 0.0f;
+            float effectLeft = 0.0f;
+            float effectRight = 0.0f;
             for (Voice& voice : voices)
             {
                 if (voice.finished)
                     continue;
                 const float sample = voice.Next();
+                if (voice.kind == Voice::Kind::Sfx)
+                {
+                    effectLeft += sample * voice.panLeft;
+                    effectRight += sample * voice.panRight;
+                    continue;
+                }
                 if (voice.rig)
                 {
                     bus += sample;
@@ -297,8 +427,8 @@ struct SynthAudio::State
             }
             lowpass[0] += (left - lowpass[0]) * 0.45f;
             lowpass[1] += (right - lowpass[1]) * 0.45f;
-            out[frame * 2 + 0] = std::tanh((lowpass[0] + ampLeft * 0.7f) * masterVolume * 0.75f);
-            out[frame * 2 + 1] = std::tanh((lowpass[1] + ampRight * 0.7f) * masterVolume * 0.75f);
+            out[frame * 2 + 0] = std::tanh((lowpass[0] + ampLeft * 0.7f + effectLeft) * masterVolume * 0.75f);
+            out[frame * 2 + 1] = std::tanh((lowpass[1] + ampRight * 0.7f + effectRight) * masterVolume * 0.75f);
         }
 
         voices.erase(std::remove_if(voices.begin(), voices.end(), [](const Voice& voice) { return voice.finished; }), voices.end());
@@ -396,6 +526,44 @@ void SynthAudio::Tone(float frequency, float seconds, float volume)
     voice.volume = volume;
     std::lock_guard<std::mutex> lock(state->mutex);
     state->pending.push_back(std::move(voice));
+}
+
+int SynthAudio::Sfx(const SfxParams& params)
+{
+    Voice voice;
+    voice.kind = Voice::Kind::Sfx;
+    voice.source = params.source;
+    voice.volume = params.volume;
+    voice.attack = (std::max)(0.0f, params.attack);
+    voice.decay = (std::max)(0.0f, params.decay);
+    voice.releaseCoefficient = std::exp(-1.0f / ((std::max)(0.005f, params.release) * static_cast<float>(SampleRate)));
+    voice.center = params.center;
+    voice.damping = 1.0f / (std::max)(0.3f, params.q);
+    voice.sweep = params.sweep;
+    voice.rate = params.rate;
+    voice.jitter = params.jitter;
+    voice.bodyFrequency = params.body;
+    voice.bodyLevel = params.bodyLevel;
+    voice.level = params.level;
+    voice.levelTarget = params.level;
+    const float pan = std::clamp(params.pan, -1.0f, 1.0f);
+    voice.panLeft = std::cos((pan + 1.0f) * Pi * 0.25f);
+    voice.panRight = std::sin((pan + 1.0f) * Pi * 0.25f);
+    std::lock_guard<std::mutex> lock(state->mutex);
+    state->seed = state->seed * 747796405u + 2891336453u;
+    voice.noise = state->seed;
+    voice.id = state->nextId++;
+    const int id = voice.id;
+    state->pending.push_back(std::move(voice));
+    return id;
+}
+
+void SynthAudio::SetSfx(int voice, float level, float rate)
+{
+    if (voice <= 0)
+        return;
+    std::lock_guard<std::mutex> lock(state->mutex);
+    state->controls.push_back({voice, level, rate});
 }
 
 void SynthAudio::StopAll()
