@@ -41,7 +41,7 @@ Window::Window(bool windowed, const char* title)
     }
     else if (mode)
     {
-#ifdef __APPLE__
+#ifndef _WIN32
         window = glfwCreateWindow(mode->width, mode->height, title, monitor, nullptr);
 #else
         glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);

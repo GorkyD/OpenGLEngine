@@ -92,6 +92,15 @@
       }
     },
     {
+      "name": "clang-release-linux",
+      "displayName": "Clang Release Linux (Ninja + vcpkg)",
+      "inherits": "clang-debug-linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "OPENGLENGINE_ENABLE_WWISE": "OFF"
+      }
+    },
+    {
       "name": "clang-debug-macos",
       "displayName": "Clang Debug macOS (Ninja + vcpkg)",
       "inherits": "base-debug-macos",
@@ -140,6 +149,10 @@
     {
       "name": "clang-debug-linux",
       "configurePreset": "clang-debug-linux"
+    },
+    {
+      "name": "clang-release-linux",
+      "configurePreset": "clang-release-linux"
     },
     {
       "name": "clang-debug-macos",
