@@ -16,6 +16,7 @@ find_package(glfw3 3.3 REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(assimp REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_path(MINIAUDIO_INCLUDE_DIR miniaudio.h REQUIRED)
 
 include(cmake/WwiseSetup.cmake)
 
@@ -172,6 +173,8 @@ if (OPENGLENGINE_ENABLE_WWISE AND WWISE_SDK_ROOT)
 else ()
     target_compile_definitions(OpenGLEngineCore PUBLIC OPENGLENGINE_USE_WWISE=0)
 endif ()
+
+target_include_directories(OpenGLEngineCore PUBLIC "${MINIAUDIO_INCLUDE_DIR}")
 
 target_link_libraries(OpenGLEngineCore PUBLIC
         glad
