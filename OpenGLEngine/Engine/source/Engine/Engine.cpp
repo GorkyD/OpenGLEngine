@@ -293,6 +293,10 @@ void Engine::OnCreate()
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+#ifdef __APPLE__
+    if (mode == EngineMode::Play)
+        ImGui::GetIO().IniFilename = nullptr;
+#endif
     if (FILE* fontFile = std::fopen("Assets/Fonts/JetBrainsMono-Regular.ttf", "rb"))
     {
         std::fclose(fontFile);

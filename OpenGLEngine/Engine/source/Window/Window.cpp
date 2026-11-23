@@ -14,6 +14,7 @@ Window::Window(bool windowed, const char* title)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
 #endif
 
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
@@ -40,9 +41,13 @@ Window::Window(bool windowed, const char* title)
     }
     else if (mode)
     {
+#ifdef __APPLE__
+        window = glfwCreateWindow(mode->width, mode->height, title, monitor, nullptr);
+#else
         glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
         window = glfwCreateWindow(mode->width, mode->height, title, nullptr, nullptr);
         glfwSetWindowPos(window, 0, 0);
+#endif
     }
     else
     {
