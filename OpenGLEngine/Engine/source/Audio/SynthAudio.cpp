@@ -56,6 +56,7 @@ struct Voice
     int tapCount = 0;
     unsigned int noise = 22222u;
     SfxSource source = SfxSource::Noise;
+    bool persistent = false;
     float attack = 0.004f;
     float decay = 0.0f;
     float releaseCoefficient = 0.999f;
@@ -286,6 +287,7 @@ struct SynthAudio::State
     std::vector<Voice> pending;
     float masterVolume = 0.8f;
     float lowpass[2] = {0.0f, 0.0f};
+    float effectLowpass[2] = {0.0f, 0.0f};
     unsigned int seed = 12345u;
     bool stopRequested = false;
     GuitarRig rig;
@@ -323,14 +325,14 @@ struct SynthAudio::State
             std::lock_guard<std::mutex> lock(mutex);
             if (stopRequested)
             {
-                voices.clear();
+                voices.erase(std::remove_if(voices.begin(), voices.end(), [](const Voice& v) { return !v.persistent; }), voices.end());
                 stopRequested = false;
             }
             for (Voice& voice : pending)
             {
                 if (voices.size() >= MaxVoices)
                 {
-                    auto oldest = std::find_if(voices.begin(), voices.end(), [](const Voice& v) { return !(v.kind == Voice::Kind::Sfx && v.decay <= 0.0f && !v.released); });
+                    auto oldest = std::find_if(voices.begin(), voices.end(), [](const Voice& v) { return !v.persistent && !(v.kind == Voice::Kind::Sfx && v.decay <= 0.0f && !v.released); });
                     voices.erase(oldest != voices.end() ? oldest : voices.begin());
                 }
                 voices.push_back(std::move(voice));
@@ -427,8 +429,10 @@ struct SynthAudio::State
             }
             lowpass[0] += (left - lowpass[0]) * 0.45f;
             lowpass[1] += (right - lowpass[1]) * 0.45f;
-            out[frame * 2 + 0] = std::tanh((lowpass[0] + ampLeft * 0.7f + effectLeft) * masterVolume * 0.75f);
-            out[frame * 2 + 1] = std::tanh((lowpass[1] + ampRight * 0.7f + effectRight) * masterVolume * 0.75f);
+            effectLowpass[0] += (effectLeft - effectLowpass[0]) * 0.52f;
+            effectLowpass[1] += (effectRight - effectLowpass[1]) * 0.52f;
+            out[frame * 2 + 0] = std::tanh((lowpass[0] + ampLeft * 0.7f + effectLowpass[0] * 0.45f) * masterVolume * 0.6f);
+            out[frame * 2 + 1] = std::tanh((lowpass[1] + ampRight * 0.7f + effectLowpass[1] * 0.45f) * masterVolume * 0.6f);
         }
 
         voices.erase(std::remove_if(voices.begin(), voices.end(), [](const Voice& voice) { return voice.finished; }), voices.end());
@@ -546,6 +550,7 @@ int SynthAudio::Sfx(const SfxParams& params)
     voice.bodyLevel = params.bodyLevel;
     voice.level = params.level;
     voice.levelTarget = params.level;
+    voice.persistent = params.persistent;
     const float pan = std::clamp(params.pan, -1.0f, 1.0f);
     voice.panLeft = std::cos((pan + 1.0f) * Pi * 0.25f);
     voice.panRight = std::sin((pan + 1.0f) * Pi * 0.25f);
@@ -569,7 +574,7 @@ void SynthAudio::SetSfx(int voice, float level, float rate)
 void SynthAudio::StopAll()
 {
     std::lock_guard<std::mutex> lock(state->mutex);
-    state->pending.clear();
+    state->pending.erase(std::remove_if(state->pending.begin(), state->pending.end(), [](const Voice& v) { return !v.persistent; }), state->pending.end());
     state->stopRequested = true;
 }
 

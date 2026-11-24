@@ -42,6 +42,7 @@ struct SfxParams
     float bodyLevel = 0.0f;
     float pan = 0.0f;
     float level = 1.0f;
+    bool persistent = false;
 };
 
 enum class RigPickup
