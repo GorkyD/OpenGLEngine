@@ -431,8 +431,8 @@ struct SynthAudio::State
             lowpass[1] += (right - lowpass[1]) * 0.45f;
             effectLowpass[0] += (effectLeft - effectLowpass[0]) * 0.52f;
             effectLowpass[1] += (effectRight - effectLowpass[1]) * 0.52f;
-            out[frame * 2 + 0] = std::tanh((lowpass[0] + ampLeft * 0.7f + effectLowpass[0] * 0.45f) * masterVolume * 0.6f);
-            out[frame * 2 + 1] = std::tanh((lowpass[1] + ampRight * 0.7f + effectLowpass[1] * 0.45f) * masterVolume * 0.6f);
+            out[frame * 2 + 0] = std::tanh(((lowpass[0] + ampLeft * 0.7f) * 0.75f + effectLowpass[0] * 0.27f) * masterVolume);
+            out[frame * 2 + 1] = std::tanh(((lowpass[1] + ampRight * 0.7f) * 0.75f + effectLowpass[1] * 0.27f) * masterVolume);
         }
 
         voices.erase(std::remove_if(voices.begin(), voices.end(), [](const Voice& voice) { return voice.finished; }), voices.end());
