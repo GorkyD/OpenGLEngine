@@ -65,7 +65,7 @@ set(ENGINE_SOURCES
         OpenGLEngine/Engine/source/Scene/DemoScene.cpp
 )
 
-file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS
+file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS FOLLOW_SYMLINKS
         "${CMAKE_SOURCE_DIR}/OpenGLEngine/Game/*.cpp"
 )
 
@@ -231,7 +231,7 @@ foreach (_gameMain ${GAME_MAIN_SOURCES})
     get_filename_component(_gameName "${_gameDir}" NAME)
     string(MAKE_C_IDENTIFIER "${_gameName}" _gameTarget)
 
-    file(GLOB_RECURSE _gameSources CONFIGURE_DEPENDS "${_gameDir}/*.cpp")
+    file(GLOB_RECURSE _gameSources CONFIGURE_DEPENDS FOLLOW_SYMLINKS "${_gameDir}/*.cpp")
 
     add_executable(${_gameTarget} ${_gameSources})
     target_link_libraries(${_gameTarget} PRIVATE OpenGLEngineCore)
